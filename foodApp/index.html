@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mom's Protein Thali - Offline</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f8fafc;color:#1e293b;line-height:1.5;padding-bottom:80px}
+.header{background:linear-gradient(135deg,#f97316,#ea580c);color:white;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.header h1{font-size:18px;font-weight:700;flex:1}
+.menu-btn{background:rgba(255,255,255,.2);border:none;color:white;width:40px;height:40px;border-radius:10px;font-size:22px;cursor:pointer}
+.lang-btns{display:flex;gap:6px}
+.lang-btn{background:rgba(255,255,255,.25);border:none;color:white;padding:6px 10px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer}
+.lang-btn.active{background:white;color:#ea580c}
+.sidebar{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:200;transition:left .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.15);display:flex;flex-direction:column}
+.sidebar.open{left:0}
+.sidebar-header{background:#f97316;color:white;padding:18px 16px;font-weight:700;font-size:17px}
+.sidebar nav{flex:1;padding:12px 0}
+.sidebar a{display:flex;align-items:center;gap:12px;padding:14px 20px;color:#334155;text-decoration:none;font-size:16px;font-weight:500;border-left:4px solid transparent}
+.sidebar a.active{background:#fff7ed;color:#ea580c;border-left-color:#ea580c}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150;display:none}
+.overlay.show{display:block}
+.section{display:none;padding:16px}
+.section.active{display:block}
+h2{font-size:20px;font-weight:700;margin-bottom:8px;color:#0f172a}
+.sub{color:#64748b;font-size:14px;margin-bottom:16px}
+.card{background:white;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+label{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px}
+input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:15px;margin-bottom:12px;background:#fff}
+input:focus,select:focus{outline:none;border-color:#f97316}
+.btn{display:inline-block;background:#f97316;color:white;border:none;padding:12px 18px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;text-align:center}
+.btn:active{transform:scale(.97)}
+.btn-block{display:block;width:100%}
+.btn-outline{background:white;color:#f97316;border:2px solid #f97316}
+.btn-sm{padding:8px 12px;font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.macro-box{background:#fff7ed;border-radius:12px;padding:12px;text-align:center}
+.macro-box .val{font-size:22px;font-weight:700;color:#ea580c}
+.macro-box .lbl{font-size:12px;color:#9a3412}
+.meal-card{border:1.5px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer}
+.meal-card:active{background:#f8fafc}
+.meal-card h3{font-size:15px;font-weight:600;margin-bottom:4px}
+.meal-card .macros{font-size:12px;color:#64748b}
+.badge{display:inline-block;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.filter-btn{padding:8px 14px;border-radius:20px;border:1.5px solid #e2e8f0;background:white;font-size:13px;font-weight:600;color:#475569;cursor:pointer}
+.filter-btn.active{background:#f97316;color:white;border-color:#f97316}
+.progress{height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;margin:6px 0}
+.progress-bar{height:100%;background:#22c55e;border-radius:5px;transition:width .3s}
+.note{background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 12px;border-radius:0 8px 8px 0;font-size:13px;margin:12px 0}
+.hidden{display:none}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:12px 20px;border-radius:30px;font-size:14px;z-index:300;display:none}
+.toast.show{display:block}
+.qty{font-size:12px;color:#64748b;margin-top:4px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <h1 id="appTitle">Mom's Protein Thali</h1>
+  <div class="lang-btns">
+    <button class="lang-btn active" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('hi')">हिं</button>
+    <button class="lang-btn" onclick="setLang('mr')">मर</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">Navigation</div>
+  <nav>
+    <a href="#" class="active" data-sec="profile" onclick="showSec('profile')">👤 Profile & Targets</a>
+    <a href="#" data-sec="recipes" onclick="showSec('recipes')">📖 Recipes Library</a>
+    <a href="#" data-sec="planner" onclick="showSec('planner')">📅 Daily Planner</a>
+    <a href="#" data-sec="tracker" onclick="showSec('tracker')">📊 Macro Tracker</a>
+    <a href="#" data-sec="guide" onclick="showSec('guide')">💡 Guide & Tips</a>
+  </nav>
+  <div style="padding:16px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0">All data stays private in your browser</div>
+</div>
+
+<!-- PROFILE -->
+<div class="section active" id="sec-profile">
+  <h2 id="t-profile">Profile & Daily Targets</h2>
+  <p class="sub" id="t-profile-sub">Enter her details once. Targets update automatically.</p>
+  <div class="card">
+    <label id="l-age">Age (years)</label>
+    <input type="number" id="age" value="57">
+    <label id="l-weight">Weight (kg)</label>
+    <input type="number" id="weight" value="67">
+    <label id="l-height">Height (cm)</label>
+    <input type="number" id="height" value="165">
+    <label id="l-activity">Activity Level</label>
+    <select id="activity">
+      <option value="1.2">Sedentary</option>
+      <option value="1.375" selected>Lightly active</option>
+      <option value="1.55">Moderately active</option>
+      <option value="1.725">Very active</option>
+    </select>
+    <label id="l-diet">Diet Preference</label>
+    <select id="dietPref" onchange="onDietChange()">
+      <option value="veg" selected>Vegetarian (no eggs, chicken or fish)</option>
+      <option value="nonveg">Non-Vegetarian (Eggs + Chicken + Fish)</option>
+    </select>
+    <label id="l-protein">Daily Protein Target (g/kg)</label>
+    <input type="range" id="protSlider" min="1.0" max="1.6" step="0.05" value="1.35" oninput="updateProtLabel()">
+    <div style="text-align:center;margin:6px 0 12px;font-weight:600" id="protLabel">1.35 g/kg</div>
+    <button class="btn btn-block" onclick="calcTargets()" id="btn-save">Save Profile & Calculate Targets</button>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="macro-box"><div class="val" id="calTarget">—</div><div class="lbl" id="l-cal">kcal / day</div></div>
+    <div class="macro-box"><div class="val" id="protTarget">—</div><div class="lbl" id="l-prot">g protein</div></div>
+    <div class="macro-box"><div class="val" id="carbTarget">—</div><div class="lbl" id="l-carb">g carbs</div></div>
+    <div class="macro-box"><div class="val" id="fatTarget">—</div><div class="lbl" id="l-fat">g fats</div></div>
+  </div>
+  <div class="note" id="t-note">Higher protein (1.3–1.5 g/kg) helps preserve muscle at 55-60 years. Low-GI carbs from millets, barley, dals + lots of sabzi keep blood sugar steady. Always check with her doctor.</div>
+</div>
+
+<!-- RECIPES -->
+<div class="section" id="sec-recipes">
+  <h2 id="t-recipes">Recipes Library</h2>
+  <p class="sub" id="t-recipes-sub">Tap a recipe → view quantities → Add to Plan</p>
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterMeals('all')">All</button>
+    <button class="filter-btn" onclick="filterMeals('breakfast')">Breakfast</button>
+    <button class="filter-btn" onclick="filterMeals('lunch')">Lunch</button>
+    <button class="filter-btn" onclick="filterMeals('dinner')">Dinner</button>
+    <button class="filter-btn" onclick="filterMeals('snack')">Snacks</button>
+  </div>
+  <button class="btn btn-block" style="margin-bottom:14px" onclick="generateRecipe()" id="btn-gen">✨ Generate New Recipe</button>
+  <div id="recipeList"></div>
+</div>
+
+<!-- PLANNER -->
+<div class="section" id="sec-planner">
+  <h2 id="t-planner">Daily Planner</h2>
+  <p class="sub" id="t-planner-sub">Select meals or generate a full day</p>
+  <div class="card">
+    <label id="l-bf">Breakfast</label>
+    <select id="sel-bf" onchange="updatePlanTotals()"></select>
+    <label id="l-sn1">Snack 1</label>
+    <select id="sel-sn1" onchange="updatePlanTotals()"></select>
+    <label id="l-lu">Lunch</label>
+    <select id="sel-lu" onchange="updatePlanTotals()"></select>
+    <label id="l-sn2">Snack 2</label>
+    <select id="sel-sn2" onchange="updatePlanTotals()"></select>
+    <label id="l-di">Dinner</label>
+    <select id="sel-di" onchange="updatePlanTotals()"></select>
+  </div>
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:8px" id="t-totals">Plan Totals</div>
+    <div>Protein: <strong id="planP">0</strong> g &nbsp;|&nbsp; Carbs: <strong id="planC">0</strong> g &nbsp;|&nbsp; Fat: <strong id="planF">0</strong> g &nbsp;|&nbsp; Cal: <strong id="planK">0</strong></div>
+    <div class="progress"><div class="progress-bar" id="planBar" style="width:0%"></div></div>
+    <button class="btn btn-block" style="margin-top:12px" onclick="addPlanToTracker()" id="btn-addplan">Add Entire Plan to Tracker</button>
+  </div>
+  <button class="btn btn-outline btn-block" onclick="generateFullDay()" id="btn-fullday">🎲 Generate Full Day</button>
+</div>
+
+<!-- TRACKER -->
+<div class="section" id="sec-tracker">
+  <h2 id="t-tracker">Macro Tracker</h2>
+  <p class="sub" id="t-tracker-sub">Log what she actually ate today</p>
+  <div class="card">
+    <label id="l-date">Date</label>
+    <input type="date" id="trackDate">
+    <div style="font-weight:600;margin:10px 0 6px" id="t-today">Today's Intake</div>
+    <div>Protein: <strong id="trackP">0</strong> / <span id="goalP">—</span> g</div>
+    <div class="progress"><div class="progress-bar" id="barP" style="width:0%"></div></div>
+    <div>Carbs: <strong id="trackC">0</strong> / <span id="goalC">—</span> g</div>
+    <div class="progress"><div class="progress-bar" id="barC" style="width:0%"></div></div>
+    <div>Fat: <strong id="trackF">0</strong> / <span id="goalF">—</span> g</div>
+    <div class="progress"><div class="progress-bar" id="barF" style="width:0%"></div></div>
+    <div style="margin-top:8px">Calories: <strong id="trackK">0</strong></div>
+  </div>
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:8px" id="t-quick">Quick Add</div>
+    <div class="grid2" id="quickAdds"></div>
+  </div>
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:8px" id="t-log">Logged Items</div>
+    <div id="logList" style="font-size:14px"></div>
+    <button class="btn btn-outline btn-block" style="margin-top:10px" onclick="clearLog()" id="btn-clear">Clear Today's Log</button>
+  </div>
+</div>
+
+<!-- GUIDE -->
+<div class="section" id="sec-guide">
+  <h2 id="t-guide">Guide & Tips</h2>
+  <div class="card" id="guideContent">
+    <p><strong>Why higher protein?</strong><br>At 55-60 years, the body needs more protein (1.2–1.5 g/kg) to maintain muscle and strength.</p>
+    <p style="margin-top:10px"><strong>Best low-GI Indian choices:</strong><br>• Millets: jowar, bajra, ragi, foxtail<br>• Barley (jau), whole dals, moong, chana<br>• Lots of non-starchy sabzi (lauki, bhindi, palak, methi)<br>• Paneer, soya, hung curd, sprouts</p>
+    <p style="margin-top:10px"><strong>Simple rules:</strong><br>1. Eat protein + veggies first, then carbs<br>2. Use minimal oil / non-stick<br>3. Add lemon & spices for taste without calories<br>4. Stay consistent – small daily wins matter most</p>
+    <p style="margin-top:10px;font-size:13px;color:#64748b">This is not medical advice. Please consult her doctor if she has diabetes, kidney issues or any health concerns.</p>
+  </div>
+</div>
+
+<!-- Recipe Detail Modal -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;padding:20px;overflow:auto">
+  <div style="background:white;border-radius:16px;padding:20px;max-width:400px;margin:40px auto">
+    <h3 id="m-title" style="font-size:18px;margin-bottom:8px"></h3>
+    <div id="m-badge" style="margin-bottom:8px"></div>
+    <p id="m-desc" style="font-size:14px;color:#475569;margin-bottom:10px"></p>
+    <div class="qty" id="m-qty"></div>
+    <div style="margin:12px 0;font-size:14px">
+      <strong id="m-macros"></strong>
+    </div>
+    <button class="btn btn-block" onclick="addToPlanFromModal()" id="m-add">Add to Plan</button>
+    <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="openYT()" id="m-yt">▶ Watch on YouTube</button>
+    <button class="btn-outline btn-block" style="margin-top:8px;background:#f1f5f9;border:none;padding:10px;border-radius:10px" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== DATA ==========
+const meals = [
+  // ========== VEGETARIAN ==========
+  // Breakfast
+  {id:1, isVeg:true, cat:'breakfast', name:{en:'Moong Dal Chilla (2) with Paneer Stuffing + Curd',hi:'मूंग दाल चिल्ला (2) पनीर स्टफिंग + दही',mr:'मूग डाळ चिल्ला (२) पनीर स्टफिंग + दही'}, p:28, c:32, f:12, k:350, qty:{en:'80g moong dal batter, 60g paneer stuffing, 100g curd',hi:'80g मूंग दाल बैटर, 60g पनीर, 100g दही',mr:'80g मूग डाळ बॅटर, 60g पनीर, 100g दही'}, desc:{en:'High protein, low GI, easy to digest',hi:'हाई प्रोटीन, लो GI, आसानी से पचने वाला',mr:'हाय प्रोटीन, लो GI, पचण्यास सोपे'}},
+  {id:2, isVeg:true, cat:'breakfast', name:{en:'Besan Chilla (2) + Hung Curd + Sprouts',hi:'बेसन चिल्ला (2) + हंग कर्ड + स्प्राउट्स',mr:'बेसन चिल्ला (२) + हंग कर्ड + स्प्राउट्स'}, p:26, c:30, f:10, k:320, qty:{en:'70g besan, 120g hung curd, 50g mixed sprouts',hi:'70g बेसन, 120g हंग कर्ड, 50g स्प्राउट्स',mr:'70g बेसन, 120g हंग कर्ड, 50g स्प्राउट्स'}, desc:{en:'Protein packed, filling breakfast',hi:'प्रोटीन से भरपूर नाश्ता',mr:'प्रोटीनयुक्त नाश्ता'}},
+  {id:3, isVeg:true, cat:'breakfast', name:{en:'Ragi Dosa (2) + Sambar + Coconut Chutney',hi:'रागी डोसा (2) + सांभर + नारियल चटनी',mr:'रागी डोसा (२) + सांभार + खोबर्याची चटणी'}, p:18, c:42, f:9, k:320, qty:{en:'2 ragi dosas (~80g flour), 150ml sambar, 30g chutney',hi:'2 रागी डोसा, 150ml सांभर, 30g चटनी',mr:'2 रागी डोसा, 150ml सांभार, 30g चटणी'}, desc:{en:'Millet based, good calcium',hi:'बाजरे पर आधारित, अच्छा कैल्शियम',mr:'बाजरी आधारित, चांगले कॅल्शियम'}},
+  {id:4, isVeg:true, cat:'breakfast', name:{en:'Paneer Bhurji + 1 Jowar Roti + Cucumber',hi:'पनीर भुर्जी + 1 ज्वार रोटी + खीरा',mr:'पनीर भुर्जी + १ ज्वारी रोटी + काकडी'}, p:30, c:28, f:16, k:380, qty:{en:'100g paneer, 1 jowar roti (~40g), 100g cucumber',hi:'100g पनीर, 1 ज्वार रोटी, 100g खीरा',mr:'100g पनीर, १ ज्वारी रोटी, 100g काकडी'}, desc:{en:'Classic high protein start',hi:'क्लासिक हाई प्रोटीन शुरुआत',mr:'क्लासिक हाय प्रोटीन सुरुवात'}},
+  // Lunch
+  {id:5, isVeg:true, cat:'lunch', name:{en:'Rajma (1 cup) + Brown Rice (½ cup) + Salad',hi:'राजमा (1 कप) + ब्राउन राइस (½ कप) + सलाद',mr:'राजमा (१ कप) + ब्राउन राईस (½ कप) + सलाड'}, p:24, c:48, f:8, k:360, qty:{en:'180g cooked rajma, 80g cooked brown rice, mixed salad',hi:'180g पका हुआ राजमा, 80g ब्राउन राइस, सलाद',mr:'180g शिजवलेला राजमा, 80g ब्राउन राईस, सलाड'}, desc:{en:'Fiber + protein, steady energy',hi:'फाइबर + प्रोटीन, स्थिर ऊर्जा',mr:'फायबर + प्रोटीन, स्थिर ऊर्जा'}},
+  {id:6, isVeg:true, cat:'lunch', name:{en:'Soya Chunk Curry + Jowar Roti (2) + Lauki',hi:'सोया चंक करी + ज्वार रोटी (2) + लौकी',mr:'सोया चंक करी + ज्वारी रोटी (२) + दुधी'}, p:32, c:38, f:10, k:370, qty:{en:'60g dry soya chunks (rehydrated), 2 jowar rotis, 150g lauki sabzi',hi:'60g सोया चंक, 2 ज्वार रोटी, 150g लौकी',mr:'60g सोया चंक, २ ज्वारी रोट्या, 150g दुधी'}, desc:{en:'Very high protein, low GI',hi:'बहुत हाई प्रोटीन, लो GI',mr:'खूप हाय प्रोटीन, लो GI'}},
+  {id:7, isVeg:true, cat:'lunch', name:{en:'Palak Paneer + 1 Multigrain Roti + Curd',hi:'पालक पनीर + 1 मल्टीग्रेन रोटी + दही',mr:'पालक पनीर + १ मल्टीग्रेन रोटी + दही'}, p:28, c:30, f:18, k:400, qty:{en:'100g paneer, 150g palak, 1 multigrain roti, 100g curd',hi:'100g पनीर, 150g पालक, 1 रोटी, 100g दही',mr:'100g पनीर, 150g पालक, १ रोटी, 100g दही'}, desc:{en:'Iron + protein combo',hi:'आयरन + प्रोटीन कॉम्बो',mr:'लोह + प्रोटीन कॉम्बो'}},
+  {id:8, isVeg:true, cat:'lunch', name:{en:'Chana Masala + Foxtail Millet + Raita',hi:'चना मसाला + फॉक्सटेल मिलेट + रायता',mr:'चना मसाला + कांगणी + रायता'}, p:22, c:45, f:9, k:350, qty:{en:'150g cooked chana, 80g cooked foxtail millet, 100g raita',hi:'150g चना, 80g मिलेट, 100g रायता',mr:'150g चना, 80g कांगणी, 100g रायता'}, desc:{en:'Millet based complete meal',hi:'मिलेट आधारित पूरा भोजन',mr:'मिलेट आधारित पूर्ण जेवण'}},
+  // Dinner
+  {id:9, isVeg:true, cat:'dinner', name:{en:'Moong Dal Khichdi (Barley) + Kadhi + Salad',hi:'मूंग दाल खिचड़ी (जौ) + कढ़ी + सलाद',mr:'मूग डाळ खिचडी (जव) + कढी + सलाड'}, p:20, c:40, f:8, k:310, qty:{en:'60g moong + 40g barley, 150ml kadhi, mixed salad',hi:'60g मूंग + 40g जौ, 150ml कढ़ी, सलाद',mr:'60g मूग + 40g जव, 150ml कढी, सलाड'}, desc:{en:'Light, easy to digest dinner',hi:'हल्का, आसानी से पचने वाला रात का खाना',mr:'हलके, पचण्यास सोपे रात्रीचे जेवण'}},
+  {id:10, isVeg:true, cat:'dinner', name:{en:'Grilled Paneer Tikka + Mixed Veg + 1 Roti',hi:'ग्रिल्ड पनीर टिक्का + मिक्स्ड वेज + 1 रोटी',mr:'ग्रिल्ड पनीर टिक्का + मिक्स्ड भाजी + १ रोटी'}, p:30, c:25, f:16, k:370, qty:{en:'120g paneer tikka, 150g mixed veg, 1 small roti',hi:'120g पनीर टिक्का, 150g सब्जी, 1 छोटी रोटी',mr:'120g पनीर टिक्का, 150g भाजी, १ छोटी रोटी'}, desc:{en:'High protein, low carb dinner',hi:'हाई प्रोटीन, लो कार्ब डिनर',mr:'हाय प्रोटीन, लो कार्ब डिनर'}},
+  {id:11, isVeg:true, cat:'dinner', name:{en:'Vegetable Sambar + Quinoa / Millet + Beans',hi:'वेजिटेबल सांभर + क्विनोआ / मिलेट + बीन्स',mr:'भाजी सांभार + क्विनोआ / मिलेट + बीन्स'}, p:18, c:42, f:7, k:300, qty:{en:'200ml sambar, 80g cooked millet/quinoa, 80g beans',hi:'200ml सांभर, 80g मिलेट, 80g बीन्स',mr:'200ml सांभार, 80g मिलेट, 80g बीन्स'}, desc:{en:'Light South Indian style',hi:'हल्का साउथ इंडियन स्टाइल',mr:'हलके साउथ इंडियन स्टाइल'}},
+  {id:12, isVeg:true, cat:'dinner', name:{en:'Dal Tadka + 1 Jowar Roti + Bhindi Sabzi',hi:'दाल तड़का + 1 ज्वार रोटी + भिंडी सब्जी',mr:'डाळ तडका + १ ज्वारी रोटी + भेंडी भाजी'}, p:20, c:35, f:10, k:310, qty:{en:'150g dal, 1 jowar roti, 120g bhindi',hi:'150g दाल, 1 ज्वार रोटी, 120g भिंडी',mr:'150g डाळ, १ ज्वारी रोटी, 120g भेंडी'}, desc:{en:'Classic comforting dinner',hi:'क्लासिक आरामदायक डिनर',mr:'क्लासिक आरामदायी डिनर'}},
+  // Snacks
+  {id:13, isVeg:true, cat:'snack', name:{en:'Roasted Masala Chana (50g) + Cucumber',hi:'रोस्टेड मसाला चना (50g) + खीरा',mr:'रोस्टेड मसाला चणा (50g) + काकडी'}, p:17, c:22, f:6, k:200, qty:{en:'50g roasted chana, 100g cucumber',hi:'50g रोस्टेड चना, 100g खीरा',mr:'50g रोस्टेड चणा, 100g काकडी'}, desc:{en:'Crunchy high protein snack',hi:'कुरकुरा हाई प्रोटीन स्नैक',mr:'कुरकुरीत हाय प्रोटीन स्नॅक'}},
+  {id:14, isVeg:true, cat:'snack', name:{en:'Hung Curd Bowl (150g) with Veggies',hi:'हंग कर्ड बाउल (150g) सब्जियों के साथ',mr:'हंग कर्ड बाउल (150g) भाज्यांसह'}, p:15, c:10, f:5, k:140, qty:{en:'150g hung curd, chopped cucumber tomato onion',hi:'150g हंग कर्ड, कटा खीरा टमाटर प्याज',mr:'150g हंग कर्ड, काकडी टोमॅटो कांदा'}, desc:{en:'Cooling & protein rich',hi:'ठंडा और प्रोटीन युक्त',mr:'थंड आणि प्रोटीनयुक्त'}},
+  {id:15, isVeg:true, cat:'snack', name:{en:'Sattu Drink + Roasted Makhana',hi:'सत्तू ड्रिंक + रोस्टेड मखाना',mr:'सत्तू ड्रिंक + रोस्टेड मखाना'}, p:13, c:28, f:4, k:190, qty:{en:'30g sattu powder, 20g makhana',hi:'30g सत्तू, 20g मखाना',mr:'30g सत्तू, 20g मखाना'}, desc:{en:'Traditional cooling protein drink',hi:'पारंपरिक ठंडा प्रोटीन ड्रिंक',mr:'पारंपरिक थंड प्रोटीन ड्रिंक'}},
+  {id:16, isVeg:true, cat:'snack', name:{en:'Mixed Sprouts Chaat (1 cup)',hi:'मिक्स्ड स्प्राउट्स चाट (1 कप)',mr:'मिक्स्ड स्प्राउट्स चाट (१ कप)'}, p:16, c:24, f:3, k:180, qty:{en:'120g mixed sprouts, onion tomato lemon chaat masala',hi:'120g स्प्राउट्स, प्याज टमाटर नींबू चाट मसाला',mr:'120g स्प्राउट्स, कांदा टोमॅटो लिंबू चाट मसाला'}, desc:{en:'Fresh & filling',hi:'ताजा और भरपेट',mr:'ताजे आणि पोटभर'}},
+  {id:17, isVeg:true, cat:'snack', name:{en:'Grilled Paneer (70g) with Capsicum',hi:'ग्रिल्ड पनीर (70g) शिमला मिर्च के साथ',mr:'ग्रिल्ड पनीर (70g) ढोबळी मिरचीसह'}, p:24, c:6, f:14, k:250, qty:{en:'70g paneer, 50g capsicum, spices',hi:'70g पनीर, 50g शिमला मिर्च, मसाले',mr:'70g पनीर, 50g ढोबळी मिरची, मसाले'}, desc:{en:'Highest protein snack option',hi:'सबसे ज्यादा प्रोटीन वाला स्नैक',mr:'सर्वाधिक प्रोटीन असलेला स्नॅक'}},
+  {id:18, isVeg:true, cat:'snack', name:{en:'Boiled Chana Salad (1 cup)',hi:'उबला चना सलाद (1 कप)',mr:'उकडलेला चणा सलाड (१ कप)'}, p:14, c:26, f:3, k:180, qty:{en:'120g boiled chana, onion tomato lemon',hi:'120g उबला चना, प्याज टमाटर नींबू',mr:'120g उकडलेला चणा, कांदा टोमॅटो लिंबू'}, desc:{en:'Simple & effective',hi:'सरल और प्रभावी',mr:'सोपे आणि प्रभावी'}},
+
+  // ========== NON-VEGETARIAN (Eggs, Chicken, Fish - Indian style, light) ==========
+  // Breakfast
+  {id:19, isVeg:false, cat:'breakfast', name:{en:'Egg Bhurji (2 eggs) + 1 Jowar Roti + Salad',hi:'अंडा भुर्जी (2 अंडे) + 1 ज्वार रोटी + सलाद',mr:'अंडी भुर्जी (२ अंडी) + १ ज्वारी रोटी + सलाड'}, p:22, c:24, f:14, k:310, qty:{en:'2 eggs, 1 jowar roti (~40g), cucumber-tomato salad, minimal oil',hi:'2 अंडे, 1 ज्वार रोटी, खीरा-टमाटर सलाद, कम तेल',mr:'२ अंडी, १ ज्वारी रोटी, काकडी-टोमॅटो सलाड, कमी तेल'}, desc:{en:'Classic high-protein Indian breakfast',hi:'क्लासिक हाई-प्रोटीन भारतीय नाश्ता',mr:'क्लासिक हाय-प्रोटीन भारतीय नाश्ता'}},
+  {id:20, isVeg:false, cat:'breakfast', name:{en:'Boiled Eggs (2) + Sprouts Salad + Curd',hi:'उबले अंडे (2) + स्प्राउट्स सलाद + दही',mr:'उकडलेली अंडी (२) + स्प्राउट्स सलाड + दही'}, p:24, c:18, f:12, k:280, qty:{en:'2 whole eggs (boiled), 80g mixed sprouts, 100g curd',hi:'2 उबले अंडे, 80g स्प्राउट्स, 100g दही',mr:'२ उकडलेली अंडी, 80g स्प्राउट्स, 100g दही'}, desc:{en:'Simple, clean protein start',hi:'सरल, साफ प्रोटीन शुरुआत',mr:'सोपे, स्वच्छ प्रोटीन सुरुवात'}},
+  {id:21, isVeg:false, cat:'breakfast', name:{en:'Egg White Omelette (3 whites) + Veggies + Multigrain Toast',hi:'अंडे की सफेदी आमलेट (3) + सब्जियां + मल्टीग्रेन टोस्ट',mr:'अंडी पांढरे आमलेट (३) + भाज्या + मल्टीग्रेन टोस्ट'}, p:20, c:28, f:6, k:250, qty:{en:'3 egg whites, onion-tomato-capsicum, 1 multigrain toast',hi:'3 अंडे की सफेदी, प्याज-टमाटर-शिमला मिर्च, 1 टोस्ट',mr:'३ अंडी पांढरे, कांदा-टोमॅटो-ढोबळी मिरची, १ टोस्ट'}, desc:{en:'Low fat, high protein',hi:'कम फैट, ज्यादा प्रोटीन',mr:'कमी फॅट, जास्त प्रोटीन'}},
+  // Lunch
+  {id:22, isVeg:false, cat:'lunch', name:{en:'Light Chicken Curry (100g) + 1 Jowar Roti + Salad',hi:'लाइट चिकन करी (100g) + 1 ज्वार रोटी + सलाद',mr:'लाइट चिकन करी (100g) + १ ज्वारी रोटी + सलाड'}, p:32, c:28, f:12, k:350, qty:{en:'100g boneless chicken (home-style light gravy), 1 jowar roti, mixed salad',hi:'100g चिकन (हल्की ग्रेवी), 1 ज्वार रोटी, सलाद',mr:'100g चिकन (हलकी ग्रेव्ही), १ ज्वारी रोटी, सलाड'}, desc:{en:'High protein, controlled oil Indian style',hi:'हाई प्रोटीन, कम तेल वाली भारतीय स्टाइल',mr:'हाय प्रोटीन, कमी तेल भारतीय स्टाइल'}},
+  {id:23, isVeg:false, cat:'lunch', name:{en:'Grilled Chicken Breast (120g) + Millet + Veggies',hi:'ग्रिल्ड चिकन ब्रेस्ट (120g) + मिलेट + सब्जियां',mr:'ग्रिल्ड चिकन ब्रेस्ट (120g) + मिलेट + भाज्या'}, p:38, c:30, f:8, k:340, qty:{en:'120g grilled chicken breast, 70g cooked millet, steamed veggies',hi:'120g ग्रिल्ड चिकन, 70g मिलेट, स्टीम्ड सब्जियां',mr:'120g ग्रिल्ड चिकन, 70g मिलेट, स्टीम भाज्या'}, desc:{en:'Very high protein, low fat',hi:'बहुत हाई प्रोटीन, कम फैट',mr:'खूप हाय प्रोटीन, कमी फॅट'}},
+  {id:24, isVeg:false, cat:'lunch', name:{en:'Fish Curry (Rohu/Pomfret style, 100g) + Brown Rice + Salad',hi:'मछली करी (रोहू/पोम्फ्रेट, 100g) + ब्राउन राइस + सलाद',mr:'मासा करी (रोहू/पोम्फ्रेट, 100g) + ब्राउन राईस + सलाड'}, p:28, c:35, f:10, k:340, qty:{en:'100g fish piece, light onion-tomato gravy, 70g brown rice, salad',hi:'100g मछली, हल्की ग्रेवी, 70g ब्राउन राइस, सलाद',mr:'100g मासा, हलकी ग्रेव्ही, 70g ब्राउन राईस, सलाड'}, desc:{en:'Omega-3 rich, light Indian fish curry',hi:'ओमेगा-3 से भरपूर, हल्की मछली करी',mr:'ओमेगा-3 युक्त, हलकी मासा करी'}},
+  {id:25, isVeg:false, cat:'lunch', name:{en:'Egg Curry (2 eggs) + 1 Multigrain Roti + Lauki Sabzi',hi:'अंडा करी (2 अंडे) + 1 मल्टीग्रेन रोटी + लौकी सब्जी',mr:'अंडी करी (२ अंडी) + १ मल्टीग्रेन रोटी + दुधी भाजी'}, p:24, c:30, f:14, k:340, qty:{en:'2 eggs in light gravy, 1 multigrain roti, 150g lauki sabzi',hi:'2 अंडे हल्की ग्रेवी में, 1 रोटी, 150g लौकी',mr:'२ अंडी हलकी ग्रेव्हीत, १ रोटी, 150g दुधी'}, desc:{en:'Comforting & protein rich',hi:'आरामदायक और प्रोटीन युक्त',mr:'आरामदायी आणि प्रोटीनयुक्त'}},
+  // Dinner
+  {id:26, isVeg:false, cat:'dinner', name:{en:'Grilled Fish (100g) + Steamed Veggies + 1 Small Roti',hi:'ग्रिल्ड मछली (100g) + स्टीम्ड सब्जियां + 1 छोटी रोटी',mr:'ग्रिल्ड मासा (100g) + स्टीम भाज्या + १ छोटी रोटी'}, p:28, c:20, f:8, k:260, qty:{en:'100g grilled fish (lemon-pepper or light masala), steamed veggies, 1 small roti',hi:'100g ग्रिल्ड मछली, स्टीम्ड सब्जियां, 1 छोटी रोटी',mr:'100g ग्रिल्ड मासा, स्टीम भाज्या, १ छोटी रोटी'}, desc:{en:'Light, high protein dinner',hi:'हल्का, हाई प्रोटीन डिनर',mr:'हलके, हाय प्रोटीन डिनर'}},
+  {id:27, isVeg:false, cat:'dinner', name:{en:'Chicken Tikka (100g) + Salad Bowl + Curd',hi:'चिकन टिक्का (100g) + सलाद बाउल + दही',mr:'चिकन टिक्का (100g) + सलाड बाउल + दही'}, p:32, c:12, f:10, k:270, qty:{en:'100g chicken tikka (tandoori style, low oil), large salad, 100g curd',hi:'100g चिकन टिक्का, बड़ा सलाद, 100g दही',mr:'100g चिकन टिक्का, मोठा सलाड, 100g दही'}, desc:{en:'Low carb, high protein',hi:'लो कार्ब, हाई प्रोटीन',mr:'लो कार्ब, हाय प्रोटीन'}},
+  {id:28, isVeg:false, cat:'dinner', name:{en:'Egg White Bhurji + Mixed Veg + 1 Roti',hi:'अंडे की सफेदी भुर्जी + मिक्स्ड वेज + 1 रोटी',mr:'अंडी पांढरे भुर्जी + मिक्स्ड भाजी + १ रोटी'}, p:22, c:25, f:6, k:240, qty:{en:'4 egg whites, mixed veggies, 1 small roti',hi:'4 अंडे की सफेदी, मिक्स्ड सब्जियां, 1 छोटी रोटी',mr:'४ अंडी पांढरे, मिक्स्ड भाज्या, १ छोटी रोटी'}, desc:{en:'Very light & protein focused',hi:'बहुत हल्का और प्रोटीन फोकस्ड',mr:'खूप हलके आणि प्रोटीन फोकस्ड'}},
+  // Snacks
+  {id:29, isVeg:false, cat:'snack', name:{en:'Boiled Egg (1) + Cucumber Sticks',hi:'उबला अंडा (1) + खीरा स्टिक्स',mr:'उकडलेली अंडी (१) + काकडी स्टिक्स'}, p:13, c:4, f:6, k:120, qty:{en:'1 boiled egg, 100g cucumber',hi:'1 उबला अंडा, 100g खीरा',mr:'१ उकडलेली अंडी, 100g काकडी'}, desc:{en:'Quick clean protein',hi:'तेज साफ प्रोटीन',mr:'वेगवान स्वच्छ प्रोटीन'}},
+  {id:30, isVeg:false, cat:'snack', name:{en:'Grilled Chicken Cubes (50g) + Veggies',hi:'ग्रिल्ड चिकन क्यूब्स (50g) + सब्जियां',mr:'ग्रिल्ड चिकन क्यूब्स (50g) + भाज्या'}, p:18, c:5, f:4, k:130, qty:{en:'50g grilled chicken, capsicum/onion',hi:'50g ग्रिल्ड चिकन, शिमला मिर्च/प्याज',mr:'50g ग्रिल्ड चिकन, ढोबळी मिरची/कांदा'}, desc:{en:'High protein mini snack',hi:'हाई प्रोटीन मिनी स्नैक',mr:'हाय प्रोटीन मिनी स्नॅक'}},
+  {id:31, isVeg:false, cat:'snack', name:{en:'Fish Tikka Piece (60g) + Lemon',hi:'मछली टिक्का पीस (60g) + नींबू',mr:'मासा टिक्का पीस (60g) + लिंबू'}, p:16, c:2, f:5, k:120, qty:{en:'60g fish tikka, lemon, light spices',hi:'60g मछली टिक्का, नींबू, हल्के मसाले',mr:'60g मासा टिक्का, लिंबू, हलके मसाले'}, desc:{en:'Light & protein rich',hi:'हल्का और प्रोटीन युक्त',mr:'हलके आणि प्रोटीनयुक्त'}}
+];
+
+let lang = 'en';
+let currentFilter = 'all';
+let selectedMeal = null;
+let log = [];
+let targets = {cal:0, p:0, c:0, f:0};
+let dietPref = 'veg'; // 'veg' or 'nonveg'
+
+function getFilteredMeals(cat) {
+  let list = meals;
+  // Strict: Vegetarian mode never shows eggs, chicken or fish
+  if (dietPref === 'veg') {
+    list = list.filter(m => m.isVeg === true);
+  }
+  // Non-veg mode shows all recipes
+  if (cat && cat !== 'all') {
+    list = list.filter(m => m.cat === cat);
+  }
+  return list;
+}
+
+function onDietChange() {
+  dietPref = document.getElementById('dietPref').value;
+  renderRecipes();
+  fillSelects();
+  if (dietPref === 'veg') {
+    toast(lang==='hi' ? 'केवल शाकाहारी रेसिपी (अंडा/चिकन/मछली नहीं)' : lang==='mr' ? 'फक्त शाकाहारी रेसिपी (अंडी/चिकन/मासा नाही)' : 'Only vegetarian recipes (no eggs/chicken/fish)');
+  } else {
+    toast(lang==='hi' ? 'मांसाहारी विकल्प जोड़े गए (अंडे + चिकन + मछली)' : lang==='mr' ? 'मांसाहारी पर्याय जोडले (अंडी + चिकन + मासा)' : 'Non-veg options added (Eggs + Chicken + Fish)');
+  }
+}
+
+// ========== UI HELPERS ==========
+function toggleMenu(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function showSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.sidebar a').forEach(a=>{
+    a.classList.toggle('active', a.dataset.sec===id);
+  });
+  toggleMenu();
+  if(id==='recipes') renderRecipes();
+  if(id==='planner') fillSelects();
+  if(id==='tracker') updateTrackerUI();
+}
+function setLang(l){
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach((b,i)=>b.classList.toggle('active', ['en','hi','mr'][i]===l));
+  applyLang();
+  renderRecipes();
+  fillSelects();
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function updateProtLabel(){
+  document.getElementById('protLabel').textContent = document.getElementById('protSlider').value + ' g/kg';
+}
+
+// ========== LANGUAGE ==========
+const T = {
+  en:{
+    appTitle:"Mom's Protein Thali", tProfile:"Profile & Daily Targets", tProfileSub:"Enter her details once. Targets update automatically.",
+    lAge:"Age (years)", lWeight:"Weight (kg)", lHeight:"Height (cm)", lActivity:"Activity Level", lDiet:"Diet Preference", lProtein:"Daily Protein Target (g/kg)",
+    btnSave:"Save Profile & Calculate Targets", lCal:"kcal / day", lProt:"g protein", lCarb:"g carbs", lFat:"g fats",
+    dietVeg:"Vegetarian (no eggs/chicken/fish)", dietNonveg:"Non-Vegetarian (Eggs + Chicken + Fish)",
+    note:"Higher protein (1.3–1.5 g/kg) helps preserve muscle at 55-60 years. Low-GI carbs from millets, barley, dals + lots of sabzi keep blood sugar steady. Always check with her doctor.",
+    tRecipes:"Recipes Library", tRecipesSub:"Tap a recipe → view quantities → Add to Plan", btnGen:"✨ Generate New Recipe",
+    tPlanner:"Daily Planner", tPlannerSub:"Select meals or generate a full day", lBf:"Breakfast", lSn1:"Snack 1", lLu:"Lunch", lSn2:"Snack 2", lDi:"Dinner",
+    tTotals:"Plan Totals", btnAddPlan:"Add Entire Plan to Tracker", btnFullDay:"🎲 Generate Full Day",
+    tTracker:"Macro Tracker", tTrackerSub:"Log what she actually ate today", lDate:"Date", tToday:"Today's Intake", tQuick:"Quick Add", tLog:"Logged Items", btnClear:"Clear Today's Log",
+    tGuide:"Guide & Tips", mAdd:"Add to Plan", mYt:"▶ Watch on YouTube"
+  },
+  hi:{
+    appTitle:"माँ का प्रोटीन थाली", tProfile:"प्रोफ़ाइल और दैनिक लक्ष्य", tProfileSub:"एक बार विवरण दर्ज करें। लक्ष्य अपने आप अपडेट होते हैं।",
+    lAge:"उम्र (वर्ष)", lWeight:"वजन (kg)", lHeight:"ऊंचाई (cm)", lActivity:"गतिविधि स्तर", lDiet:"आहार पसंद", lProtein:"दैनिक प्रोटीन लक्ष्य (g/kg)",
+    btnSave:"प्रोफ़ाइल सेव करें और लक्ष्य निकालें", lCal:"kcal / दिन", lProt:"g प्रोटीन", lCarb:"g कार्ब्स", lFat:"g फैट",
+    dietVeg:"शाकाहारी (अंडा/चिकन/मछली नहीं)", dietNonveg:"मांसाहारी (अंडे + चिकन + मछली)",
+    note:"55-60 साल में मांसपेशियों को बनाए रखने के लिए ज्यादा प्रोटीन (1.3–1.5 g/kg) जरूरी है। बाजरा, जौ, दाल + सब्जी से लो-GI कार्ब्स लें। डॉक्टर से जरूर पूछें।",
+    tRecipes:"रेसिपी लाइब्रेरी", tRecipesSub:"रेसिपी पर टैप करें → मात्रा देखें → प्लान में जोड़ें", btnGen:"✨ नई रेसिपी जनरेट करें",
+    tPlanner:"दैनिक प्लानर", tPlannerSub:"मील चुनें या पूरा दिन जनरेट करें", lBf:"नाश्ता", lSn1:"स्नैक 1", lLu:"दोपहर का खाना", lSn2:"स्नैक 2", lDi:"रात का खाना",
+    tTotals:"प्लान टोटल", btnAddPlan:"पूरा प्लान ट्रैकर में जोड़ें", btnFullDay:"🎲 पूरा दिन जनरेट करें",
+    tTracker:"मैक्रो ट्रैकर", tTrackerSub:"आज वास्तव में क्या खाया वो लॉग करें", lDate:"तारीख", tToday:"आज का सेवन", tQuick:"क्विक ऐड", tLog:"लॉग किए आइटम", btnClear:"आज का लॉग साफ करें",
+    tGuide:"गाइड और टिप्स", mAdd:"प्लान में जोड़ें", mYt:"▶ यूट्यूब पर देखें"
+  },
+  mr:{
+    appTitle:"आईची प्रोटीन थाळी", tProfile:"प्रोफाइल आणि दैनिक लक्ष्य", tProfileSub:"एकदा तपशील भरा. लक्ष्य आपोआप अपडेट होतात.",
+    lAge:"वय (वर्षे)", lWeight:"वजन (kg)", lHeight:"उंची (cm)", lActivity:"क्रियाकलाप स्तर", lDiet:"आहार प्राधान्य", lProtein:"दैनिक प्रोटीन लक्ष्य (g/kg)",
+    btnSave:"प्रोफाइल सेव्ह करा आणि लक्ष्य काढा", lCal:"kcal / दिवस", lProt:"g प्रोटीन", lCarb:"g कार्ब्स", lFat:"g फॅट",
+    dietVeg:"शाकाहारी (अंडी/चिकन/मासा नाही)", dietNonveg:"मांसाहारी (अंडी + चिकन + मासा)",
+    note:"55-60 वर्षांत स्नायू टिकवण्यासाठी जास्त प्रोटीन (1.3–1.5 g/kg) आवश्यक. बाजरी, जव, डाळ + भाजीने लो-GI कार्ब्स घ्या. डॉक्टरांचा सल्ला घ्या.",
+    tRecipes:"रेसिपी लायब्ररी", tRecipesSub:"रेसिपीवर टॅप करा → प्रमाण पाहा → प्लानमध्ये जोडा", btnGen:"✨ नवीन रेसिपी जनरेट करा",
+    tPlanner:"दैनिक प्लानर", tPlannerSub:"जेवण निवडा किंवा पूर्ण दिवस जनरेट करा", lBf:"नाश्ता", lSn1:"स्नॅक १", lLu:"दुपारचे जेवण", lSn2:"स्नॅक २", lDi:"रात्रीचे जेवण",
+    tTotals:"प्लान टोटल", btnAddPlan:"पूर्ण प्लान ट्रॅकरमध्ये जोडा", btnFullDay:"🎲 पूर्ण दिवस जनरेट करा",
+    tTracker:"मॅक्रो ट्रॅकर", tTrackerSub:"आज खरंच काय खाल्ले ते लॉग करा", lDate:"तारीख", tToday:"आजचे सेवन", tQuick:"क्विक अॅड", tLog:"लॉग केलेले आयटम", btnClear:"आजचा लॉग साफ करा",
+    tGuide:"गाईड आणि टिप्स", mAdd:"प्लानमध्ये जोडा", mYt:"▶ युट्यूबवर पाहा"
+  }
+};
+function applyLang(){
+  const t = T[lang];
+  document.getElementById('appTitle').textContent = t.appTitle;
+  document.getElementById('t-profile').textContent = t.tProfile;
+  document.getElementById('t-profile-sub').textContent = t.tProfileSub;
+  document.getElementById('l-age').textContent = t.lAge;
+  document.getElementById('l-weight').textContent = t.lWeight;
+  document.getElementById('l-height').textContent = t.lHeight;
+  document.getElementById('l-activity').textContent = t.lActivity;
+  document.getElementById('l-diet').textContent = t.lDiet;
+  document.getElementById('l-protein').textContent = t.lProtein;
+  document.getElementById('btn-save').textContent = t.btnSave;
+  // Update diet select options
+  const dietSel = document.getElementById('dietPref');
+  if (dietSel) {
+    dietSel.options[0].text = t.dietVeg || 'Vegetarian';
+    dietSel.options[1].text = t.dietNonveg || 'Non-Vegetarian (Eggs + Chicken + Fish)';
+  }
+  document.getElementById('l-cal').textContent = t.lCal;
+  document.getElementById('l-prot').textContent = t.lProt;
+  document.getElementById('l-carb').textContent = t.lCarb;
+  document.getElementById('l-fat').textContent = t.lFat;
+  document.getElementById('t-note').textContent = t.note;
+  document.getElementById('t-recipes').textContent = t.tRecipes;
+  document.getElementById('t-recipes-sub').textContent = t.tRecipesSub;
+  document.getElementById('btn-gen').textContent = t.btnGen;
+  document.getElementById('t-planner').textContent = t.tPlanner;
+  document.getElementById('t-planner-sub').textContent = t.tPlannerSub;
+  document.getElementById('l-bf').textContent = t.lBf;
+  document.getElementById('l-sn1').textContent = t.lSn1;
+  document.getElementById('l-lu').textContent = t.lLu;
+  document.getElementById('l-sn2').textContent = t.lSn2;
+  document.getElementById('l-di').textContent = t.lDi;
+  document.getElementById('t-totals').textContent = t.tTotals;
+  document.getElementById('btn-addplan').textContent = t.btnAddPlan;
+  document.getElementById('btn-fullday').textContent = t.btnFullDay;
+  document.getElementById('t-tracker').textContent = t.tTracker;
+  document.getElementById('t-tracker-sub').textContent = t.tTrackerSub;
+  document.getElementById('l-date').textContent = t.lDate;
+  document.getElementById('t-today').textContent = t.tToday;
+  document.getElementById('t-quick').textContent = t.tQuick;
+  document.getElementById('t-log').textContent = t.tLog;
+  document.getElementById('btn-clear').textContent = t.btnClear;
+  document.getElementById('t-guide').textContent = t.tGuide;
+  document.getElementById('m-add').textContent = t.mAdd;
+  document.getElementById('m-yt').textContent = t.mYt;
+}
+
+// ========== PROFILE ==========
+function calcTargets(){
+  const age = +document.getElementById('age').value || 57;
+  const wt = +document.getElementById('weight').value || 67;
+  const ht = +document.getElementById('height').value || 165;
+  const act = +document.getElementById('activity').value || 1.375;
+  const pg = +document.getElementById('protSlider').value || 1.35;
+  dietPref = document.getElementById('dietPref').value || 'veg';
+  // Mifflin-St Jeor for women
+  const bmr = 10*wt + 6.25*ht - 5*age - 161;
+  const cal = Math.round(bmr * act);
+  const p = Math.round(wt * pg);
+  const f = Math.round((cal * 0.28)/9);
+  const c = Math.round((cal - p*4 - f*9)/4);
+  targets = {cal, p, c, f};
+  document.getElementById('calTarget').textContent = cal;
+  document.getElementById('protTarget').textContent = p;
+  document.getElementById('carbTarget').textContent = c;
+  document.getElementById('fatTarget').textContent = f;
+  localStorage.setItem('momProfile', JSON.stringify({age,wt,ht,act,pg,dietPref,targets}));
+  renderRecipes();
+  fillSelects();
+  toast(lang==='hi'?'लक्ष्य सेव हो गए!':lang==='mr'?'लक्ष्य सेव्ह झाले!':'Targets saved!');
+  updateTrackerUI();
+}
+function loadProfile(){
+  const s = localStorage.getItem('momProfile');
+  if(s){
+    const d = JSON.parse(s);
+    document.getElementById('age').value = d.age;
+    document.getElementById('weight').value = d.wt;
+    document.getElementById('height').value = d.ht;
+    document.getElementById('activity').value = d.act;
+    document.getElementById('protSlider').value = d.pg;
+    if (d.dietPref) {
+      dietPref = d.dietPref;
+      document.getElementById('dietPref').value = d.dietPref;
+    }
+    updateProtLabel();
+    if(d.targets){
+      targets = d.targets;
+      document.getElementById('calTarget').textContent = targets.cal;
+      document.getElementById('protTarget').textContent = targets.p;
+      document.getElementById('carbTarget').textContent = targets.c;
+      document.getElementById('fatTarget').textContent = targets.f;
+    }
+  }
+}
+
+// ========== RECIPES ==========
+function filterMeals(cat){
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  if (event && event.target) event.target.classList.add('active');
+  renderRecipes();
+}
+function renderRecipes(){
+  const list = document.getElementById('recipeList');
+  list.innerHTML = '';
+  const filtered = getFilteredMeals(currentFilter);
+  if (filtered.length === 0) {
+    list.innerHTML = '<p style="color:#94a3b8;padding:20px;text-align:center">No recipes match current filters.</p>';
+    return;
+  }
+  filtered.forEach(m=>{
+    const div = document.createElement('div');
+    div.className = 'meal-card';
+    div.onclick = ()=>openModal(m);
+    const badgeExtra = m.isVeg ? '' : ' • Non-veg';
+    div.innerHTML = `<h3>${m.name[lang]}</h3>
+      <div class="macros"><span class="badge">${m.p}g protein${badgeExtra}</span> &nbsp; ${m.c}g C • ${m.f}g F • ${m.k} kcal</div>
+      <div class="qty">${m.qty[lang]}</div>`;
+    list.appendChild(div);
+  });
+}
+function openModal(m){
+  selectedMeal = m;
+  document.getElementById('m-title').textContent = m.name[lang];
+  document.getElementById('m-badge').innerHTML = `<span class="badge">${m.cat.toUpperCase()} • ${m.p}g protein</span>`;
+  document.getElementById('m-desc').textContent = m.desc[lang];
+  document.getElementById('m-qty').textContent = (lang==='hi'?'अनुमानित मात्रा: ':lang==='mr'?'अंदाजे प्रमाण: ':'Approximate quantities: ') + m.qty[lang];
+  document.getElementById('m-macros').textContent = `Protein ${m.p}g • Carbs ${m.c}g • Fat ${m.f}g • ${m.k} kcal`;
+  document.getElementById('modal').style.display = 'block';
+}
+function closeModal(){ document.getElementById('modal').style.display = 'none'; }
+function openYT(){
+  if(!selectedMeal) return;
+  const base = selectedMeal.name.en + ' low oil high protein Indian';
+  const extra = selectedMeal.isVeg ? ' vegetarian recipe' : ' recipe';
+  const q = encodeURIComponent(base + extra);
+  window.open('https://www.youtube.com/results?search_query='+q, '_blank');
+}
+function addToPlanFromModal(){
+  if(!selectedMeal) return;
+  const map = {breakfast:'sel-bf', lunch:'sel-lu', dinner:'sel-di', snack:'sel-sn1'};
+  const selId = map[selectedMeal.cat] || 'sel-sn1';
+  const sel = document.getElementById(selId);
+  // ensure option exists
+  let found = false;
+  for(let o of sel.options){ if(o.value==selectedMeal.id){ found=true; break; } }
+  if(!found){
+    const opt = document.createElement('option');
+    opt.value = selectedMeal.id;
+    opt.textContent = selectedMeal.name[lang];
+    sel.appendChild(opt);
+  }
+  sel.value = selectedMeal.id;
+  updatePlanTotals();
+  closeModal();
+  showSec('planner');
+  toast(lang==='hi'?'प्लान में जोड़ दिया!':lang==='mr'?'प्लानमध्ये जोडले!':'Added to plan!');
+}
+
+// ========== PLANNER ==========
+function fillSelects(){
+  ['sel-bf','sel-sn1','sel-lu','sel-sn2','sel-di'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— select —</option>';
+    const cat = id.includes('bf')?'breakfast':id.includes('lu')?'lunch':id.includes('di')?'dinner':'snack';
+    getFilteredMeals(cat).forEach(m=>{
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name[lang] + (m.isVeg ? '' : ' 🍗');
+      sel.appendChild(opt);
+    });
+    if(prev) sel.value = prev;
+  });
+  updatePlanTotals();
+}
+function updatePlanTotals(){
+  let p=0,c=0,f=0,k=0;
+  ['sel-bf','sel-sn1','sel-lu','sel-sn2','sel-di'].forEach(id=>{
+    const v = document.getElementById(id).value;
+    if(v){
+      const m = meals.find(x=>x.id==v);
+      if(m){ p+=m.p; c+=m.c; f+=m.f; k+=m.k; }
+    }
+  });
+  document.getElementById('planP').textContent = p;
+  document.getElementById('planC').textContent = c;
+  document.getElementById('planF').textContent = f;
+  document.getElementById('planK').textContent = k;
+  const pct = targets.p ? Math.min(100, Math.round(p/targets.p*100)) : 0;
+  document.getElementById('planBar').style.width = pct+'%';
+}
+function addPlanToTracker(){
+  ['sel-bf','sel-sn1','sel-lu','sel-sn2','sel-di'].forEach(id=>{
+    const v = document.getElementById(id).value;
+    if(v){
+      const m = meals.find(x=>x.id==v);
+      if(m) log.push({...m, time:Date.now()});
+    }
+  });
+  saveLog();
+  updateTrackerUI();
+  showSec('tracker');
+  toast(lang==='hi'?'ट्रैकर में जोड़ दिया!':lang==='mr'?'ट्रॅकरमध्ये जोडले!':'Added to tracker!');
+}
+function generateFullDay(){
+  const pick = cat => {
+    const arr = getFilteredMeals(cat);
+    if (arr.length === 0) return null;
+    return arr[Math.floor(Math.random()*arr.length)];
+  };
+  const bf = pick('breakfast'), lu = pick('lunch'), di = pick('dinner');
+  const sn1 = pick('snack'), sn2 = pick('snack');
+  if (bf) document.getElementById('sel-bf').value = bf.id;
+  if (lu) document.getElementById('sel-lu').value = lu.id;
+  if (di) document.getElementById('sel-di').value = di.id;
+  if (sn1) document.getElementById('sel-sn1').value = sn1.id;
+  if (sn2) document.getElementById('sel-sn2').value = sn2.id;
+  updatePlanTotals();
+  toast(lang==='hi'?'नया दिन जनरेट हो गया!':lang==='mr'?'नवीन दिवस जनरेट झाला!':'New day generated!');
+}
+function generateRecipe(){
+  const cats = ['breakfast','lunch','dinner','snack'];
+  const cat = cats[Math.floor(Math.random()*cats.length)];
+  const vegTemplates = {
+    breakfast: [
+      {en:'Sprouts + Paneer Paratha (1) + Curd',hi:'स्प्राउट्स + पनीर पराठा (1) + दही',mr:'स्प्राउट्स + पनीर पराठा (१) + दही', p:27, c:34, f:14, k:370},
+      {en:'Vegetable Oats Upma + Protein Boost',hi:'वेजिटेबल ओट्स उपमा + प्रोटीन',mr:'भाजी ओट्स उपमा + प्रोटीन', p:22, c:38, f:9, k:320}
+    ],
+    lunch: [
+      {en:'Mixed Dal + Bajra Roti (2) + Cabbage Sabzi',hi:'मिक्स्ड दाल + बाजरा रोटी (2) + पत्ता गोभी',mr:'मिक्स्ड डाळ + बाजरी रोटी (२) + कोबी', p:25, c:40, f:9, k:340},
+      {en:'Soya Keema + Multigrain Roti + Raita',hi:'सोया कीमा + मल्टीग्रेन रोटी + रायता',mr:'सोया कीमा + मल्टीग्रेन रोटी + रायता', p:30, c:32, f:12, k:360}
+    ],
+    dinner: [
+      {en:'Palak Dal + 1 Jowar Roti + Salad',hi:'पालक दाल + 1 ज्वार रोटी + सलाद',mr:'पालक डाळ + १ ज्वारी रोटी + सलाड', p:22, c:30, f:8, k:280},
+      {en:'Tofu / Paneer Stir Fry + Millet',hi:'टोफू / पनीर स्टर फ्राय + मिलेट',mr:'टोफू / पनीर स्टर फ्राय + मिलेट', p:26, c:28, f:12, k:320}
+    ],
+    snack: [
+      {en:'Roasted Chana + Buttermilk',hi:'रोस्टेड चना + छाछ',mr:'रोस्टेड चणा + ताक', p:15, c:18, f:4, k:160},
+      {en:'Cucumber Paneer Rolls (4 pcs)',hi:'खीरा पनीर रोल (4)',mr:'काकडी पनीर रोल (४)', p:18, c:8, f:10, k:200}
+    ]
+  };
+  const nonVegTemplates = {
+    breakfast: [
+      {en:'Masala Egg White Omelette + Multigrain Toast',hi:'मसाला एग व्हाइट आमलेट + टोस्ट',mr:'मसाला एग व्हाइट आमलेट + टोस्ट', p:22, c:26, f:7, k:260},
+      {en:'Boiled Eggs (2) + Millet Upma',hi:'उबले अंडे (2) + मिलेट उपमा',mr:'उकडलेली अंडी (२) + मिलेट उपमा', p:24, c:30, f:10, k:300}
+    ],
+    lunch: [
+      {en:'Light Chicken Stir-fry + Jowar Roti + Salad',hi:'लाइट चिकन स्टर-फ्राय + ज्वार रोटी + सलाद',mr:'लाइट चिकन स्टर-फ्राय + ज्वारी रोटी + सलाड', p:34, c:28, f:10, k:340},
+      {en:'Fish Masala (light) + Brown Rice + Veggies',hi:'मछली मसाला (हल्की) + ब्राउन राइस + सब्जियां',mr:'मासा मसाला (हलकी) + ब्राउन राईस + भाज्या', p:30, c:32, f:9, k:330}
+    ],
+    dinner: [
+      {en:'Grilled Chicken + Steamed Veggies + Curd',hi:'ग्रिल्ड चिकन + स्टीम्ड सब्जियां + दही',mr:'ग्रिल्ड चिकन + स्टीम भाज्या + दही', p:36, c:12, f:8, k:270},
+      {en:'Egg Curry (light) + 1 Roti + Salad',hi:'अंडा करी (हल्की) + 1 रोटी + सलाद',mr:'अंडी करी (हलकी) + १ रोटी + सलाड', p:24, c:26, f:12, k:310}
+    ],
+    snack: [
+      {en:'Boiled Egg + Roasted Chana (small)',hi:'उबला अंडा + रोस्टेड चना',mr:'उकडलेली अंडी + रोस्टेड चणा', p:18, c:12, f:7, k:180},
+      {en:'Grilled Fish Cubes (50g)',hi:'ग्रिल्ड मछली क्यूब्स (50g)',mr:'ग्रिल्ड मासा क्यूब्स (50g)', p:15, c:1, f:4, k:100}
+    ]
+  };
+  const templates = dietPref === 'veg' ? vegTemplates : nonVegTemplates;
+  const t = templates[cat][Math.floor(Math.random()*templates[cat].length)];
+  const newM = {
+    id: Date.now(),
+    isVeg: dietPref === 'veg',
+    cat,
+    name: {en:t.en, hi:t.hi||t.en, mr:t.mr||t.en},
+    p:t.p, c:t.c, f:t.f, k:t.k,
+    qty: {en:'Approx home-cooked portion (1 serving)', hi:'अनुमानित घरेलू हिस्सा (1 सर्विंग)', mr:'अंदाजे घरगुती भाग (१ सर्विंग)'},
+    desc: {en:'Freshly generated low-GI high-protein idea', hi:'नई जनरेट की गई लो-GI हाई प्रोटीन रेसिपी', mr:'नवीन जनरेट केलेली लो-GI हाय प्रोटीन रेसिपी'}
+  };
+  meals.push(newM);
+  currentFilter = cat;
+  renderRecipes();
+  openModal(newM);
+  toast(lang==='hi'?'नई रेसिपी बन गई!':lang==='mr'?'नवीन रेसिपी तयार!':'New recipe generated!');
+}
+
+// ========== TRACKER ==========
+function updateTrackerUI(){
+  document.getElementById('goalP').textContent = targets.p || '—';
+  document.getElementById('goalC').textContent = targets.c || '—';
+  document.getElementById('goalF').textContent = targets.f || '—';
+  let p=0,c=0,f=0,k=0;
+  log.forEach(m=>{ p+=m.p; c+=m.c; f+=m.f; k+=m.k; });
+  document.getElementById('trackP').textContent = p;
+  document.getElementById('trackC').textContent = c;
+  document.getElementById('trackF').textContent = f;
+  document.getElementById('trackK').textContent = k;
+  document.getElementById('barP').style.width = (targets.p?Math.min(100,p/targets.p*100):0)+'%';
+  document.getElementById('barC').style.width = (targets.c?Math.min(100,c/targets.c*100):0)+'%';
+  document.getElementById('barF').style.width = (targets.f?Math.min(100,f/targets.f*100):0)+'%';
+  // quick adds
+  const qa = document.getElementById('quickAdds');
+  qa.innerHTML = '';
+  const quicks = [
+    {n:{en:'100g Paneer',hi:'100g पनीर',mr:'100g पनीर'},p:18,c:1,f:20,k:260},
+    {n:{en:'50g Soya Chunks',hi:'50g सोया चंक',mr:'50g सोया चंक'},p:26,c:15,f:1,k:170},
+    {n:{en:'1 cup Dal',hi:'1 कप दाल',mr:'१ कप डाळ'},p:12,c:20,f:3,k:150},
+    {n:{en:'150g Curd',hi:'150g दही',mr:'150g दही'},p:6,c:7,f:5,k:95},
+    {n:{en:'Roasted Chana 40g',hi:'रोस्टेड चना 40g',mr:'रोस्टेड चणा 40g'},p:14,c:18,f:5,k:160},
+    {n:{en:'1 Jowar Roti',hi:'1 ज्वार रोटी',mr:'१ ज्वारी रोटी'},p:3,c:18,f:1,k:90}
+  ];
+  quicks.forEach(q=>{
+    const b = document.createElement('button');
+    b.className = 'btn btn-sm';
+    b.style.background = '#f1f5f9';
+    b.style.color = '#334155';
+    b.textContent = q.n[lang] + ` (${q.p}p)`;
+    b.onclick = ()=>{ log.push({name:q.n, p:q.p,c:q.c,f:q.f,k:q.k, time:Date.now()}); saveLog(); updateTrackerUI(); toast('+ '+q.n[lang]); };
+    qa.appendChild(b);
+  });
+  // log list
+  const ll = document.getElementById('logList');
+  if(log.length===0) ll.innerHTML = '<em style="color:#94a3b8">No items yet</em>';
+  else ll.innerHTML = log.map((m,i)=>`<div style="padding:6px 0;border-bottom:1px solid #f1f5f9">${(m.name&&m.name[lang])||m.name?.en||'Item'} — ${m.p}p</div>`).join('');
+}
+function saveLog(){ localStorage.setItem('momLog', JSON.stringify(log)); }
+function loadLog(){
+  const s = localStorage.getItem('momLog');
+  if(s) log = JSON.parse(s);
+}
+function clearLog(){ log=[]; saveLog(); updateTrackerUI(); toast('Cleared'); }
+
+// ========== INIT ==========
+document.getElementById('trackDate').valueAsDate = new Date();
+loadProfile();
+loadLog();
+applyLang();
+renderRecipes();
+fillSelects();
+updateTrackerUI();
+</script>
+</body>
+</html>
