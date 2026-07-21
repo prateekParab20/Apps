@@ -1,0 +1,2897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#18181b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Interactive gym workout app for fat loss and strength training. Push/Pull/Upper/Lower splits, rest timer, progressive overload, form videos.">
+    <title>StrongLean • Gym App</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #6366f1;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+
+        .nav-active {
+            background-color: #312e81;
+            color: white;
+            border-radius: 9999px;
+        }
+
+        .exercise-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .set-row {
+            transition: all 0.2s ease;
+        }
+
+        .timer-display {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .workout-bg {
+            background: linear-gradient(145deg, #18181b 0%, #27251f 100%);
+        }
+
+        .metric-card {
+            background: #18181b;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover {
+            transform: translateY(-1px);
+        }
+
+        .set-pill {
+            transition: all 0.15s ease;
+        }
+
+        .set-pill.completed {
+            background-color: #166534;
+            border-color: #4ade80;
+        }
+
+        .modal {
+            animation: modalPopIn 0.2s ease forwards;
+        }
+
+        @keyframes modalPopIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .exercise-header {
+            background: linear-gradient(to right, #312e81, #433c7e);
+        }
+
+        .stat-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .gym-shadow {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <!-- Navbar -->
+    <nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-x-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-dumbbell text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-display text-2xl font-semibold tracking-tighter">StrongLean</span>
+                        <span class="text-xs text-zinc-500 block -mt-1">STRENGTH</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Nav -->
+                <div class="hidden md:flex items-center gap-x-2 bg-zinc-900 p-1 rounded-3xl border border-zinc-800">
+                    <button onclick="showSection('dashboard')" 
+                            class="nav-item px-5 py-2 text-sm font-medium flex items-center gap-x-2 nav-active" id="nav-dashboard">
+                        <i class="fa-solid fa-home w-4"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="showSection('workout')" 
+                            class="nav-item px-5 py-2 text-sm font-medium flex items-center gap-x-2 hover:bg-zinc-800 rounded-3xl" id="nav-workout">
+                        <i class="fa-solid fa-play w-4"></i>
+                        <span>Workout</span>
+                    </button>
+                    <button onclick="showSection('history')" 
+                            class="nav-item px-5 py-2 text-sm font-medium flex items-center gap-x-2 hover:bg-zinc-800 rounded-3xl" id="nav-history">
+                        <i class="fa-solid fa-history w-4"></i>
+                        <span>History</span>
+                    </button>
+                    <button onclick="showSection('tips')" 
+                            class="nav-item px-5 py-2 text-sm font-medium flex items-center gap-x-2 hover:bg-zinc-800 rounded-3xl" id="nav-tips">
+                        <i class="fa-solid fa-lightbulb w-4"></i>
+                        <span>Tips</span>
+                    </button>
+                    <button onclick="showSection('library')" 
+                            class="nav-item px-5 py-2 text-sm font-medium flex items-center gap-x-2 hover:bg-zinc-800 rounded-3xl" id="nav-library">
+                        <i class="fa-solid fa-book w-4"></i>
+                        <span>Library</span>
+                    </button>
+                </div>
+
+                <!-- Mobile Nav -->
+                <div class="md:hidden flex items-center gap-x-1">
+                    <button onclick="showSection('dashboard')" class="p-2.5 text-zinc-400 hover:text-white" id="nav-mob-dashboard">
+                        <i class="fa-solid fa-home text-lg"></i>
+                    </button>
+                    <button onclick="showSection('workout')" class="p-2.5 text-zinc-400 hover:text-white" id="nav-mob-workout">
+                        <i class="fa-solid fa-play text-lg"></i>
+                    </button>
+                    <button onclick="showSection('history')" class="p-2.5 text-zinc-400 hover:text-white" id="nav-mob-history">
+                        <i class="fa-solid fa-history text-lg"></i>
+                    </button>
+                    <button onclick="showSection('tips')" class="p-2.5 text-zinc-400 hover:text-white" id="nav-mob-tips">
+                        <i class="fa-solid fa-lightbulb text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Profile -->
+                <div class="flex items-center gap-x-3">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm font-medium">65 kg</div>
+                        <div class="text-[10px] text-emerald-400">Goal: Strong + Lean</div>
+                    </div>
+                    <div class="w-9 h-9 bg-zinc-800 rounded-2xl flex items-center justify-center ring-2 ring-offset-2 ring-offset-zinc-950 ring-zinc-700">
+                        <i class="fa-solid fa-user text-zinc-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD SECTION -->
+    <div id="dashboard" class="section active max-w-6xl mx-auto px-4 py-8">
+        <!-- PWA Install Banner -->
+        <div id="pwa-install-banner" class="hidden mb-6 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-4 md:p-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-x-4">
+                <div class="w-11 h-11 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-download text-white text-2xl"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-white">Install StrongLean</div>
+                    <div class="text-xs text-indigo-100">Add to home screen for quick access &amp; offline use</div>
+                </div>
+            </div>
+            <button onclick="installPWA()" 
+                    class="px-5 py-2.5 bg-white text-indigo-700 font-semibold text-sm rounded-3xl hover:bg-indigo-50 active:scale-[0.985] transition-all whitespace-nowrap">
+                Install
+            </button>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-y-4 mb-8">
+            <div>
+                <h1 class="font-display text-5xl tracking-tighter font-semibold">Ready to train? 💪</h1>
+                <p class="text-xl text-zinc-400 mt-1">Build strength and burn fat with focused workouts</p>
+            </div>
+            <div class="flex items-center gap-x-3">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-3xl px-5 py-2 flex items-center gap-x-3">
+                    <div>
+                        <div class="text-xs text-zinc-500">CURRENT WEIGHT</div>
+                        <div class="font-semibold text-2xl tabular-nums">65 <span class="text-base font-normal">kg</span></div>
+                    </div>
+                    <button onclick="updateWeight()" 
+                            class="px-4 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-2xl flex items-center gap-x-2">
+                        <i class="fa-solid fa-edit"></i>
+                        <span>Update</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="metric-card border border-zinc-800 rounded-3xl p-5">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-emerald-400 text-xs font-medium tracking-wider">THIS WEEK</div>
+                        <div class="text-4xl font-semibold tabular-nums mt-1" id="week-workouts">0</div>
+                        <div class="text-xs text-zinc-500">workouts completed</div>
+                    </div>
+                    <i class="fa-solid fa-calendar-check text-3xl text-emerald-500/30"></i>
+                </div>
+            </div>
+            <div class="metric-card border border-zinc-800 rounded-3xl p-5">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-violet-400 text-xs font-medium tracking-wider">TOTAL VOLUME</div>
+                        <div class="text-4xl font-semibold tabular-nums mt-1" id="total-volume">0</div>
+                        <div class="text-xs text-zinc-500">kg lifted (all time)</div>
+                    </div>
+                    <i class="fa-solid fa-chart-line text-3xl text-violet-500/30"></i>
+                </div>
+            </div>
+            <div class="metric-card border border-zinc-800 rounded-3xl p-5">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-amber-400 text-xs font-medium tracking-wider">STREAK</div>
+                        <div class="text-4xl font-semibold tabular-nums mt-1" id="current-streak">0</div>
+                        <div class="text-xs text-zinc-500">days in a row</div>
+                    </div>
+                    <i class="fa-solid fa-fire text-3xl text-amber-500/30"></i>
+                </div>
+            </div>
+            <div class="metric-card border border-zinc-800 rounded-3xl p-5">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-sky-400 text-xs font-medium tracking-wider">AVG SESSION</div>
+                        <div class="text-4xl font-semibold tabular-nums mt-1" id="avg-duration">52</div>
+                        <div class="text-xs text-zinc-500">minutes</div>
+                    </div>
+                    <i class="fa-solid fa-clock text-3xl text-sky-500/30"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Workout CTA -->
+        <div class="bg-gradient-to-br from-indigo-600/10 to-violet-600/10 border border-indigo-500/30 rounded-3xl p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
+            <div class="flex-1">
+                <div class="uppercase tracking-[2px] text-xs font-semibold text-indigo-400 mb-2">TODAY'S MISSION</div>
+                <h2 class="font-display text-4xl tracking-tighter">4 Dedicated Workouts</h2>
+                <p class="mt-3 text-zinc-300 max-w-md">Push • Pull • Upper Body • Lower Body — clean &amp; focused</p>
+                
+                <div class="flex items-center gap-x-4 mt-6">
+                    <button onclick="showSection('workout')" 
+                            class="px-8 py-4 bg-white text-zinc-950 font-semibold rounded-3xl flex items-center gap-x-3 hover:bg-zinc-100 active:scale-[0.985] transition-all shadow-xl shadow-indigo-950/50">
+                        <i class="fa-solid fa-play mr-1"></i>
+                        <span>START WORKOUT</span>
+                    </button>
+                    
+                    <button onclick="showSection('workout')" 
+                            class="px-6 py-4 border border-white/30 hover:bg-white/5 transition-colors rounded-3xl text-sm font-medium flex items-center gap-x-2">
+                        <span>View Plan</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="hidden md:block">
+                <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-5 w-64">
+                    <div class="text-xs text-zinc-400 mb-3">WHAT YOU'LL HIT TODAY</div>
+                    <div class="flex flex-wrap gap-2">
+                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Quads</div>
+                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Glutes</div>
+                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Back</div>
+                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Chest</div>
+                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Shoulders</div>
+                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Core</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="mt-8 grid md:grid-cols-3 gap-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 text-sm">
+                <div class="font-medium flex items-center gap-x-2 mb-3"><i class="fa-solid fa-clock text-emerald-400"></i> <span>Rest Smart</span></div>
+                <p class="text-zinc-400 text-xs leading-relaxed">Use 90–120 seconds between sets. This builds strength while keeping heart rate up for fat loss.</p>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 text-sm">
+                <div class="font-medium flex items-center gap-x-2 mb-3"><i class="fa-solid fa-apple-alt text-emerald-400"></i> <span>Fuel Your Gains</span></div>
+                <p class="text-zinc-400 text-xs leading-relaxed">Aim for ~115–130g protein daily. It preserves muscle and keeps you full in a calorie deficit.</p>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 text-sm">
+                <div class="font-medium flex items-center gap-x-2 mb-3"><i class="fa-solid fa-brain text-emerald-400"></i> <span>Progressive Overload</span></div>
+                <p class="text-zinc-400 text-xs leading-relaxed">When you hit the top of the rep range with perfect form, add 2.5–5 kg next session.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- WORKOUT SECTION -->
+    <div id="workout" class="section max-w-6xl mx-auto px-4 py-6">
+        <div class="flex items-center justify-between mb-5 gap-3">
+            <div class="flex items-center gap-x-2 min-w-0 flex-1">
+                <button type="button" id="workout-back-btn"
+                        class="flex items-center gap-x-1.5 px-3 h-9 rounded-2xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors flex-shrink-0 text-sm font-medium">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>Back</span>
+                </button>
+                <div class="min-w-0">
+                    <h2 id="workout-header" class="font-display text-xl tracking-tight truncate">Today's Workout</h2>
+                    <p id="workout-subtitle" class="text-zinc-400 text-xs truncate">Select a day to begin</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-x-2 flex-shrink-0">
+                <div id="workout-timer" class="hidden items-center bg-zinc-900 border border-zinc-700 px-3 h-9 rounded-2xl text-sm font-mono tabular-nums">
+                    <i class="fa-solid fa-clock mr-1.5 text-emerald-400 text-xs"></i>
+                    <span id="elapsed-time">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exercises List -->
+        <div id="exercises-container" class="space-y-3 pb-40">
+            <!-- Populated dynamically by JS -->
+        </div>
+
+    </div>
+
+    <!-- HISTORY SECTION -->
+    <div id="history" class="section max-w-6xl mx-auto px-4 py-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="font-display text-3xl tracking-tight">Workout History</h2>
+                <p class="text-zinc-400">Track your progress and celebrate wins</p>
+            </div>
+            <button onclick="clearHistory()" class="text-xs px-4 py-2 text-red-400 hover:text-red-300 flex items-center gap-x-1.5">
+                <i class="fa-solid fa-trash"></i>
+                <span>Clear All</span>
+            </button>
+        </div>
+
+        <div id="history-list" class="space-y-4">
+            <!-- Populated by JS -->
+        </div>
+        
+        <div id="history-empty" class="hidden text-center py-12">
+            <i class="fa-solid fa-dumbbell text-5xl text-zinc-700 mb-4"></i>
+            <p class="text-zinc-400">No workouts logged yet.<br>Complete your first session to see history here.</p>
+        </div>
+    </div>
+
+    <!-- LIBRARY SECTION - Exercise swap library for Planet Fitness -->
+    <div id="library" class="section max-w-6xl mx-auto px-4 py-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="font-display text-3xl tracking-tight">Exercise Library</h2>
+                <p class="text-zinc-400">Planet Fitness friendly variations. Tap any exercise for details &amp; to swap into your current workout.</p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <input id="library-search" type="text" placeholder="Search exercises (e.g. leg press, row, shoulder)..." 
+                   onkeyup="filterLibrary()" 
+                   class="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 text-sm outline-none">
+        </div>
+
+        <div id="library-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Populated by showLibrary() -->
+        </div>
+    </div>
+
+    <!-- TIPS SECTION -->
+    <div id="tips" class="section max-w-6xl mx-auto px-4 py-8">
+        <h2 class="font-display text-3xl tracking-tight mb-2">Strong &amp; Lean Tips</h2>
+        <p class="text-zinc-400 mb-8">Science-backed advice tailored for your goals</p>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Fat Loss -->
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-7">
+                <div class="flex items-center gap-x-3 mb-5">
+                    <div class="w-9 h-9 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-fire text-xl"></i>
+                    </div>
+                    <div class="font-semibold text-xl">Fat Loss Fundamentals</div>
+                </div>
+                <ul class="space-y-4 text-sm">
+                    <li class="flex gap-x-3"><span class="font-mono text-orange-400 mt-0.5">01</span> <span><strong>Calorie deficit:</strong> Eat 300–500 calories below maintenance. Track consistently.</span></li>
+                    <li class="flex gap-x-3"><span class="font-mono text-orange-400 mt-0.5">02</span> <span><strong>Protein priority:</strong> 1.8–2.2g per kg bodyweight → <strong>~120–140g/day</strong> at 65kg. Keeps muscle while you lose fat.</span></li>
+                    <li class="flex gap-x-3"><span class="font-mono text-orange-400 mt-0.5">03</span> <span><strong>Strength training + steps:</strong> This program + 8–10k steps daily is incredibly effective.</span></li>
+                    <li class="flex gap-x-3"><span class="font-mono text-orange-400 mt-0.5">04</span> <span><strong>Sleep 7.5–9 hrs:</strong> Poor sleep kills fat loss and recovery.</span></li>
+                </ul>
+            </div>
+
+            <!-- Strength -->
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-7">
+                <div class="flex items-center gap-x-3 mb-5">
+                    <div class="w-9 h-9 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-dumbbell text-xl"></i>
+                    </div>
+                    <div class="font-semibold text-xl">Getting Stronger</div>
+                </div>
+                <ul class="space-y-4 text-sm">
+                    <li class="flex gap-x-3"><span class="font-mono text-indigo-400 mt-0.5">01</span> <span><strong>Progressive overload:</strong> Add weight or reps when you hit the top of the range with good form.</span></li>
+                    <li class="flex gap-x-3"><span class="font-mono text-indigo-400 mt-0.5">02</span> <span><strong>Form first:</strong> Never sacrifice technique for heavier weight. Film yourself occasionally.</span></li>
+                    <li class="flex gap-x-3"><span class="font-mono text-indigo-400 mt-0.5">03</span> <span><strong>Rest &amp; recover:</strong> 90–120s between sets is perfect for this goal. Don't rush.</span></li>
+                    <li class="flex gap-x-3"><span class="font-mono text-indigo-400 mt-0.5">04</span> <span><strong>Consistency beats intensity:</strong> 3 solid sessions/week every week &gt; random hard workouts.</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="mt-6 bg-zinc-900 border border-zinc-800 rounded-3xl p-7">
+            <div class="font-semibold mb-4 flex items-center gap-x-2"><i class="fa-solid fa-heart-pulse text-emerald-400"></i> Warm-Up Routine (Do this every session)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 text-sm">
+                <div>
+                    <div class="font-medium text-emerald-400 mb-1">3–5 min Cardio</div>
+                    <div class="text-xs text-zinc-400">Light bike, rower, or brisk walk to raise core temperature.</div>
+                </div>
+                <div>
+                    <div class="font-medium text-emerald-400 mb-1">Dynamic Mobility (3–4 min)</div>
+                    <div class="text-xs text-zinc-400">Leg swings, arm circles, cat-cow, 10 bodyweight squats, hip openers.</div>
+                </div>
+                <div>
+                    <div class="font-medium text-emerald-400 mb-1">Activation (2 min)</div>
+                    <div class="text-xs text-zinc-400">Glute bridges ×12, band pull-aparts ×15, scapular push-ups ×10.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Set Logging Modal -->
+    <div id="set-modal" onclick="if (event.target.id === 'set-modal') hideSetModal()" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 w-full md:w-[420px] md:rounded-3xl md:m-4 rounded-t-3xl p-6 border border-zinc-700">
+            <div class="flex justify-between items-center mb-5">
+                <div>
+                    <div id="modal-exercise-name" class="font-semibold text-xl"></div>
+                    <div id="modal-set-info" class="text-sm text-emerald-400"></div>
+                </div>
+                <button onclick="hideSetModal()" class="text-zinc-400 hover:text-white p-2"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Progressive Overload Suggestion -->
+                <div id="modal-suggestion" class="hidden bg-emerald-950/40 border border-emerald-700/40 rounded-2xl p-3 text-sm">
+                    <div class="text-emerald-400 font-medium text-xs mb-1">💪 PROGRESSIVE OVERLOAD</div>
+                    <div id="modal-suggestion-text" class="text-zinc-200"></div>
+                </div>
+
+                <!-- Weight -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-medium text-zinc-400">WEIGHT USED</label>
+                        <div class="flex bg-zinc-800 rounded-xl p-1 text-xs gap-x-1">
+                            <button type="button" onclick="event.preventDefault(); event.stopPropagation(); switchUnit('kg')" id="unit-kg-btn" 
+                                    class="px-4 py-1.5 rounded-lg font-medium transition-colors">kg</button>
+                            <button type="button" onclick="event.preventDefault(); event.stopPropagation(); switchUnit('lbs')" id="unit-lbs-btn" 
+                                    class="px-4 py-1.5 rounded-lg font-medium transition-colors">lbs</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-x-3">
+                        <input id="modal-weight" type="number" step="0.5" placeholder="e.g. 40" 
+                               class="flex-1 bg-zinc-950 border border-zinc-700 focus:border-emerald-500 outline-none rounded-2xl px-5 py-3 text-2xl font-semibold tabular-nums">
+                        <div class="text-xs px-4 py-1 bg-zinc-800 rounded-2xl text-center weight-unit-label">kg</div>
+                    </div>
+                </div>
+
+                <!-- Reps -->
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1.5">REPS COMPLETED</label>
+                    <input id="modal-reps" type="number" placeholder="e.g. 10" 
+                           class="w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-500 outline-none rounded-2xl px-5 py-3 text-2xl font-semibold tabular-nums">
+                </div>
+
+                <div class="flex gap-x-3 pt-2">
+                    <button onclick="saveSetFromModal()" 
+                            class="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition-colors rounded-3xl font-semibold flex items-center justify-center gap-x-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span>SAVE SET &amp; START REST</span>
+                    </button>
+                </div>
+                
+                <button onclick="hideSetModal()" class="w-full text-center text-xs text-zinc-400 hover:text-zinc-300 py-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#6366f1');
+        }
+        
+        // Global state
+        let currentWorkout = null;
+        let currentDayType = null; // 'push' or 'pull'
+        let timerInterval = null;
+        let timerRemaining = 0;
+        let timerPaused = false;
+        let elapsedInterval = null;
+        let workoutStartTime = null;
+
+        // ABS FINISHER - optional add-on for any workout
+        const absFinisherExercises = [
+            {
+                id: 501,
+                name: "Cable Crunch",
+                muscles: ["Abs"],
+                sets: 3,
+                reps: "12-15",
+                rest: 45,
+                description: "Kneel facing the cable with rope attachment. Crunch by flexing the spine, bringing elbows toward knees. Control the return.",
+                cue: "Move from the abs, not the arms. Exhale hard at the bottom.",
+                alternatives: ["Machine Crunch", "Weighted Crunch", "Ab Wheel"]
+            },
+            {
+                id: 502,
+                name: "Hanging Knee Raises / Captain's Chair",
+                muscles: ["Abs", "Hip Flexors"],
+                sets: 3,
+                reps: "10-15",
+                rest: 45,
+                description: "Hang from bar or use captain's chair. Raise knees toward chest with control. Avoid swinging.",
+                cue: "Exhale as you raise. Slow lower. No momentum.",
+                alternatives: ["Lying Leg Raises", "Dead Bug", "Reverse Crunch"]
+            },
+            {
+                id: 503,
+                name: "Pallof Press",
+                muscles: ["Core", "Obliques"],
+                sets: 2,
+                reps: "10-12 / side",
+                rest: 45,
+                description: "Stand sideways to cable. Press handle straight out while resisting rotation. Return slowly.",
+                cue: "Brace hard. Don't let the cable twist your torso.",
+                alternatives: ["Dead Bug", "Side Plank", "Cable Woodchop"]
+            },
+            {
+                id: 504,
+                name: "Plank (or Dead Bug)",
+                muscles: ["Core"],
+                sets: 2,
+                reps: "30-45 sec",
+                rest: 30,
+                description: "Hold a strong plank position. Keep body in a straight line. Or perform slow dead bugs for the same duration.",
+                cue: "Squeeze glutes and brace abs. Don't let hips sag.",
+                alternatives: ["Side Plank", "Bird Dog", "Hollow Hold"]
+            }
+        ];
+
+        // ===== Safe Storage (prevents crash when localStorage is blocked) =====
+        const storage = {
+            _memory: {},
+            get(key, fallback = null) {
+                try {
+                    const val = localStorage.getItem(key);
+                    return val !== null ? val : fallback;
+                } catch (e) {
+                    return this._memory[key] !== undefined ? this._memory[key] : fallback;
+                }
+            },
+            set(key, value) {
+                try {
+                    localStorage.setItem(key, value);
+                    return true;
+                } catch (e) {
+                    this._memory[key] = value;
+                    return false;
+                }
+            },
+            remove(key) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    delete this._memory[key];
+                }
+            }
+        };
+
+        // ===== Weight Unit System (kg / lbs) =====
+        let weightUnit = storage.get('stronglean_unit', 'kg');
+
+        function setWeightUnit(unit) {
+            weightUnit = unit;
+            storage.set('stronglean_unit', unit);
+            if (currentWorkout) {
+                const exercises = getCurrentExercises();
+                initializeWorkoutUI(exercises);
+            }
+            // Update unit labels in modal
+            const unitEls = document.querySelectorAll('.weight-unit-label');
+            unitEls.forEach(el => el.textContent = unit);
+            showToast(`Switched to ${unit.toUpperCase()}`);
+        }
+
+        // Better unit switch that converts the current input value
+        function switchUnit(newUnit) {
+            if (newUnit === weightUnit) return;
+            
+            const weightInput = document.getElementById('modal-weight');
+            let currentDisplayValue = parseFloat(weightInput.value);
+            
+            if (!isNaN(currentDisplayValue) && currentDisplayValue > 0) {
+                // Convert current value to the new unit
+                if (weightUnit === 'kg' && newUnit === 'lbs') {
+                    // kg → lbs
+                    currentDisplayValue = Math.round((currentDisplayValue * 2.20462) * 2) / 2;
+                } else if (weightUnit === 'lbs' && newUnit === 'kg') {
+                    // lbs → kg
+                    currentDisplayValue = Math.round((currentDisplayValue / 2.20462) * 10) / 10;
+                }
+                weightInput.value = currentDisplayValue;
+            }
+            
+            weightUnit = newUnit;
+            storage.set('stronglean_unit', newUnit);
+            
+            // Update button styles
+            document.getElementById('unit-kg-btn').className = newUnit === 'kg' 
+                ? 'px-4 py-1.5 rounded-lg font-medium bg-emerald-600 text-white transition-colors' 
+                : 'px-4 py-1.5 rounded-lg font-medium text-zinc-400 transition-colors';
+            document.getElementById('unit-lbs-btn').className = newUnit === 'lbs' 
+                ? 'px-4 py-1.5 rounded-lg font-medium bg-emerald-600 text-white transition-colors' 
+                : 'px-4 py-1.5 rounded-lg font-medium text-zinc-400 transition-colors';
+            
+            // Update unit label next to input
+            document.querySelectorAll('.weight-unit-label').forEach(el => el.textContent = newUnit);
+            
+            // Blur the input so number pad doesn't stay open
+            weightInput.blur();
+            
+            showToast(`Switched to ${newUnit.toUpperCase()}`);
+        }
+
+        function toDisplayWeight(kgValue) {
+            if (!kgValue && kgValue !== 0) return '';
+            if (weightUnit === 'lbs') {
+                return Math.round((kgValue * 2.20462) * 2) / 2; // nearest 0.5
+            }
+            return Math.round(kgValue * 10) / 10;
+        }
+
+        function toKg(displayValue) {
+            if (!displayValue && displayValue !== 0) return 0;
+            if (weightUnit === 'lbs') {
+                return Math.round((displayValue / 2.20462) * 10) / 10;
+            }
+            return parseFloat(displayValue) || 0;
+        }
+
+        function unitLabel() {
+            return weightUnit;
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt = null;
+
+        function setupPWAInstall() {
+            const banner = document.getElementById('pwa-install-banner');
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (banner) banner.classList.remove('hidden');
+                console.log('[PWA] Install prompt available');
+            });
+
+            window.addEventListener('appinstalled', () => {
+                if (banner) banner.classList.add('hidden');
+                deferredPrompt = null;
+                console.log('[PWA] App was installed');
+            });
+
+            // Hide if already running as installed app
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                if (banner) banner.classList.add('hidden');
+            }
+        }
+
+        async function installPWA() {
+            const banner = document.getElementById('pwa-install-banner');
+            
+            if (!deferredPrompt) {
+                alert("Chrome install prompt not available (common when opening .html files directly).\n\n✅ Recommended method:\n\n1. Tap the ⋮ menu in Chrome (top right)\n2. Choose 'Add to Home screen'\n3. Tap 'Add'\n\nStrongLean will appear on your home screen like a normal app!");
+                return;
+            }
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`[PWA] User response: ${outcome}`);
+            deferredPrompt = null;
+            if (banner) banner.classList.add('hidden');
+        }
+
+        // UPPER BODY exercises (Planet Fitness friendly) — includes Pull-up progressions + Abs
+        const upperExercises = [
+            {
+                id: 301,
+                name: "Smith Machine Bench Press",
+                muscles: ["Chest", "Shoulders", "Triceps"],
+                sets: 4,
+                reps: "8-12",
+                rest: 90,
+                description: "Lie on bench under Smith bar. Lower bar to mid-chest with control, then press up. Great stable pressing option at Planet Fitness.",
+                cue: "Feet flat, scapulae retracted. Full range without locking elbows hard.",
+                alternatives: ["Dumbbell Bench Press", "Machine Chest Press", "Push-Ups"]
+            },
+            {
+                id: 302,
+                name: "Assisted Pull-Up (or Pull-Up Progression)",
+                muscles: ["Lats", "Biceps", "Upper Back"],
+                sets: 4,
+                reps: "6-10",
+                rest: 90,
+                description: "Use the assisted pull-up machine. Start with enough help to hit 6-10 clean reps. Reduce assistance over weeks as you get stronger.",
+                cue: "Full hang → pull chest to bar → slow lower. Great progression toward full pull-ups.",
+                alternatives: ["Lat Pulldown", "Band-Assisted Pull-Up", "Negative Pull-Ups", "Inverted Row"]
+            },
+            {
+                id: 303,
+                name: "Seated Dumbbell Shoulder Press",
+                muscles: ["Shoulders", "Triceps"],
+                sets: 3,
+                reps: "8-12",
+                rest: 90,
+                description: "Sit on bench with back support. Press dumbbells overhead. Use lighter dumbbells if needed.",
+                cue: "Core braced, avoid excessive back arch.",
+                alternatives: ["Machine Shoulder Press", "Arnold Press", "Landmine Press"]
+            },
+            {
+                id: 304,
+                name: "Seated Cable Row",
+                muscles: ["Mid Back", "Lats", "Biceps"],
+                sets: 3,
+                reps: "8-12",
+                rest: 90,
+                description: "Sit tall, pull to lower abdomen. Squeeze shoulder blades.",
+                cue: "Don't round lower back. Controlled tempo.",
+                alternatives: ["Chest Supported Row", "Single Arm DB Row", "T-Bar Row"]
+            },
+            {
+                id: 305,
+                name: "Cable Lateral Raise",
+                muscles: ["Side Delts"],
+                sets: 3,
+                reps: "12-15",
+                rest: 60,
+                description: "Slight lean, raise cables out to sides. Lead with elbows.",
+                cue: "Pinky slightly higher than thumb at top.",
+                alternatives: ["Dumbbell Lateral Raise", "Machine Lateral Raise"]
+            },
+            {
+                id: 306,
+                name: "Tricep Pushdown",
+                muscles: ["Triceps"],
+                sets: 3,
+                reps: "10-12",
+                rest: 60,
+                description: "Elbows pinned to sides. Push rope or bar down until arms are straight. Squeeze triceps hard at bottom.",
+                cue: "No shoulder movement. Control the negative.",
+                alternatives: ["Overhead Tricep Extension", "Skull Crushers"]
+            },
+            {
+                id: 307,
+                name: "Cable Crunch + Hanging Knee Raises",
+                muscles: ["Abs", "Core"],
+                sets: 3,
+                reps: "12-15 each",
+                rest: 60,
+                description: "Do cable crunches, then hanging knee raises (or captain's chair). Excellent ab finisher.",
+                cue: "Move from the abs, not the arms or hip flexors only.",
+                alternatives: ["Machine Crunch", "Dead Bug", "Plank", "Ab Wheel"]
+            }
+        ];
+
+        // LOWER BODY exercises (Planet Fitness friendly)
+        const lowerExercises = [
+            {
+                id: 401,
+                name: "Leg Press",
+                muscles: ["Quads", "Glutes", "Hamstrings"],
+                sets: 4,
+                reps: "8-12",
+                rest: 120,
+                description: "Feet shoulder width on platform. Push through heels, controlled eccentric.",
+                cue: "Lower back pressed into pad. Don't lock knees.",
+                alternatives: ["Smith Machine Squat", "Goblet Squat", "Hack Squat"]
+            },
+            {
+                id: 402,
+                name: "Romanian Deadlift (DB or Smith)",
+                muscles: ["Hamstrings", "Glutes", "Lower Back"],
+                sets: 4,
+                reps: "8-10",
+                rest: 120,
+                description: "Hinge at hips. Feel stretch in hamstrings. Squeeze glutes at top.",
+                cue: "Slight knee bend, flat back.",
+                alternatives: ["Lying Leg Curl", "Seated Leg Curl", "Cable Pull-Through"]
+            },
+            {
+                id: 403,
+                name: "Leg Extension",
+                muscles: ["Quads"],
+                sets: 3,
+                reps: "10-15",
+                rest: 60,
+                description: "Control the movement, squeeze at the top. Good quad isolation.",
+                cue: "Don't hyperextend knees at top.",
+                alternatives: ["Goblet Squat", "Bulgarian Split Squat", "Step-Ups"]
+            },
+            {
+                id: 404,
+                name: "Hip Abduction Machine",
+                muscles: ["Glutes", "Outer Thighs"],
+                sets: 3,
+                reps: "12-15",
+                rest: 60,
+                description: "Planet Fitness staple. Push knees out against pads. Great for glute medius.",
+                cue: "Sit tall, don't lean forward.",
+                alternatives: ["Cable Hip Abduction", "Side Lying Leg Lift", "Clamshells"]
+            },
+            {
+                id: 405,
+                name: "Bulgarian Split Squat",
+                muscles: ["Quads", "Glutes"],
+                sets: 3,
+                reps: "8-10 / leg",
+                rest: 90,
+                description: "Rear foot on bench. Drive through front heel. Excellent unilateral work.",
+                cue: "Torso upright, front knee tracks over ankle.",
+                alternatives: ["Reverse Lunges", "Walking Lunges", "Step-Ups"]
+            },
+            {
+                id: 406,
+                name: "Standing Calf Raise + Core Finisher",
+                muscles: ["Calves", "Core"],
+                sets: 3,
+                reps: "12-15 + 30s plank",
+                rest: 60,
+                description: "Calf raises on edge of step or machine, then finish with plank or dead bug.",
+                cue: "Full range on calves. Brace core hard.",
+                alternatives: ["Seated Calf Raise", "Single Leg Calf Raise"]
+            }
+        ];
+
+        // PUSH DAY - Pure upper body pressing (Chest, Shoulders, Triceps)
+        const pushExercises = [
+            {
+                id: 101,
+                name: "Dumbbell Bench Press",
+                muscles: ["Chest", "Shoulders", "Triceps"],
+                sets: 4,
+                reps: "8-12",
+                rest: 90,
+                description: "Lie on bench, dumbbells at chest level. Press up and slightly in. Lower with control to stretch the chest.",
+                cue: "Elbows at ~45° angle. Full range of motion.",
+                alternatives: ["Machine Chest Press", "Smith Machine Bench", "Push-Ups"]
+            },
+            {
+                id: 102,
+                name: "Incline Dumbbell Press",
+                muscles: ["Upper Chest", "Shoulders", "Triceps"],
+                sets: 3,
+                reps: "8-12",
+                rest: 90,
+                description: "Set bench to 30-45 degrees. Press dumbbells up and slightly together. Great for upper chest development.",
+                cue: "Don't let elbows flare too wide. Controlled negative.",
+                alternatives: ["Incline Machine Press", "Low-to-High Cable Fly", "Smith Incline Press"]
+            },
+            {
+                id: 103,
+                name: "Seated Dumbbell Shoulder Press",
+                muscles: ["Shoulders", "Triceps"],
+                sets: 3,
+                reps: "8-12",
+                rest: 90,
+                description: "Sit with back supported. Press dumbbells overhead until arms are extended. Lower slowly to ear level.",
+                cue: "Keep core braced. Avoid excessive arching in lower back.",
+                alternatives: ["Machine Shoulder Press", "Arnold Press", "Landmine Press"]
+            },
+            {
+                id: 104,
+                name: "Cable Lateral Raise",
+                muscles: ["Side Delts"],
+                sets: 3,
+                reps: "12-15",
+                rest: 60,
+                description: "Stand tall, slight lean forward. Raise cables out to sides with slight elbow bend until arms are parallel to floor.",
+                cue: "Lead with elbows, not hands. Pinky slightly higher than thumb at top.",
+                alternatives: ["Dumbbell Lateral Raise", "Machine Lateral Raise"]
+            },
+            {
+                id: 105,
+                name: "Tricep Pushdown",
+                muscles: ["Triceps"],
+                sets: 3,
+                reps: "10-12",
+                rest: 60,
+                description: "Elbows pinned to sides. Push rope or bar down until arms are straight. Squeeze triceps hard at bottom.",
+                cue: "No shoulder movement. Control the negative (2-3 sec).",
+                alternatives: ["Overhead Tricep Extension", "Skull Crushers", "Close-Grip Bench"]
+            },
+            {
+                id: 106,
+                name: "Cable Crunch",
+                muscles: ["Abs"],
+                sets: 3,
+                reps: "12-15",
+                rest: 60,
+                description: "Kneel facing the cable with rope attachment. Crunch down by flexing the spine, bringing elbows toward knees. Control the return.",
+                cue: "Don't pull with arms — move from the abs. Exhale hard at the bottom.",
+                alternatives: ["Machine Crunch", "Hanging Knee Raises", "Ab Wheel"]
+            },
+            {
+                id: 107,
+                name: "Pallof Press",
+                muscles: ["Core", "Obliques"],
+                sets: 3,
+                reps: "10-12 / side",
+                rest: 60,
+                description: "Stand sideways to cable. Hold handle at chest and press straight out while resisting rotation. Return slowly.",
+                cue: "Brace your core hard the entire time. Small steps away = more challenge.",
+                alternatives: ["Dead Bug", "Plank", "Cable Woodchop"]
+            }
+        ];
+
+        // PULL DAY - Pure upper body pulling (Back, Rear Delts, Biceps) + Pull-up progressions + Core
+        const pullExercises = [
+            {
+                id: 201,
+                name: "Assisted Pull-Up (or Pull-Up Progression)",
+                muscles: ["Lats", "Biceps", "Upper Back"],
+                sets: 4,
+                reps: "6-10",
+                rest: 90,
+                description: "Use the assisted pull-up machine. Start with enough assistance to hit 6-10 clean reps. Progress by reducing assistance over time.",
+                cue: "Full hang at bottom, pull chest toward bar, control the lowering.",
+                alternatives: ["Lat Pulldown", "Band-Assisted Pull-Up", "Negative Pull-Ups", "Inverted Row"]
+            },
+            {
+                id: 202,
+                name: "Seated Cable Row",
+                muscles: ["Mid Back", "Lats", "Biceps"],
+                sets: 4,
+                reps: "8-12",
+                rest: 90,
+                description: "Sit tall, pull handle to lower abdomen. Squeeze shoulder blades together at the end of each rep. Control the return.",
+                cue: "Slight lean back at the pull. Don't round your lower back.",
+                alternatives: ["Chest Supported Row", "T-Bar Row", "Inverted Row"]
+            },
+            {
+                id: 203,
+                name: "Lat Pulldown",
+                muscles: ["Lats", "Biceps", "Rear Shoulders"],
+                sets: 3,
+                reps: "10-12",
+                rest: 90,
+                description: "Wide or neutral grip. Pull bar to upper chest. Squeeze lats hard, then control the ascent.",
+                cue: "Think 'elbows down and back' rather than pulling with arms.",
+                alternatives: ["Straight Arm Pulldown", "Single-Arm Pulldown", "Assisted Pull-Up"]
+            },
+            {
+                id: 204,
+                name: "Single Arm Dumbbell Row",
+                muscles: ["Mid Back", "Lats", "Biceps"],
+                sets: 3,
+                reps: "8-10 / arm",
+                rest: 60,
+                description: "Support on bench or knee. Pull dumbbell to hip while keeping torso stable. Squeeze at the top.",
+                cue: "Don't twist or rotate. Pull elbow back, not up.",
+                alternatives: ["Seated Machine Row", "Meadows Row", "Kroc Row"]
+            },
+            {
+                id: 205,
+                name: "Face Pulls",
+                muscles: ["Rear Delts", "Rotator Cuff", "Upper Back"],
+                sets: 3,
+                reps: "12-15",
+                rest: 60,
+                description: "Cable at face height. Pull rope toward face, externally rotate at end so thumbs point back. Great for shoulder health.",
+                cue: "Lead with elbows high. Squeeze shoulder blades together.",
+                alternatives: ["Rear Delt Fly (DB)", "Reverse Pec Deck", "Band Pull-Aparts"]
+            },
+            {
+                id: 206,
+                name: "Dumbbell Bicep Curl",
+                muscles: ["Biceps"],
+                sets: 3,
+                reps: "10-12",
+                rest: 60,
+                description: "Stand or sit, curl dumbbells with controlled tempo. Keep elbows pinned to sides.",
+                cue: "Don't swing. Squeeze at the top of each rep.",
+                alternatives: ["Cable Bicep Curl", "Hammer Curl", "Preacher Curl"]
+            },
+            {
+                id: 207,
+                name: "Hanging Knee Raises (or Captain's Chair)",
+                muscles: ["Abs", "Hip Flexors"],
+                sets: 3,
+                reps: "10-15",
+                rest: 60,
+                description: "Hang from pull-up bar or use captain's chair. Raise knees toward chest with control. Avoid swinging.",
+                cue: "Exhale as you raise. Slow lower. Don't use momentum.",
+                alternatives: ["Cable Crunch", "Lying Leg Raises", "Dead Bug"]
+            }
+        ];
+
+        // Show section
+        function showSection(sectionId) {
+            // Hide all
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            // Show target
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.add('active');
+            
+            // Update nav active states
+            updateNavActive(sectionId);
+            
+            if (sectionId === 'library') {
+                showLibrary();
+            }
+            
+            // Load dynamic content
+            if (sectionId === 'history') {
+                loadHistory();
+            }
+            if (sectionId === 'dashboard') {
+                updateDashboardStats();
+            }
+            if (sectionId === 'workout' && !currentWorkout) {
+                // Show day selector if no active workout
+                showDaySelector();
+            }
+        }
+
+        function getCurrentExercises() {
+            let base = [];
+            if (currentDayType === 'push') base = pushExercises;
+            else if (currentDayType === 'pull') base = pullExercises;
+            else if (currentDayType === 'upper') base = upperExercises;
+            else if (currentDayType === 'lower') base = lowerExercises;
+            else if (currentDayType === 'abs') base = absFinisherExercises;
+            else base = pushExercises || [];
+            
+            // Include any extra exercises the user added during this workout
+            if (currentWorkout && currentWorkout.extraExercises && currentWorkout.extraExercises.length > 0) {
+                const combined = [...base, ...currentWorkout.extraExercises];
+                const seen = new Set();
+                return combined.filter(ex => {
+                    if (seen.has(ex.id)) return false;
+                    seen.add(ex.id);
+                    return true;
+                });
+            }
+            
+            return base;
+        }
+
+        // Progressive Overload Helper: Get last performance for this exercise in same day type
+        function getLastPerformance(exerciseId, dayType) {
+            const history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            // Find most recent workout of same type that has this exercise
+            for (let workout of history) {
+                if (workout.type === dayType && workout.exercises) {
+                    const exLog = workout.exercises.find(e => e.id === exerciseId);
+                    if (exLog && exLog.completedSets && exLog.completedSets.length > 0) {
+                        // Return the best set from last time (highest weight)
+                        let best = exLog.completedSets[0];
+                        exLog.completedSets.forEach(set => {
+                            if (set && set.weight > (best.weight || 0)) best = set;
+                        });
+                        return best;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function updateNavActive(sectionId) {
+            // Desktop
+            document.querySelectorAll('[id^="nav-"]').forEach(el => {
+                el.classList.remove('nav-active', 'bg-indigo-600', 'text-white');
+                el.classList.add('hover:bg-zinc-800');
+            });
+            
+            const navEl = document.getElementById('nav-' + sectionId);
+            if (navEl) {
+                navEl.classList.add('nav-active');
+                navEl.classList.remove('hover:bg-zinc-800');
+            }
+            
+            // Mobile
+            document.querySelectorAll('[id^="nav-mob-"]').forEach(el => el.classList.remove('text-white'));
+            const mobEl = document.getElementById('nav-mob-' + sectionId);
+            if (mobEl) mobEl.classList.add('text-white');
+        }
+
+        // Update dashboard stats from localStorage
+        function updateDashboardStats() {
+            const workouts = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            
+            // This week count
+            const now = new Date();
+            const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+            weekStart.setHours(0,0,0,0);
+            
+            const thisWeek = workouts.filter(w => new Date(w.date) >= weekStart).length;
+            document.getElementById('week-workouts').textContent = thisWeek;
+            
+            // Total volume
+            let totalVol = 0;
+            workouts.forEach(w => {
+                if (w.totalVolume) totalVol += w.totalVolume;
+            });
+            document.getElementById('total-volume').textContent = Math.round(totalVol / 1000) + 'k';
+            
+            // Streak (simple consecutive days)
+            let streak = 0;
+            if (workouts.length > 0) {
+                const sorted = [...workouts].sort((a,b) => new Date(b.date) - new Date(a.date));
+                let currentDate = new Date(sorted[0].date);
+                streak = 1;
+                
+                for (let i = 1; i < sorted.length; i++) {
+                    const prevDate = new Date(sorted[i].date);
+                    const diffDays = Math.floor((currentDate - prevDate) / (1000 * 3600 * 24));
+                    if (diffDays === 1) {
+                        streak++;
+                        currentDate = prevDate;
+                    } else if (diffDays > 1) {
+                        break;
+                    }
+                }
+            }
+            document.getElementById('current-streak').textContent = streak;
+            
+            // Average duration
+            if (workouts.length > 0) {
+                const avg = workouts.reduce((sum, w) => sum + (w.durationMin || 55), 0) / workouts.length;
+                document.getElementById('avg-duration').textContent = Math.round(avg);
+            }
+        }
+
+        // Update weight
+        function updateWeight() {
+            const newWeight = prompt("Update your current weight (kg):", "65");
+            if (newWeight && !isNaN(parseFloat(newWeight))) {
+                // In real app would persist to profile, here just visual
+                const weightEls = document.querySelectorAll('.text-2xl.tabular-nums');
+                if (weightEls.length > 0) {
+                    weightEls[0].innerHTML = `${newWeight} <span class="text-base font-normal">kg</span>`;
+                }
+                // Could store in localStorage if wanted
+                storage.set('user_weight', newWeight);
+            }
+        }
+
+        // Show day selector - now with Push, Pull, Upper, Lower for Planet Fitness flexibility
+        // Library functions
+        let allLibraryExercises = [];
+
+        function showLibrary() {
+            showSection('library');
+            const container = document.getElementById('library-list');
+            container.innerHTML = '';
+
+            // Combine all exercises
+            allLibraryExercises = [
+                ...pushExercises, ...pullExercises, 
+                ...upperExercises, ...lowerExercises
+            ];
+
+            // Remove duplicates by name
+            const seen = new Set();
+            allLibraryExercises = allLibraryExercises.filter(ex => {
+                if (seen.has(ex.name)) return false;
+                seen.add(ex.name);
+                return true;
+            });
+
+            renderLibraryCards(allLibraryExercises);
+        }
+
+        function renderLibraryCards(exercises) {
+            const container = document.getElementById('library-list');
+            container.innerHTML = '';
+
+            exercises.forEach(ex => {
+                const card = document.createElement('div');
+                card.className = `bg-zinc-900 border border-zinc-700 rounded-3xl p-5 cursor-pointer hover:border-emerald-500/50 transition-all`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold">${ex.name}</div>
+                            <div class="flex gap-x-1 mt-1 flex-wrap">
+                                ${ex.muscles.map(m => `<span class="text-[10px] px-2 py-px bg-white/10 rounded-full">${m}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="text-right text-xs text-emerald-400">
+                            ${ex.sets} × ${ex.reps}
+                        </div>
+                    </div>
+                    <div class="mt-3 text-xs text-zinc-400 line-clamp-2">${ex.description}</div>
+                    
+                    <div class="mt-4 flex gap-x-2">
+                        <button onclick="event.stopImmediatePropagation(); showExerciseInfoFromLibrary(${ex.id});" 
+                                class="flex-1 text-xs py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl">
+                            Details &amp; Alternatives
+                        </button>
+                        ${currentWorkout ? `
+                            <button onclick="event.stopImmediatePropagation(); swapFromLibrary(${ex.id});" 
+                                    class="flex-1 text-xs py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl">
+                                Swap into Workout
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                card.onclick = () => showExerciseInfoFromLibrary(ex.id);
+                container.appendChild(card);
+            });
+        }
+
+        function filterLibrary() {
+            const term = document.getElementById('library-search').value.toLowerCase();
+            const filtered = allLibraryExercises.filter(ex => 
+                ex.name.toLowerCase().includes(term) || 
+                ex.muscles.join(' ').toLowerCase().includes(term)
+            );
+            renderLibraryCards(filtered);
+        }
+
+        function showExerciseInfoFromLibrary(exerciseId) {
+            // Reuse the existing showExerciseInfo but make sure it works from library
+            showExerciseInfo(exerciseId);
+        }
+
+        function watchFormVideo(exerciseId) {
+            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises];
+            let ex = allEx.find(e => e.id === exerciseId);
+            
+            // Check for override (swapped exercise)
+            const override = (currentWorkout && currentWorkout.overrides && currentWorkout.overrides[exerciseId]) 
+                ? currentWorkout.overrides[exerciseId] : null;
+            
+            const searchName = override ? override.name : (ex ? ex.name : null);
+            
+            if (!searchName) return;
+            
+            const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchName)}+proper+form+athlean+x+jeff+nippard`;
+            window.open(url, '_blank');
+        }
+
+        function swapFromLibrary(exerciseId) {
+            if (!currentWorkout) {
+                alert("Start a workout first to swap exercises.");
+                return;
+            }
+            
+            const exercises = getCurrentExercises();
+            const newEx = allLibraryExercises.find(e => e.id === exerciseId);
+            if (!newEx) return;
+
+            // Simple approach: replace the first exercise or ask user
+            // For simplicity, we'll replace the first one or show message
+            if (currentWorkout.exercises.length === 0) {
+                currentWorkout.exercises.push({ id: newEx.id, completedSets: [] });
+            } else {
+                // Replace the first incomplete or just add note
+                currentWorkout.exercises[0].id = newEx.id;
+            }
+            
+            // Re-render current workout
+            const container = document.getElementById('exercises-container');
+            container.innerHTML = '';
+            initializeWorkoutUI(exercises);
+            
+            showToast(`Swapped in ${newEx.name}!`);
+            showSection('workout');
+        }
+
+        function showDaySelector() {
+            // Hide sticky action bar while choosing a day
+            const stickyActions = document.getElementById('sticky-actions');
+            if (stickyActions) stickyActions.classList.add('hidden');
+            
+            // Reset header
+            const header = document.getElementById('workout-header');
+            const subtitle = document.getElementById('workout-subtitle');
+            if (header) header.textContent = "Choose Workout";
+            if (subtitle) subtitle.textContent = "Select a focused training day";
+            
+            const container = document.getElementById('exercises-container');
+            container.innerHTML = `
+                <div class="px-1">
+                    <button type="button" id="day-selector-back"
+                            class="w-full mb-4 py-3.5 rounded-2xl border border-zinc-600 bg-zinc-900 text-white text-sm font-semibold flex items-center justify-center gap-x-2">
+                        ← Back to Home
+                    </button>
+
+                    <div class="grid grid-cols-1 gap-3">
+                        <button type="button" onclick="startNewWorkout('push')" 
+                                class="w-full text-left bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-700 hover:border-indigo-500/50 transition-all rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-lg">PUSH DAY</div>
+                                <div class="text-xs text-zinc-400 mt-0.5">Chest • Shoulders • Triceps</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-zinc-600"></i>
+                        </button>
+
+                        <button type="button" onclick="startNewWorkout('pull')" 
+                                class="w-full text-left bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-700 hover:border-emerald-500/50 transition-all rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-lg">PULL DAY</div>
+                                <div class="text-xs text-zinc-400 mt-0.5">Back • Rear Delts • Biceps + Pull-ups</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-zinc-600"></i>
+                        </button>
+
+                        <button type="button" onclick="startNewWorkout('upper')" 
+                                class="w-full text-left bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-700 hover:border-violet-500/50 transition-all rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-lg">UPPER BODY</div>
+                                <div class="text-xs text-zinc-400 mt-0.5">Full Upper (Push + Pull)</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-zinc-600"></i>
+                        </button>
+
+                        <button type="button" onclick="startNewWorkout('lower')" 
+                                class="w-full text-left bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-700 hover:border-orange-500/50 transition-all rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-lg">LOWER BODY</div>
+                                <div class="text-xs text-zinc-400 mt-0.5">Quads • Hamstrings • Glutes • Calves</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-zinc-600"></i>
+                        </button>
+
+                        <button type="button" onclick="startNewWorkout('abs')" 
+                                class="w-full text-left bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-700 hover:border-orange-400/50 transition-all rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-lg">ABS ONLY</div>
+                                <div class="text-xs text-zinc-400 mt-0.5">Core • Abs • Obliques</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-zinc-600"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Bind immediately after inserting into DOM
+            setTimeout(function() {
+                var dayBack = document.getElementById('day-selector-back');
+                if (dayBack) {
+                    dayBack.onclick = function() {
+                        currentWorkout = null;
+                        currentDayType = null;
+                        document.querySelectorAll('.section').forEach(function(el) { el.classList.remove('active'); });
+                        var dash = document.getElementById('dashboard');
+                        if (dash) dash.classList.add('active');
+                    };
+                }
+            }, 50);
+        }
+
+        // Start new workout with chosen day type + progressive overload support
+        function startNewWorkout(dayType) {
+            if (!dayType) dayType = 'push';
+            currentDayType = dayType;
+            
+            // Force the correct exercise list
+            let exercises = [];
+            if (dayType === 'push') exercises = pushExercises;
+            else if (dayType === 'pull') exercises = pullExercises;
+            else if (dayType === 'upper') exercises = upperExercises;
+            else if (dayType === 'lower') exercises = lowerExercises;
+            else if (dayType === 'abs') exercises = absFinisherExercises;
+            else exercises = pushExercises;
+            
+            console.log('[StrongLean] Starting', dayType, 'with', exercises.length, 'exercises. First exercise:', exercises[0]?.name);
+            
+            currentWorkout = {
+                date: new Date().toISOString(),
+                type: dayType,
+                exercises: [],
+                startTime: Date.now(),
+                durationMin: 0,
+                totalVolume: 0,
+                notes: '',
+                extraExercises: []
+            };
+            
+            workoutStartTime = Date.now();
+            
+            // Show workout section
+            showSection('workout');
+            
+            // Update header
+            const header = document.getElementById('workout-header');
+            const subtitle = document.getElementById('workout-subtitle');
+            const titles = {
+                push: 'PUSH DAY',
+                pull: 'PULL DAY',
+                upper: 'UPPER BODY',
+                lower: 'LOWER BODY',
+                abs: 'ABS ONLY'
+            };
+            if (header) {
+                header.innerHTML = `${titles[dayType] || dayType.toUpperCase()} <span class="text-xs align-super text-emerald-400 font-mono">STRENGTH</span>`;
+            }
+            if (subtitle) {
+                subtitle.textContent = `${exercises.length} exercises • ${dayType === 'lower' ? 'LEGS ONLY' : dayType.toUpperCase()} • Tap sets to log`;
+            }
+            
+            // Initialize UI with the correct exercises
+            initializeWorkoutUI(exercises);
+            
+            // Start elapsed time counter
+            startElapsedTimer();
+            
+            // Show workout timer + sticky action bar
+            document.getElementById('workout-timer').classList.remove('hidden');
+            document.getElementById('workout-timer').classList.add('flex');
+            
+            const stickyActions = document.getElementById('sticky-actions');
+            if (stickyActions) stickyActions.classList.remove('hidden');
+            
+            showToast(`${titles[dayType]} loaded • ${exercises[0]?.name || ''}`);
+        }
+
+        function handleWorkoutBack() {
+            try {
+                if (currentWorkout) {
+                    if (confirm('Cancel this workout? Progress will not be saved.')) {
+                        doCancelWorkout();
+                    }
+                } else {
+                    doCancelWorkout();
+                }
+            } catch (e) {
+                console.error(e);
+                // Hard fallback
+                currentWorkout = null;
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                const dash = document.getElementById('dashboard');
+                if (dash) dash.classList.add('active');
+            }
+        }
+
+        function cancelWorkout() {
+            try {
+                if (currentWorkout) {
+                    if (confirm('Cancel this workout? Progress will not be saved.')) {
+                        doCancelWorkout();
+                    }
+                } else {
+                    doCancelWorkout();
+                }
+            } catch (e) {
+                console.error(e);
+                doCancelWorkout();
+            }
+        }
+
+        function doCancelWorkout() {
+            try {
+                if (timerInterval) clearInterval(timerInterval);
+                if (elapsedInterval) clearInterval(elapsedInterval);
+            } catch (e) {}
+            
+            const sticky = document.getElementById('sticky-rest-timer');
+            if (sticky) sticky.classList.add('hidden');
+            
+            const stickyActions = document.getElementById('sticky-actions');
+            if (stickyActions) stickyActions.classList.add('hidden');
+            
+            const timerEl = document.getElementById('workout-timer');
+            if (timerEl) timerEl.classList.add('hidden');
+            
+            currentWorkout = null;
+            currentDayType = null;
+            workoutStartTime = null;
+            
+            const container = document.getElementById('exercises-container');
+            if (container) container.innerHTML = '';
+            
+            // Force show dashboard
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            const dash = document.getElementById('dashboard');
+            if (dash) dash.classList.add('active');
+            
+            // Update nav if function exists
+            try { updateNavActive('dashboard'); } catch (e) {}
+            try { showToast('Back to dashboard'); } catch (e) {}
+        }
+
+        // Initialize workout UI (now accepts exercises array) - with safety fallback
+        function initializeWorkoutUI(exercisesList) {
+            const container = document.getElementById('exercises-container');
+            container.innerHTML = '';
+            
+            let exercises = exercisesList || getCurrentExercises();
+            
+            // Safety: if still empty, try to recover
+            if (!exercises || exercises.length === 0) {
+                if (currentDayType === 'push') exercises = pushExercises;
+                else if (currentDayType === 'pull') exercises = pullExercises;
+            }
+            
+            if (!exercises || exercises.length === 0) {
+                // Fallback visible message
+                container.innerHTML = `
+                    <div class="text-center py-12 px-6">
+                        <i class="fa-solid fa-exclamation-triangle text-4xl text-amber-400 mb-4"></i>
+                        <h4 class="font-semibold text-xl mb-2">Couldn't load exercises</h4>
+                        <p class="text-zinc-400 text-sm mb-6">There was a small glitch loading the workout.</p>
+                        <button onclick="location.reload()" 
+                                class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-sm font-semibold">
+                            Reload Workout
+                        </button>
+                    </div>
+                `;
+                console.warn('[StrongLean] No exercises to render. currentDayType =', currentDayType);
+                return;
+            }
+            
+            try {
+                exercises.forEach((ex, index) => {
+                    // Use override if this exercise was swapped
+                    const override = (currentWorkout && currentWorkout.overrides) ? currentWorkout.overrides[ex.id] : null;
+                    const displayName = override ? override.name : ex.name;
+
+                    const card = document.createElement('div');
+                    card.className = `exercise-card bg-zinc-900 border border-zinc-700 rounded-3xl overflow-hidden`;
+                    card.id = `exercise-${ex.id}`;
+                    
+                    // Get last performance for progressive overload hint
+                    const lastPerf = getLastPerformance(ex.id, currentDayType);
+                    let progressionHTML = '';
+                    if (lastPerf && lastPerf.weight) {
+                        progressionHTML = `
+                            <div class="mt-1 text-[10px] text-emerald-400/70 flex items-center gap-x-1">
+                                <i class="fa-solid fa-history text-xs"></i> 
+                                <span>Last: <strong>${toDisplayWeight(lastPerf.weight)} ${unitLabel()} × ${lastPerf.reps}</strong></span>
+                            </div>
+                        `;
+                    }
+                    
+                    // Accordion: only first incomplete exercise starts expanded
+                    const isExpanded = index === 0;
+                    
+                    card.innerHTML = `
+                        <!-- Compact header - always visible, tap to expand/collapse -->
+                        <div class="px-4 py-3.5 exercise-header cursor-pointer" onclick="toggleExerciseCard(${ex.id})">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-x-3 min-w-0 flex-1">
+                                    <span class="text-emerald-400 font-mono text-xs w-5">${String(index + 1).padStart(2, '0')}</span>
+                                    <div class="min-w-0">
+                                        <h3 class="font-semibold text-base truncate">${displayName}</h3>
+                                        <div class="text-[11px] text-zinc-500 mt-0.5">${ex.sets}×${ex.reps} · ${ex.rest}s rest</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-x-2 flex-shrink-0">
+                                    <button onclick="event.stopImmediatePropagation(); watchFormVideo(${ex.id});" 
+                                            class="text-[10px] px-2 py-1 bg-red-600/80 text-white rounded-lg">Form</button>
+                                    <i id="chevron-${ex.id}" class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-zinc-500 text-xs"></i>
+                                </div>
+                            </div>
+                            ${progressionHTML}
+                        </div>
+                        
+                        <!-- Expandable body -->
+                        <div id="body-${ex.id}" class="${isExpanded ? '' : 'hidden'} px-4 pb-3">
+                            <div class="flex items-center gap-x-2 mb-2">
+                                <button onclick="showExerciseInfo(${ex.id})" class="text-[11px] text-zinc-400 hover:text-white flex items-center gap-x-1">
+                                    <i class="fa-solid fa-info-circle"></i> Info + Alternatives
+                                </button>
+                            </div>
+                            
+                            <!-- Sets tracker -->
+                            <div class="space-y-1.5" id="sets-${ex.id}">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(card);
+                    renderSetsForExercise(ex.id);
+                });
+                
+                // Auto-expand the first incomplete exercise after render
+                setTimeout(() => autoExpandCurrentExercise(), 100);
+            } catch (err) {
+                console.error('[StrongLean] Error rendering exercises:', err);
+                container.innerHTML = `
+                    <div class="text-center py-12 px-6">
+                        <i class="fa-solid fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
+                        <h4 class="font-semibold text-xl mb-2">Error loading workout</h4>
+                        <p class="text-zinc-400 text-sm mb-4">Please try reloading the page.</p>
+                        <button onclick="location.reload()" 
+                                class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-sm font-semibold">
+                            Reload Page
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSetsForExercise(exerciseId) {
+            const container = document.getElementById(`sets-${exerciseId}`);
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            const exercises = getCurrentExercises();
+            const ex = exercises.find(e => e.id === exerciseId);
+            if (!ex) return;
+            
+            const workoutEx = currentWorkout?.exercises.find(e => e.id === exerciseId);
+            
+            // Support custom number of sets (for "Add Set" feature)
+            const totalSets = (workoutEx && workoutEx.customSets) ? workoutEx.customSets : ex.sets;
+            const completedSets = workoutEx ? workoutEx.completedSets.filter(Boolean).length : 0;
+            
+            for (let i = 0; i < totalSets; i++) {
+                const setNum = i + 1;
+                const isCompleted = workoutEx && workoutEx.completedSets[i];
+                const setData = isCompleted ? workoutEx.completedSets[i] : null;
+                
+                const row = document.createElement('div');
+                row.className = `set-row flex items-center justify-between px-4 py-3 rounded-2xl border ${isCompleted ? 'border-emerald-600/40 bg-emerald-950/30' : 'border-zinc-700 bg-zinc-950'}`;
+                
+                if (isCompleted) {
+                    const displayW = toDisplayWeight(setData.weight);
+                    row.innerHTML = `
+                        <div class="flex items-center gap-x-3">
+                            <div class="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center text-xs font-bold text-white">${setNum}</div>
+                            <div>
+                                <span class="font-medium">${displayW || '?'} ${unitLabel()}</span>
+                                <span class="text-xs text-emerald-300 ml-2">× ${setData.reps || '?'} reps</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                            <span class="text-emerald-400 text-xs font-medium">DONE</span>
+                            <button onclick="editSet(${exerciseId}, ${i})" class="text-xs px-3 py-1 bg-zinc-800 rounded-xl hover:bg-zinc-700">Edit</button>
+                        </div>
+                    `;
+                } else {
+                    const isNext = completedSets === i;
+                    row.innerHTML = `
+                        <div class="flex items-center gap-x-3">
+                            <div class="w-7 h-7 rounded-xl ${isNext ? 'bg-emerald-500 text-white' : 'bg-zinc-700 text-zinc-300'} flex items-center justify-center text-xs font-bold">${setNum}</div>
+                            <div class="text-sm text-zinc-400">Set ${setNum} of ${totalSets}</div>
+                        </div>
+                        
+                        <button onclick="logSet(${exerciseId}, ${i})" 
+                                class="px-5 py-1.5 text-xs font-semibold ${isNext ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'} rounded-2xl transition-colors flex items-center gap-x-2">
+                            <span>${isNext ? 'LOG SET' : 'Log'}</span>
+                            ${isNext ? '<i class="fa-solid fa-arrow-right text-xs"></i>' : ''}
+                        </button>
+                    `;
+                }
+                
+                container.appendChild(row);
+            }
+            
+            // + Add Set button
+            const addSetBtn = document.createElement('button');
+            addSetBtn.className = 'w-full mt-2 py-2.5 text-xs font-medium text-emerald-400 border border-dashed border-emerald-700/50 rounded-2xl hover:bg-emerald-950/30 transition-colors flex items-center justify-center gap-x-2';
+            addSetBtn.innerHTML = `<i class="fa-solid fa-plus"></i> <span>Add Extra Set</span>`;
+            addSetBtn.onclick = () => addExtraSet(exerciseId);
+            container.appendChild(addSetBtn);
+        }
+
+        function toggleExerciseCard(exerciseId) {
+            const body = document.getElementById(`body-${exerciseId}`);
+            const chevron = document.getElementById(`chevron-${exerciseId}`);
+            if (!body) return;
+            
+            const isHidden = body.classList.contains('hidden');
+            
+            // Collapse all others first (accordion behavior)
+            document.querySelectorAll('[id^="body-"]').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('[id^="chevron-"]').forEach(el => {
+                el.classList.remove('fa-chevron-up');
+                el.classList.add('fa-chevron-down');
+            });
+            
+            if (isHidden) {
+                body.classList.remove('hidden');
+                if (chevron) {
+                    chevron.classList.remove('fa-chevron-down');
+                    chevron.classList.add('fa-chevron-up');
+                }
+                // Scroll the expanded card into view
+                const card = document.getElementById(`exercise-${exerciseId}`);
+                if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function autoExpandCurrentExercise() {
+            // Find the first exercise that still has incomplete sets
+            const exercises = getCurrentExercises();
+            for (const ex of exercises) {
+                const workoutEx = currentWorkout?.exercises.find(e => e.id === ex.id);
+                const totalSets = (workoutEx && workoutEx.customSets) ? workoutEx.customSets : ex.sets;
+                const completed = workoutEx ? workoutEx.completedSets.filter(Boolean).length : 0;
+                
+                if (completed < totalSets) {
+                    toggleExerciseCard(ex.id);
+                    return;
+                }
+            }
+            // All done — expand the last one
+            if (exercises.length > 0) {
+                toggleExerciseCard(exercises[exercises.length - 1].id);
+            }
+        }
+
+        function addExtraSet(exerciseId) {
+            if (!currentWorkout) return;
+            
+            let workoutEx = currentWorkout.exercises.find(e => e.id === exerciseId);
+            if (!workoutEx) {
+                const exercises = getCurrentExercises();
+                const ex = exercises.find(e => e.id === exerciseId);
+                workoutEx = {
+                    id: exerciseId,
+                    completedSets: [],
+                    customSets: (ex ? ex.sets : 3) + 1
+                };
+                currentWorkout.exercises.push(workoutEx);
+            } else {
+                const currentTotal = workoutEx.customSets || (getCurrentExercises().find(e => e.id === exerciseId)?.sets || 3);
+                workoutEx.customSets = currentTotal + 1;
+            }
+            
+            renderSetsForExercise(exerciseId);
+            showToast('Extra set added!');
+        }
+
+        // ===== Add New Exercise to current workout =====
+        function showAddExercisePicker() {
+            if (!currentWorkout) {
+                alert('Start a workout first');
+                return;
+            }
+            
+            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises];
+            // Remove duplicates by name
+            const seen = new Set();
+            const unique = allEx.filter(ex => {
+                if (seen.has(ex.name)) return false;
+                seen.add(ex.name);
+                return true;
+            });
+            
+            // Already in current day
+            const currentIds = getCurrentExercises().map(e => e.id);
+            
+            let html = `
+                <div class="fixed inset-0 bg-black/70 z-[200] flex items-end md:items-center justify-center p-0 md:p-5" onclick="this.remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 w-full md:max-w-md md:rounded-3xl rounded-t-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-zinc-700 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-xl">Add Exercise</div>
+                                <div class="text-xs text-zinc-400">Choose an exercise to add to this workout</div>
+                            </div>
+                            <button onclick="this.closest('.fixed').remove()" class="text-zinc-400 hover:text-white p-2">
+                                <i class="fa-solid fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-y-auto p-4 space-y-2">
+            `;
+            
+            unique.forEach(ex => {
+                const alreadyIn = currentIds.includes(ex.id);
+                html += `
+                    <button onclick="addExerciseToWorkout(${ex.id}); this.closest('.fixed').remove();" 
+                            class="w-full text-left p-4 rounded-2xl border ${alreadyIn ? 'border-zinc-700 bg-zinc-950 opacity-50' : 'border-zinc-700 bg-zinc-950 hover:border-emerald-600/50'} transition-all"
+                            ${alreadyIn ? 'disabled' : ''}>
+                        <div class="font-medium">${ex.name}</div>
+                        <div class="text-xs text-zinc-400 mt-0.5">${ex.muscles.join(' • ')} • ${ex.sets}×${ex.reps}</div>
+                        ${alreadyIn ? '<div class="text-[10px] text-zinc-500 mt-1">Already in this workout</div>' : ''}
+                    </button>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function addAbsFinisher() {
+            if (!currentWorkout) {
+                alert('Start a workout first');
+                return;
+            }
+            
+            // Open a picker so user can choose which abs exercises to add
+            let html = `
+                <div class="fixed inset-0 bg-black/70 z-[200] flex items-end md:items-center justify-center p-0 md:p-5" id="abs-picker-modal">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 w-full md:max-w-md md:rounded-3xl rounded-t-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-zinc-700 flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-xl">Abs Finisher</div>
+                                <div class="text-xs text-zinc-400">Tap exercises to add them to your workout</div>
+                            </div>
+                            <button onclick="document.getElementById('abs-picker-modal').remove()" class="text-zinc-400 hover:text-white p-2">
+                                <i class="fa-solid fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-y-auto p-4 space-y-2">
+            `;
+            
+            absFinisherExercises.forEach(ex => {
+                const alreadyIn = currentWorkout.exercises.find(e => e.id === ex.id) || 
+                                  (currentWorkout.extraExercises || []).find(e => e.id === ex.id);
+                html += `
+                    <button onclick="addSingleAbsExercise(${ex.id})" 
+                            class="w-full text-left p-4 rounded-2xl border ${alreadyIn ? 'border-emerald-700/50 bg-emerald-950/20' : 'border-zinc-700 bg-zinc-950 hover:border-orange-500/40'} transition-all"
+                            ${alreadyIn ? 'disabled' : ''}>
+                        <div class="font-medium flex items-center justify-between">
+                            <span>${ex.name}</span>
+                            ${alreadyIn ? '<span class="text-xs text-emerald-400">Added</span>' : '<i class="fa-solid fa-plus text-zinc-500"></i>'}
+                        </div>
+                        <div class="text-xs text-zinc-400 mt-0.5">${ex.muscles.join(' • ')} • ${ex.sets}×${ex.reps}</div>
+                    </button>
+                `;
+            });
+            
+            html += `
+                        </div>
+                        <div class="p-4 border-t border-zinc-700">
+                            <button onclick="addAllAbsExercises()" class="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl font-semibold text-sm">
+                                Add All Abs Exercises
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function addSingleAbsExercise(exerciseId) {
+            if (!currentWorkout) return;
+            const ex = absFinisherExercises.find(e => e.id === exerciseId);
+            if (!ex) return;
+            
+            if (!currentWorkout.extraExercises) currentWorkout.extraExercises = [];
+            
+            if (currentWorkout.extraExercises.find(e => e.id === exerciseId) ||
+                currentWorkout.exercises.find(e => e.id === exerciseId)) {
+                showToast('Already added');
+                return;
+            }
+            
+            currentWorkout.extraExercises.push(ex);
+            currentWorkout.exercises.push({ id: ex.id, completedSets: [], customSets: ex.sets });
+            
+            initializeWorkoutUI(getCurrentExercises());
+            showToast(`Added ${ex.name}`);
+            
+            // Refresh the picker if still open
+            const modal = document.getElementById('abs-picker-modal');
+            if (modal) {
+                modal.remove();
+                addAbsFinisher();
+            }
+        }
+
+        function addAllAbsExercises() {
+            if (!currentWorkout) return;
+            if (!currentWorkout.extraExercises) currentWorkout.extraExercises = [];
+            
+            absFinisherExercises.forEach(ex => {
+                if (!currentWorkout.extraExercises.find(e => e.id === ex.id) &&
+                    !currentWorkout.exercises.find(e => e.id === ex.id)) {
+                    currentWorkout.extraExercises.push(ex);
+                    currentWorkout.exercises.push({ id: ex.id, completedSets: [], customSets: ex.sets });
+                }
+            });
+            
+            currentWorkout.absFinisherAdded = true;
+            initializeWorkoutUI(getCurrentExercises());
+            
+            const modal = document.getElementById('abs-picker-modal');
+            if (modal) modal.remove();
+            
+            showToast('All abs exercises added 🔥');
+        }
+
+        function addExerciseToWorkout(exerciseId) {
+            if (!currentWorkout) return;
+            
+            // Find the exercise from all pools
+            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises];
+            const ex = allEx.find(e => e.id === exerciseId);
+            if (!ex) return;
+            
+            // Check if already present
+            if (currentWorkout.exercises.find(e => e.id === exerciseId)) {
+                showToast('Exercise already in workout');
+                return;
+            }
+            
+            // Add to current workout
+            currentWorkout.exercises.push({
+                id: exerciseId,
+                completedSets: [],
+                customSets: ex.sets
+            });
+            
+            // Temporarily add to the current day list for rendering
+            // We need a way to include extra exercises
+            if (!currentWorkout.extraExercises) currentWorkout.extraExercises = [];
+            currentWorkout.extraExercises.push(ex);
+            
+            // Re-render the whole list
+            const baseExercises = getCurrentExercises();
+            const allForRender = [...baseExercises, ...currentWorkout.extraExercises];
+            
+            // Remove duplicates
+            const seen = new Set();
+            const uniqueForRender = allForRender.filter(e => {
+                if (seen.has(e.id)) return false;
+                seen.add(e.id);
+                return true;
+            });
+            
+            initializeWorkoutUI(uniqueForRender);
+            showToast(`Added ${ex.name}`);
+        }
+
+        // Log a set - opens modal (with progressive overload suggestion + unit support)
+        function logSet(exerciseId, setIndex) {
+            if (!currentWorkout) {
+                startNewWorkout(currentDayType);
+            }
+            
+            const exercises = getCurrentExercises();
+            const ex = exercises.find(e => e.id === exerciseId);
+            if (!ex) return;
+            
+            const modal = document.getElementById('set-modal');
+            
+            document.getElementById('modal-exercise-name').textContent = ex.name;
+            document.getElementById('modal-set-info').textContent = `Set ${setIndex + 1} of ${ex.sets} • Target: ${ex.reps} reps`;
+            
+            // Update unit buttons active state
+            document.getElementById('unit-kg-btn').className = weightUnit === 'kg' 
+                ? 'px-4 py-1.5 rounded-lg font-medium bg-emerald-600 text-white transition-colors' 
+                : 'px-4 py-1.5 rounded-lg font-medium text-zinc-400 transition-colors';
+            document.getElementById('unit-lbs-btn').className = weightUnit === 'lbs' 
+                ? 'px-4 py-1.5 rounded-lg font-medium bg-emerald-600 text-white transition-colors' 
+                : 'px-4 py-1.5 rounded-lg font-medium text-zinc-400 transition-colors';
+            
+            document.querySelectorAll('.weight-unit-label').forEach(el => el.textContent = weightUnit);
+            
+            // Pre-fill + Progressive Overload suggestion
+            const workoutEx = currentWorkout.exercises.find(e => e.id === exerciseId);
+            let prevWeightKg = null;
+            let prevReps = '';
+            
+            const lastPerf = getLastPerformance(exerciseId, currentDayType);
+            
+            if (workoutEx && workoutEx.completedSets[setIndex]) {
+                prevWeightKg = workoutEx.completedSets[setIndex].weight;
+                prevReps = workoutEx.completedSets[setIndex].reps || '';
+            } else if (workoutEx && setIndex > 0 && workoutEx.completedSets[setIndex - 1]) {
+                prevWeightKg = workoutEx.completedSets[setIndex - 1].weight;
+            } else if (lastPerf) {
+                prevWeightKg = lastPerf.weight;
+                prevReps = lastPerf.reps || '';
+            }
+            
+            // Show progressive overload suggestion
+            const suggestionBox = document.getElementById('modal-suggestion');
+            const suggestionText = document.getElementById('modal-suggestion-text');
+            
+            if (lastPerf && lastPerf.weight) {
+                const topRep = parseInt((ex.reps.split('-')[1] || ex.reps).replace(/[^0-9]/g, '')) || 12;
+                const lastWeightDisplay = toDisplayWeight(lastPerf.weight);
+                const unit = unitLabel();
+                
+                let message = '';
+                if (lastPerf.reps >= topRep - 1) {
+                    // Hit near top of range → suggest increasing weight
+                    const increase = weightUnit === 'lbs' ? 5 : 2.5;
+                    const suggested = toDisplayWeight(lastPerf.weight) + increase;
+                    message = `Last time: <strong>${lastWeightDisplay} ${unit} × ${lastPerf.reps}</strong><br>You hit the top of the range → Try <strong>${suggested} ${unit}</strong> today!`;
+                } else {
+                    // Still room in the rep range
+                    message = `Last time: <strong>${lastWeightDisplay} ${unit} × ${lastPerf.reps}</strong><br>Try to beat it — aim for more reps or the same weight with better form.`;
+                }
+                
+                suggestionText.innerHTML = message;
+                suggestionBox.classList.remove('hidden');
+            } else {
+                suggestionBox.classList.add('hidden');
+            }
+            
+            // Pre-fill inputs in current unit
+            document.getElementById('modal-weight').value = prevWeightKg !== null ? toDisplayWeight(prevWeightKg) : '';
+            document.getElementById('modal-reps').value = prevReps || (ex.reps.split('-')[0] || '10');
+            
+            // Store which set we're logging
+            modal.dataset.exerciseId = exerciseId;
+            modal.dataset.setIndex = setIndex;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Slight delay before focusing so unit toggle is easy to tap first
+            setTimeout(() => {
+                const input = document.getElementById('modal-weight');
+                if (input && !input.value) {
+                    input.focus();
+                }
+            }, 300);
+        }
+
+        function hideSetModal() {
+            const modal = document.getElementById('set-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function saveSetFromModal() {
+            const modal = document.getElementById('set-modal');
+            const exerciseId = parseInt(modal.dataset.exerciseId);
+            const setIndex = parseInt(modal.dataset.setIndex);
+            
+            const displayWeight = parseFloat(document.getElementById('modal-weight').value) || 0;
+            const weightInKg = toKg(displayWeight); // Always store in kg
+            const reps = parseInt(document.getElementById('modal-reps').value) || 0;
+            
+            if (reps <= 0) {
+                alert("Please enter reps completed");
+                return;
+            }
+            
+            // Save to current workout state (always in kg)
+            saveSetData(exerciseId, setIndex, weightInKg, reps);
+            
+            hideSetModal();
+            
+            // Start rest timer automatically
+            const exercises = getCurrentExercises();
+            const ex = exercises.find(e => e.id === exerciseId);
+            if (ex) startRestTimer(ex.rest, ex.name);
+            
+            // Re-render this exercise's sets
+            renderSetsForExercise(exerciseId);
+            
+            // Check if exercise is complete
+            checkExerciseCompletion(exerciseId);
+        }
+
+        function saveSetData(exerciseId, setIndex, weight, reps) {
+            if (!currentWorkout) return;
+            
+            let workoutEx = currentWorkout.exercises.find(e => e.id === exerciseId);
+            if (!workoutEx) {
+                workoutEx = {
+                    id: exerciseId,
+                    completedSets: []
+                };
+                currentWorkout.exercises.push(workoutEx);
+            }
+            
+            // Ensure array has enough slots
+            while (workoutEx.completedSets.length <= setIndex) {
+                workoutEx.completedSets.push(null);
+            }
+            
+            workoutEx.completedSets[setIndex] = { weight, reps, timestamp: Date.now() };
+            
+            // Update live volume if needed
+            updateLiveStats();
+        }
+
+        function editSet(exerciseId, setIndex) {
+            // Reuse log modal but for editing
+            logSet(exerciseId, setIndex);
+        }
+
+        function checkExerciseCompletion(exerciseId) {
+            const exercises = getCurrentExercises();
+            const ex = exercises.find(e => e.id === exerciseId);
+            const workoutEx = currentWorkout.exercises.find(e => e.id === exerciseId);
+            
+            if (workoutEx && workoutEx.completedSets.length === ex.sets && 
+                workoutEx.completedSets.every(s => s !== null)) {
+                
+                // Mark exercise header as complete visually
+                const card = document.getElementById(`exercise-${exerciseId}`);
+                if (card) {
+                    card.style.borderColor = '#166534';
+                    card.style.boxShadow = '0 0 0 1px #166534';
+                }
+                
+                // Auto scroll to next incomplete exercise
+                setTimeout(() => {
+                    const nextIncomplete = findNextIncompleteExercise();
+                    if (nextIncomplete) {
+                        const nextCard = document.getElementById(`exercise-${nextIncomplete}`);
+                        if (nextCard) {
+                            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }, 800);
+            }
+        }
+
+        function findNextIncompleteExercise() {
+            const exercises = getCurrentExercises();
+            for (let ex of exercises) {
+                const workoutEx = currentWorkout.exercises.find(e => e.id === ex.id);
+                const completed = workoutEx ? workoutEx.completedSets.filter(Boolean).length : 0;
+                if (completed < ex.sets) return ex.id;
+            }
+            return null;
+        }
+
+        function updateLiveStats() {
+            // Could update a live volume counter in header if wanted
+            // For now it's simple
+        }
+
+        // === TIMER FUNCTIONS ===
+        function startRestTimer(seconds, exerciseName = '') {
+            // Stop any existing timer
+            if (timerInterval) clearInterval(timerInterval);
+            
+            const sticky = document.getElementById('sticky-rest-timer');
+            if (sticky) {
+                sticky.classList.remove('hidden');
+            }
+            
+            const nameEl = document.getElementById('sticky-exercise-name');
+            if (nameEl) {
+                nameEl.textContent = exerciseName ? `After ${exerciseName}` : 'Resting...';
+            }
+            
+            timerRemaining = seconds;
+            timerPaused = false;
+            
+            updateTimerDisplay();
+            
+            // Reset pause button
+            const pauseBtn = document.getElementById('sticky-pause-btn');
+            if (pauseBtn) {
+                pauseBtn.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+            }
+            
+            timerInterval = setInterval(() => {
+                if (!timerPaused) {
+                    timerRemaining--;
+                    updateTimerDisplay();
+                    
+                    if (timerRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        timerComplete();
+                    }
+                }
+            }, 1000);
+            
+            if (navigator.vibrate) navigator.vibrate(30);
+        }
+
+        function updateTimerDisplay() {
+            const display = document.getElementById('sticky-timer-display');
+            if (!display) return;
+            
+            display.textContent = timerRemaining;
+            
+            // Color change when low
+            if (timerRemaining <= 15) {
+                display.style.color = '#f87171';
+            } else if (timerRemaining <= 30) {
+                display.style.color = '#fbbf24';
+            } else {
+                display.style.color = '#34d399';
+            }
+        }
+
+        function pauseTimer() {
+            timerPaused = !timerPaused;
+            const btn = document.getElementById('sticky-pause-btn');
+            
+            if (btn) {
+                if (timerPaused) {
+                    btn.innerHTML = `<i class="fa-solid fa-play"></i>`;
+                    btn.classList.add('bg-emerald-600');
+                } else {
+                    btn.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+                    btn.classList.remove('bg-emerald-600');
+                }
+            }
+        }
+
+        function adjustTimer(delta) {
+            timerRemaining = Math.max(10, timerRemaining + delta);
+            updateTimerDisplay();
+        }
+
+        function skipTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            const sticky = document.getElementById('sticky-rest-timer');
+            if (sticky) sticky.classList.add('hidden');
+            
+            showToast("Rest skipped. Ready for next set!");
+        }
+
+        function timerComplete() {
+            // Play beep + vibrate
+            playBeep();
+            if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+            
+            const display = document.getElementById('sticky-timer-display');
+            if (display) {
+                display.textContent = '✓';
+                display.style.color = '#34d399';
+            }
+            
+            setTimeout(() => {
+                const sticky = document.getElementById('sticky-rest-timer');
+                if (sticky) sticky.classList.add('hidden');
+                
+                showToast("Rest complete! Let's go 💪");
+                scrollToNextSet();
+            }, 1500);
+        }
+
+        function playBeep() {
+            try {
+                const audio = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audio.createOscillator();
+                const gain = audio.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 880;
+                gain.gain.value = 0.2;
+                
+                const filter = audio.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+                
+                oscillator.connect(filter);
+                filter.connect(gain);
+                gain.connect(audio.destination);
+                
+                oscillator.start();
+                
+                setTimeout(() => {
+                    gain.gain.linearRampToValueAtTime(0.001, audio.currentTime + 0.6);
+                    setTimeout(() => {
+                        oscillator.stop();
+                        audio.close();
+                    }, 700);
+                }, 280);
+            } catch(e) {}
+        }
+
+        function scrollToNextSet() {
+            // Find next exercise that needs sets logged
+            const nextId = findNextIncompleteExercise();
+            if (nextId) {
+                const card = document.getElementById(`exercise-${nextId}`);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Briefly highlight
+                    card.style.transitionDuration = '100ms';
+                    card.style.boxShadow = '0 0 0 3px rgb(163 163 172 / 0.3)';
+                    setTimeout(() => {
+                        card.style.boxShadow = '';
+                    }, 1400);
+                }
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-600 text-sm px-6 py-3 rounded-3xl flex items-center gap-x-3 shadow-2xl z-[200]`;
+            toast.innerHTML = `
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 200);
+            }, 2400);
+        }
+
+        function startElapsedTimer() {
+            if (elapsedInterval) clearInterval(elapsedInterval);
+            
+            elapsedInterval = setInterval(() => {
+                if (!currentWorkout || !workoutStartTime) return;
+                
+                const elapsedMs = Date.now() - workoutStartTime;
+                const minutes = Math.floor(elapsedMs / 60000);
+                const seconds = Math.floor((elapsedMs % 60000) / 1000);
+                
+                const display = document.getElementById('elapsed-time');
+                if (display) {
+                    display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        // Finish / save workout
+        function finishWorkout() {
+            if (!currentWorkout) {
+                alert("No active workout to finish.");
+                return;
+            }
+            
+            // Calculate final stats
+            let totalVolume = 0;
+            let totalSets = 0;
+            
+            currentWorkout.exercises.forEach(ex => {
+                ex.completedSets.forEach(set => {
+                    if (set && set.weight && set.reps) {
+                        totalVolume += set.weight * set.reps;
+                        totalSets++;
+                    }
+                });
+            });
+            
+            const durationMin = Math.round((Date.now() - workoutStartTime) / 60000) || 55;
+            
+            currentWorkout.totalVolume = Math.round(totalVolume);
+            currentWorkout.durationMin = durationMin;
+            currentWorkout.completedSets = totalSets;
+            
+            // Ask for notes
+            const notes = prompt("Quick notes about the session? (energy, how you felt, PRs, etc.)", "");
+            currentWorkout.notes = notes || '';
+            
+            // Save to history
+            saveWorkoutToHistory(currentWorkout);
+            
+            // Clean up timers
+            if (timerInterval) clearInterval(timerInterval);
+            if (elapsedInterval) clearInterval(elapsedInterval);
+            
+            // Success screen
+            showCompletionScreen(currentWorkout);
+            
+            // Reset
+            currentWorkout = null;
+            workoutStartTime = null;
+        }
+
+        function saveWorkoutToHistory(workout) {
+            let history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            history.unshift(workout); // newest first
+            storage.set('stronglean_workouts', JSON.stringify(history));
+            
+            // Update dashboard if visible
+            updateDashboardStats();
+        }
+
+        function showCompletionScreen(workout) {
+            const container = document.getElementById('exercises-container');
+            const dayLabel = workout.type === 'push' ? 'PUSH DAY' : 
+                             workout.type === 'pull' ? 'PULL DAY' : 
+                             workout.type === 'upper' ? 'UPPER BODY' : 
+                             workout.type === 'lower' ? 'LOWER BODY' : 
+                             workout.type === 'abs' ? 'ABS ONLY' : 'WORKOUT';
+            
+            // Simple progression note
+            let progressionNote = '';
+            if (workout.totalVolume > 8000) {
+                progressionNote = `<div class="text-emerald-400 text-xs mt-1">Strong volume today — keep progressing!</div>`;
+            }
+            
+            container.innerHTML = `
+                <div class="text-center py-10 px-6 bg-zinc-900 border border-emerald-600/40 rounded-3xl">
+                    <div class="mx-auto w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-tachometer-alt text-5xl"></i>
+                    </div>
+                    
+                    <div class="text-emerald-400 text-xs tracking-[2px] font-medium">${dayLabel} COMPLETE</div>
+                    <h3 class="font-display text-4xl tracking-tighter mt-1">Amazing work!</h3>
+                    <p class="text-emerald-300 mt-1">You got stronger today 💪</p>
+                    ${progressionNote}
+                    
+                    <div class="grid grid-cols-3 gap-4 my-8 max-w-md mx-auto">
+                        <div class="bg-zinc-950 border border-zinc-700 rounded-2xl p-4">
+                            <div class="text-xs text-zinc-400">DURATION</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">${workout.durationMin}</div>
+                            <div class="text-xs">minutes</div>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-700 rounded-2xl p-4">
+                            <div class="text-xs text-zinc-400">VOLUME</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">${workout.totalVolume}</div>
+                            <div class="text-xs">kg lifted</div>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-700 rounded-2xl p-4">
+                            <div class="text-xs text-zinc-400">SETS</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">${workout.completedSets || 0}</div>
+                            <div class="text-xs">completed</div>
+                        </div>
+                    </div>
+                    
+                    ${workout.notes ? `
+                        <div class="max-w-sm mx-auto mb-8 text-left bg-zinc-950 border border-zinc-700 p-4 rounded-2xl text-sm">
+                            <div class="text-xs text-zinc-400 mb-1">YOUR NOTES</div>
+                            <div>"${workout.notes}"</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button onclick="showSection('history'); document.getElementById('exercises-container').innerHTML = '';" 
+                                class="px-8 py-3.5 border border-white/20 hover:bg-white/5 rounded-3xl text-sm font-medium flex items-center justify-center gap-x-2">
+                            <i class="fa-solid fa-history"></i>
+                            <span>VIEW HISTORY</span>
+                        </button>
+                        
+                        <button onclick="location.reload()" 
+                                class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-sm font-semibold flex items-center justify-center gap-x-2">
+                            <i class="fa-solid fa-redo"></i>
+                            <span>START NEW SESSION</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-6 text-[10px] text-zinc-500">Next time: Check the progressive overload suggestions in the log modal</div>
+                </div>
+            `;
+            
+            // Hide timer UI
+            const sticky = document.getElementById('sticky-rest-timer');
+            if (sticky) sticky.classList.add('hidden');
+            document.getElementById('workout-timer').classList.add('hidden');
+        }
+
+        // Load history
+        function loadHistory() {
+            const container = document.getElementById('history-list');
+            const emptyState = document.getElementById('history-empty');
+            container.innerHTML = '';
+            
+            const history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            
+            if (history.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+            
+            history.forEach((workout, idx) => {
+                const date = new Date(workout.date);
+                const dateStr = date.toLocaleDateString('en-US', { 
+                    weekday: 'short', month: 'short', day: 'numeric' 
+                });
+                const dayTypeLabel = workout.type === 'push' ? 'PUSH' : workout.type === 'pull' ? 'PULL' : '';
+                const typeColor = workout.type === 'push' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400';
+                
+                const card = document.createElement('div');
+                card.className = `bg-zinc-900 border border-zinc-700 rounded-3xl p-5 flex flex-col md:flex-row md:items-center gap-y-4 gap-x-6`;
+                
+                card.innerHTML = `
+                    <div class="flex-1">
+                        <div class="flex items-center gap-x-3">
+                            <div class="font-semibold">${dateStr}</div>
+                            ${dayTypeLabel ? `<div class="text-xs px-3 py-px ${typeColor} rounded-full font-medium">${dayTypeLabel} DAY</div>` : ''}
+                            <div class="text-xs px-3 py-px bg-zinc-800 text-zinc-300 rounded-full">${workout.durationMin || 55} min</div>
+                        </div>
+                        <div class="mt-1 text-sm text-zinc-400">${workout.completedSets || 0} sets completed • ${workout.totalVolume || 0} kg total volume</div>
+                        
+                        ${workout.notes ? `<div class="mt-2 text-xs italic text-zinc-400">"${workout.notes}"</div>` : ''}
+                    </div>
+                    
+                    <div class="flex items-center gap-x-2">
+                        <button onclick="viewWorkoutDetail(${idx})" 
+                                class="px-5 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 rounded-2xl flex items-center gap-x-2">
+                            <i class="fa-solid fa-search"></i>
+                            <span>Details</span>
+                        </button>
+                        
+                        <button onclick="deleteWorkout(${idx})" 
+                                class="px-4 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-2xl">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function viewWorkoutDetail(index) {
+            const history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            const workout = history[index];
+            if (!workout) return;
+            
+            let html = `<div class="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4" onclick="this.remove()">
+                <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-700 w-full max-w-lg rounded-3xl p-7 max-h-[85vh] overflow-auto">
+                    <div class="flex justify-between mb-5">
+                        <div>
+                            <div class="font-semibold text-xl">${new Date(workout.date).toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'})}</div>
+                            <div class="text-xs text-zinc-400">${workout.durationMin} minutes • ${workout.totalVolume} kg lifted ${workout.type ? `• ${workout.type.toUpperCase()} DAY` : ''}</div>
+                        </div>
+                        <button onclick="event.target.closest('.fixed').remove()" class="text-xl text-zinc-400 hover:text-white">×</button>
+                    </div>`;
+            
+            if (workout.exercises && workout.exercises.length > 0) {
+                html += `<div class="space-y-5">`;
+                
+                const allExercises = [...pushExercises, ...pullExercises];
+                workout.exercises.forEach(exLog => {
+                    const exInfo = allExercises.find(e => e.id === exLog.id) || { name: 'Exercise' };
+                    
+                    html += `<div>
+                        <div class="font-medium flex items-baseline justify-between">
+                            <span>${exInfo.name}</span>
+                            <span class="text-xs text-emerald-400">${exLog.completedSets.length} / ${exInfo.sets} sets</span>
+                        </div>`;
+                    
+                    exLog.completedSets.forEach((set, i) => {
+                        if (set) {
+                            html += `<div class="text-xs flex justify-between py-px px-1 text-zinc-300">
+                                <span>Set ${i+1}</span> 
+                                <span class="font-mono">${set.weight} kg × ${set.reps} reps</span>
+                            </div>`;
+                        }
+                    });
+                    
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+            }
+            
+            if (workout.notes) {
+                html += `<div class="mt-6 pt-5 border-t border-zinc-700 text-xs">
+                    <span class="text-zinc-400">Notes: </span> <span class="italic">"${workout.notes}"</span>
+                </div>`;
+            }
+            
+            html += `</div></div>`;
+            
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function deleteWorkout(index) {
+            if (!confirm("Delete this workout from history?")) return;
+            
+            let history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            history.splice(index, 1);
+            storage.set('stronglean_workouts', JSON.stringify(history));
+            
+            loadHistory();
+            updateDashboardStats();
+        }
+
+        function clearHistory() {
+            if (!confirm("Clear ALL workout history? This cannot be undone.")) return;
+            storage.remove('stronglean_workouts');
+            loadHistory();
+            updateDashboardStats();
+        }
+
+        // Show exercise info / form cues + Alternatives (with swap option)
+        function showExerciseInfo(exerciseId) {
+            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises];
+            let ex = allEx.find(e => e.id === exerciseId);
+            
+            // Apply override if this exercise was swapped
+            const override = (currentWorkout && currentWorkout.overrides && currentWorkout.overrides[exerciseId]) 
+                ? currentWorkout.overrides[exerciseId] : null;
+            
+            if (override) {
+                ex = { 
+                    ...ex, 
+                    name: override.name, 
+                    description: override.description, 
+                    cue: override.cue 
+                };
+            }
+            
+            if (!ex) return;
+            
+            const hasAlternatives = ex.alternatives && ex.alternatives.length > 0;
+            
+            let altHTML = '';
+            if (hasAlternatives) {
+                altHTML = `
+                    <div class="pt-4 border-t border-zinc-700">
+                        <div class="uppercase text-xs tracking-widest text-emerald-400 mb-2">ALTERNATIVES (if equipment busy)</div>
+                        <div class="space-y-2">
+                            ${ex.alternatives.map(alt => `
+                                <div class="flex items-center justify-between bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2 text-sm">
+                                    <span>${alt}</span>
+                                    ${currentWorkout ? `
+                                        <button onclick="swapExerciseInWorkout(${exerciseId}, '${alt}'); event.target.closest('.fixed').remove();" 
+                                                class="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">
+                                            Swap In
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const modalHTML = `
+                <div class="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-5" onclick="this.remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-600 w-full max-w-md rounded-3xl overflow-hidden">
+                        <div class="px-6 pt-6 pb-4 bg-zinc-950">
+                            <div class="font-semibold text-2xl">${ex.name}</div>
+                            <div class="flex gap-2 mt-3 flex-wrap">
+                                ${ex.muscles.map(m => `<span class="px-3 py-0.5 text-xs rounded-full bg-white/10">${m}</span>`).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="p-6 text-sm space-y-5">
+                            <div>
+                                <div class="uppercase text-xs tracking-widest text-emerald-400 mb-1">HOW TO PERFORM</div>
+                                <p class="leading-relaxed text-zinc-200">${ex.description}</p>
+                            </div>
+                            
+                            <div>
+                                <div class="uppercase text-xs tracking-widest text-emerald-400 mb-1">KEY CUE</div>
+                                <p class="text-emerald-200 font-medium">"${ex.cue}"</p>
+                            </div>
+                            
+                            ${altHTML}
+                            
+                            <div class="pt-3 border-t border-zinc-700">
+                                <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name)}+proper+form+athlean+x+jeff+nippard" target="_blank"
+                                   class="w-full flex items-center justify-center gap-x-2 py-3.5 bg-red-600 hover:bg-red-500 active:bg-red-700 transition-colors text-white rounded-3xl text-sm font-semibold">
+                                    <i class="fa-brands fa-youtube mr-2"></i>
+                                    <span>Watch Proper Form Video</span>
+                                </a>
+                                <p class="text-[10px] text-center text-zinc-500 mt-1.5">Best results: Search for Athlean-X or Jeff Nippard form tutorials</p>
+                            </div>
+                        </div>
+                        
+                        <div class="px-6 py-4 border-t border-zinc-700 flex justify-end">
+                            <button onclick="event.target.closest('.fixed').remove()" 
+                                    class="px-6 py-2 text-xs font-medium">CLOSE</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Swap exercise in current active workout (for flexibility)
+        function swapExerciseInWorkout(oldExerciseId, newName) {
+            if (!currentWorkout) return;
+            
+            const exercises = getCurrentExercises();
+            const oldEx = exercises.find(e => e.id === oldExerciseId);
+            if (!oldEx) return;
+            
+            // Create override for clean name + video link update (no ID changing)
+            if (!currentWorkout.overrides) currentWorkout.overrides = {};
+            
+            currentWorkout.overrides[oldExerciseId] = {
+                name: newName,
+                description: `Replacement for ${oldEx.name}. Focus on same movement pattern.`,
+                cue: "Match the original cues as closely as possible."
+            };
+            
+            // Re-render immediately so the card shows the new name and Form Video works
+            const container = document.getElementById('exercises-container');
+            container.innerHTML = '';
+            initializeWorkoutUI(exercises);
+            
+            showToast(`Swapped to ${newName}. Great choice!`);
+        }
+
+        // Keyboard support
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    const workoutSection = document.getElementById('workout');
+                    if (workoutSection.classList.contains('active')) {
+                        // focus first log button or something
+                    } else {
+                        showSection('workout');
+                    }
+                }
+                
+                if (e.key.toLowerCase() === '?' && document.getElementById('set-modal').classList.contains('flex')) {
+                    e.preventDefault();
+                    hideSetModal();
+                }
+            });
+            
+            // Allow Enter in modal to save
+            document.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && document.getElementById('set-modal').classList.contains('flex')) {
+                    e.preventDefault();
+                    saveSetFromModal();
+                }
+            });
+        }
+
+        // Initialize everything
+        function initializeApp() {
+            initializeTailwind();
+            
+            // Show dashboard by default
+            document.getElementById('dashboard').classList.add('active');
+            updateNavActive('dashboard');
+            
+            // Load initial stats
+            updateDashboardStats();
+            
+            // Preload some demo data if empty (for nice first impression)
+            const existing = storage.get('stronglean_workouts');
+            if (!existing) {
+                // Optional: seed with one example workout for demo purposes
+                // Comment out in production if not wanted
+                seedDemoData();
+            }
+            
+            setupKeyboardShortcuts();
+            setupPWAInstall();
+            
+            // Bind Back button reliably
+            const backBtn = document.getElementById('workout-back-btn');
+            if (backBtn) {
+                backBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        if (currentWorkout) {
+                            if (!confirm('Cancel this workout? Progress will not be saved.')) return;
+                            currentWorkout = null;
+                            currentDayType = null;
+                            try { if (timerInterval) clearInterval(timerInterval); } catch(err) {}
+                            try { if (elapsedInterval) clearInterval(elapsedInterval); } catch(err) {}
+                            var s = document.getElementById('sticky-rest-timer'); if (s) s.classList.add('hidden');
+                            var a = document.getElementById('sticky-actions'); if (a) a.classList.add('hidden');
+                            var t = document.getElementById('workout-timer'); if (t) t.classList.add('hidden');
+                        }
+                        document.querySelectorAll('.section').forEach(function(el) { el.classList.remove('active'); });
+                        var dash = document.getElementById('dashboard');
+                        if (dash) dash.classList.add('active');
+                        try { updateNavActive('dashboard'); } catch(err) {}
+                    } catch (err) {
+                        alert('Back failed: ' + err.message);
+                    }
+                });
+            }
+            
+            // Bind Cancel button in sticky bar
+            const stickyActions = document.getElementById('sticky-actions');
+            if (stickyActions) {
+                const cancelBtn = stickyActions.querySelector('button');
+                // Cancel is the first button - already has inline handler as backup
+            }
+            
+            // Register Service Worker (safely — skips if sandboxed)
+            try {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(() => console.log('[PWA] Service Worker registered'))
+                        .catch(err => console.log('[PWA] SW registration failed', err));
+                }
+            } catch (e) {
+                console.log('[PWA] Service Worker not available in this context');
+            }
+            
+            console.log('%c[StrongLean] Interactive workout app initialized successfully', 'color:#64748b');
+        }
+
+        function seedDemoData() {
+            // Only seed if user hasn't used before - nice for first open
+            const demoWorkout = {
+                date: new Date(Date.now() - 1000 * 3600 * 26).toISOString(),
+                durationMin: 58,
+                totalVolume: 12480,
+                completedSets: 27,
+                notes: "Felt strong today! Increased leg press by 10kg.",
+                exercises: [
+                    { id: 1, completedSets: [{weight: 120, reps: 10}, {weight: 120, reps: 10}, {weight: 130, reps: 8}, {weight: 130, reps: 8}] },
+                    { id: 2, completedSets: [{weight: 40, reps: 9}, {weight: 40, reps: 8}, {weight: 42.5, reps: 8}, {weight: 42.5, reps: 7}] },
+                    { id: 3, completedSets: [{weight: 16, reps: 10}, {weight: 16, reps: 9}, {weight: 18, reps: 8}, {weight: 18, reps: 8}] },
+                    { id: 4, completedSets: [{weight: 45, reps: 10}, {weight: 50, reps: 10}, {weight: 50, reps: 9}, {weight: 50, reps: 9}] },
+                    { id: 5, completedSets: [{weight: 10, reps: 10}, {weight: 12, reps: 8}, {weight: 12, reps: 8}] },
+                    { id: 6, completedSets: [{weight: 35, reps: 11}, {weight: 35, reps: 10}, {weight: 37.5, reps: 10}] },
+                    { id: 7, completedSets: [{weight: 12, reps: 9}, {weight: 12, reps: 8}, {weight: 14, reps: 8}] },
+                    { id: 8, completedSets: [{weight: 15, reps: 10}, {weight: 15, reps: 10}, {weight: 15, reps: 12}] }
+                ]
+            };
+            
+            storage.set('stronglean_workouts', JSON.stringify([demoWorkout]));
+            updateDashboardStats();
+        }
+
+        // Boot app
+        window.onload = function() {
+            initializeApp();
+        };
+        
+        // Expose some functions for debugging if needed
+        window.StrongLean = { startNewWorkout, showSection };
+    </script>
+    <!-- Sticky Bottom Action Bar - always visible during workout -->
+    <div id="sticky-actions" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 px-3 py-3 safe-area-bottom">
+        <div class="max-w-6xl mx-auto flex items-center gap-2">
+            <button type="button"
+                    class="py-3 px-3 border border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/40 rounded-2xl text-xs font-medium flex items-center justify-center gap-x-1.5"
+                    onclick="(function(){try{if(typeof currentWorkout!=='undefined'&&currentWorkout){if(!confirm('Cancel this workout? Progress will not be saved.'))return;}currentWorkout=null;currentDayType=null;try{if(timerInterval)clearInterval(timerInterval)}catch(e){}try{if(elapsedInterval)clearInterval(elapsedInterval)}catch(e){}var s=document.getElementById('sticky-rest-timer');if(s)s.classList.add('hidden');var a=document.getElementById('sticky-actions');if(a)a.classList.add('hidden');var t=document.getElementById('workout-timer');if(t)t.classList.add('hidden');document.querySelectorAll('.section').forEach(function(el){el.classList.remove('active')});var d=document.getElementById('dashboard');if(d)d.classList.add('active');}catch(err){alert('Cancel error: '+err.message)}})()">
+                <i class="fa-solid fa-times"></i>
+                <span>Cancel</span>
+            </button>
+            <button type="button" onclick="addAbsFinisher()" 
+                    class="py-3 px-3 border border-zinc-700 text-zinc-300 hover:bg-zinc-900 rounded-2xl text-xs font-medium flex items-center justify-center gap-x-1.5">
+                <i class="fa-solid fa-fire text-orange-400"></i>
+                <span>Abs</span>
+            </button>
+            <button type="button" onclick="showAddExercisePicker()" 
+                    class="flex-1 py-3 border border-zinc-700 text-zinc-300 hover:bg-zinc-900 rounded-2xl text-sm font-medium flex items-center justify-center gap-x-2">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add</span>
+            </button>
+            <button type="button" onclick="finishWorkout()" 
+                    class="flex-[1.3] py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-x-2">
+                <i class="fa-solid fa-flag-checkered"></i>
+                <span>Complete</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sticky Bottom Rest Timer (sits above the action bar when active) -->
+    <div id="sticky-rest-timer" class="hidden fixed bottom-[68px] left-0 right-0 z-50 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 px-4 py-3 safe-area-bottom">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <div class="flex items-center gap-x-3">
+                <div class="relative">
+                    <div id="sticky-timer-display" class="text-3xl font-semibold tabular-nums text-emerald-400 min-w-[70px] text-center">90</div>
+                    <div class="text-[10px] text-zinc-500 text-center -mt-1">REST</div>
+                </div>
+                <div class="hidden sm:block">
+                    <div class="text-sm font-medium" id="sticky-exercise-name">Resting...</div>
+                    <div class="text-xs text-zinc-400">Next set ready when timer ends</div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-2">
+                <button onclick="adjustTimer(-15)" class="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-xs">-15</button>
+                <button onclick="adjustTimer(15)" class="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-xs">+15</button>
+                <button onclick="pauseTimer()" id="sticky-pause-btn" class="w-10 h-10 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center">
+                    <i class="fa-solid fa-pause"></i>
+                </button>
+                <button onclick="skipTimer()" class="px-4 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center gap-x-1.5">
+                    <i class="fa-solid fa-forward"></i>
+                    <span>Skip</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
