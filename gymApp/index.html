@@ -1175,19 +1175,21 @@
             }
         }
 
-        // Show day selector - now with Push, Pull, Upper, Lower for Planet Fitness flexibility
         // Library functions
         let allLibraryExercises = [];
 
         function showLibrary() {
-            showSection('library');
             const container = document.getElementById('library-list');
+            if (!container) return;
             container.innerHTML = '';
 
-            // Combine all exercises
+            // Combine all exercises including abs
             allLibraryExercises = [
-                ...pushExercises, ...pullExercises, 
-                ...upperExercises, ...lowerExercises
+                ...pushExercises,
+                ...pullExercises,
+                ...upperExercises,
+                ...lowerExercises,
+                ...absFinisherExercises
             ];
 
             // Remove duplicates by name
@@ -1197,6 +1199,11 @@
                 seen.add(ex.name);
                 return true;
             });
+
+            if (allLibraryExercises.length === 0) {
+                container.innerHTML = `<div class="text-center text-zinc-400 py-12">No exercises found. Please reload the page.</div>`;
+                return;
+            }
 
             renderLibraryCards(allLibraryExercises);
         }
