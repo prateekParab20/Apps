@@ -271,16 +271,17 @@
                 <h2 class="font-display text-4xl tracking-tighter">4 Dedicated Workouts</h2>
                 <p class="mt-3 text-zinc-300 max-w-md">Push • Pull • Upper Body • Lower Body — clean &amp; focused</p>
                 
-                <div class="flex items-center gap-x-4 mt-6">
+                <div class="flex flex-wrap items-center gap-3 mt-6">
                     <button onclick="showSection('workout')" 
                             class="px-8 py-4 bg-white text-zinc-950 font-semibold rounded-3xl flex items-center gap-x-3 hover:bg-zinc-100 active:scale-[0.985] transition-all shadow-xl shadow-indigo-950/50">
                         <i class="fa-solid fa-play mr-1"></i>
                         <span>START WORKOUT</span>
                     </button>
                     
-                    <button onclick="showSection('workout')" 
+                    <button onclick="showSection('library')" 
                             class="px-6 py-4 border border-white/30 hover:bg-white/5 transition-colors rounded-3xl text-sm font-medium flex items-center gap-x-2">
-                        <span>View Plan</span>
+                        <i class="fa-solid fa-book"></i>
+                        <span>Exercise Library</span>
                     </button>
                 </div>
             </div>
@@ -374,12 +375,22 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="font-display text-3xl tracking-tight">Exercise Library</h2>
-                <p class="text-zinc-400">Planet Fitness friendly variations. Tap any exercise for details &amp; to swap into your current workout.</p>
+                <p class="text-zinc-400">Gym · Home · Pull-up bar · 40–50+ friendly. <span id="library-count" class="text-emerald-400 font-medium"></span></p>
             </div>
         </div>
 
+        <!-- Shown when user opened Library from Swap -->
+        <div id="library-swap-banner" class="hidden mb-4 p-4 rounded-2xl bg-sky-950/50 border border-sky-600/40 flex items-center justify-between gap-3">
+            <div class="text-sm text-sky-200">
+                <strong>Swap mode</strong> — tap any exercise below to replace the current one
+            </div>
+            <button onclick="cancelLibrarySwapMode()" class="text-xs px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white flex-shrink-0">
+                Cancel
+            </button>
+        </div>
+
         <div class="mb-4">
-            <input id="library-search" type="text" placeholder="Search exercises (e.g. leg press, row, shoulder)..." 
+            <input id="library-search" type="text" placeholder="Search by name, muscle, or category (Home, Gym, Pull-up Bar)..." 
                    onkeyup="filterLibrary()" 
                    class="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 text-sm outline-none">
         </div>
@@ -565,6 +576,675 @@
                 cue: "Squeeze glutes and brace abs. Don't let hips sag.",
                 alternatives: ["Side Plank", "Bird Dog", "Hollow Hold"]
             }
+        ];
+
+        // MASTER EXERCISE LIBRARY — Gym, Home, Pull-up bar, 40–50+ friendly (searchable)
+        // Used by Library tab and Swap → pick from library
+        const extraLibraryExercises = [
+            { id: 700, name: "Flat Dumbbell Press", muscles: ["Chest", "Triceps"], sets: 3, reps: "8-12", rest: 90,
+              description: "Lie on bench, press dumbbells up and slightly in.",
+              cue: "Elbows ~45°. Full stretch at bottom.",
+              alternatives: ["Machine Chest Press", "Push-Ups", "Smith Bench"], category: "Gym" },
+            { id: 701, name: "Incline Dumbbell Press", muscles: ["Upper Chest", "Shoulders"], sets: 3, reps: "8-12", rest: 90,
+              description: "Bench at 30–45°. Press dumbbells up.",
+              cue: "Don't flare elbows wide.",
+              alternatives: ["Incline Machine Press", "Low-to-High Cable Fly"], category: "Gym" },
+            { id: 702, name: "Decline Push-Up", muscles: ["Chest", "Triceps"], sets: 3, reps: "8-12", rest: 90,
+              description: "Feet elevated, hands on floor. Lower chest.",
+              cue: "Core tight. Controlled tempo.",
+              alternatives: ["Push-Up", "Incline Push-Up"], category: "Home" },
+            { id: 703, name: "Cable Chest Fly", muscles: ["Chest"], sets: 3, reps: "8-12", rest: 90,
+              description: "Cables high or mid, hug motion bringing handles together.",
+              cue: "Slight elbow bend. Squeeze at center.",
+              alternatives: ["Dumbbell Fly", "Pec Deck"], category: "Gym" },
+            { id: 704, name: "Pec Deck / Machine Fly", muscles: ["Chest"], sets: 3, reps: "8-12", rest: 90,
+              description: "Machine fly with arms slightly bent.",
+              cue: "Don't lock out hard. Squeeze chest.",
+              alternatives: ["Cable Fly", "Dumbbell Fly"], category: "Gym" },
+            { id: 705, name: "Push-Up", muscles: ["Chest", "Triceps", "Core"], sets: 3, reps: "8-12", rest: 90,
+              description: "Full plank position, lower and press.",
+              cue: "Body straight. Elbows 45°.",
+              alternatives: ["Knee Push-Up", "Incline Push-Up"], category: "Home" },
+            { id: 706, name: "Diamond Push-Up", muscles: ["Triceps", "Chest"], sets: 3, reps: "8-12", rest: 90,
+              description: "Hands close forming diamond under chest.",
+              cue: "Elbows close to body.",
+              alternatives: ["Close-Grip Bench", "Tricep Pushdown"], category: "Home" },
+            { id: 707, name: "Svend Press", muscles: ["Chest"], sets: 3, reps: "8-12", rest: 90,
+              description: "Press two plates together in front of chest.",
+              cue: "Constant squeeze pressure.",
+              alternatives: ["Cable Fly", "Push-Up"], category: "Gym" },
+            { id: 708, name: "Floor Press", muscles: ["Chest", "Triceps"], sets: 3, reps: "8-12", rest: 90,
+              description: "Lie on floor, press dumbbells. Limited range, shoulder-friendly.",
+              cue: "Pause when triceps touch floor.",
+              alternatives: ["Dumbbell Bench", "Machine Press"], category: "Home" },
+            { id: 709, name: "Resistance Band Chest Press", muscles: ["Chest", "Triceps"], sets: 3, reps: "8-12", rest: 90,
+              description: "Band behind back, press forward.",
+              cue: "Control the return.",
+              alternatives: ["Push-Up", "Machine Press"], category: "Home" },
+            { id: 710, name: "Barbell Bent-Over Row", muscles: ["Mid Back", "Lats"], sets: 3, reps: "8-12", rest: 90,
+              description: "Hinge, pull bar to lower chest/abdomen.",
+              cue: "Flat back. Squeeze blades.",
+              alternatives: ["Cable Row", "Dumbbell Row"], category: "Gym" },
+            { id: 711, name: "Pendlay Row", muscles: ["Back", "Lats"], sets: 3, reps: "8-12", rest: 90,
+              description: "Explosive row from floor each rep.",
+              cue: "Reset on floor every rep.",
+              alternatives: ["Bent-Over Row", "T-Bar Row"], category: "Gym" },
+            { id: 712, name: "T-Bar Row", muscles: ["Mid Back", "Lats"], sets: 3, reps: "8-12", rest: 90,
+              description: "V-handle on landmine or T-bar machine.",
+              cue: "Chest up. Full squeeze.",
+              alternatives: ["Cable Row", "Chest-Supported Row"], category: "Gym" },
+            { id: 713, name: "Wide-Grip Lat Pulldown", muscles: ["Lats"], sets: 3, reps: "8-12", rest: 90,
+              description: "Pull bar to upper chest with wide grip.",
+              cue: "Lean back slightly. Elbows down.",
+              alternatives: ["Pull-Up", "Neutral-Grip Pulldown"], category: "Gym" },
+            { id: 714, name: "Neutral-Grip Lat Pulldown", muscles: ["Lats", "Biceps"], sets: 3, reps: "8-12", rest: 90,
+              description: "Parallel handles, pull to chest.",
+              cue: "Think elbows to hips.",
+              alternatives: ["Lat Pulldown", "Assisted Pull-Up"], category: "Gym" },
+            { id: 715, name: "Straight-Arm Pulldown", muscles: ["Lats"], sets: 3, reps: "8-12", rest: 90,
+              description: "Cable high, straight arms pull down to thighs.",
+              cue: "Slight bend only. Feel lats.",
+              alternatives: ["Lat Pulldown", "Dumbbell Pullover"], category: "Gym" },
+            { id: 716, name: "Dumbbell Pullover", muscles: ["Lats", "Chest"], sets: 3, reps: "8-12", rest: 90,
+              description: "Lie on bench, arc dumbbell over head then to chest.",
+              cue: "Slight elbow bend. Controlled.",
+              alternatives: ["Straight-Arm Pulldown"], category: "Gym" },
+            { id: 717, name: "Machine Row", muscles: ["Mid Back"], sets: 3, reps: "8-12", rest: 90,
+              description: "Seated machine row, chest on pad if available.",
+              cue: "Don't shrug. Squeeze hard.",
+              alternatives: ["Cable Row", "Chest-Supported Row"], category: "Gym" },
+            { id: 718, name: "Single-Arm Cable Row", muscles: ["Lats", "Mid Back"], sets: 3, reps: "8-12", rest: 90,
+              description: "One-arm cable row, twist slightly at end optional.",
+              cue: "Stable torso.",
+              alternatives: ["Dumbbell Row", "Seated Cable Row"], category: "Gym" },
+            { id: 719, name: "Meadows Row", muscles: ["Lats", "Mid Back"], sets: 3, reps: "8-12", rest: 90,
+              description: "Landmine single-arm row, staggered stance.",
+              cue: "Elbow high. Stretch at bottom.",
+              alternatives: ["Dumbbell Row", "Cable Row"], category: "Gym" },
+            { id: 720, name: "Superman Hold", muscles: ["Lower Back", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Lie face down, lift arms and legs, hold.",
+              cue: "Don't hyperextend neck.",
+              alternatives: ["Bird Dog", "Back Extension"], category: "Home" },
+            { id: 721, name: "Back Extension (Machine/Roman)", muscles: ["Lower Back", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Hinge at hips on back extension bench.",
+              cue: "Don't round or over-arch.",
+              alternatives: ["Superman", "Good Morning"], category: "Gym" },
+            { id: 722, name: "Good Morning", muscles: ["Hamstrings", "Lower Back"], sets: 3, reps: "8-12", rest: 90,
+              description: "Barbell on back, hinge until torso near parallel.",
+              cue: "Soft knees. Flat back.",
+              alternatives: ["RDL", "Back Extension"], category: "Gym" },
+            { id: 723, name: "Resistance Band Row", muscles: ["Back", "Biceps"], sets: 3, reps: "8-12", rest: 90,
+              description: "Band anchored, pull to waist.",
+              cue: "Squeeze shoulder blades.",
+              alternatives: ["Dumbbell Row", "Inverted Row"], category: "Home" },
+            { id: 724, name: "TRX / Suspension Row", muscles: ["Back", "Core"], sets: 3, reps: "8-12", rest: 90,
+              description: "Body angle under straps, pull chest up.",
+              cue: "Body straight as a plank.",
+              alternatives: ["Inverted Row", "Cable Row"], category: "Gym" },
+            { id: 725, name: "Arnold Press", muscles: ["Shoulders", "Triceps"], sets: 3, reps: "10-15", rest: 60,
+              description: "Rotate palms during press from front to forward.",
+              cue: "Full control. No excessive arch.",
+              alternatives: ["Dumbbell Shoulder Press", "Machine Press"], category: "Gym" },
+            { id: 726, name: "Lateral Raise (Dumbbell)", muscles: ["Side Delts"], sets: 3, reps: "10-15", rest: 60,
+              description: "Raise dumbbells to side until parallel.",
+              cue: "Lead with elbows. Slight lean OK.",
+              alternatives: ["Cable Lateral Raise", "Machine Lateral"], category: "Gym" },
+            { id: 727, name: "Front Raise", muscles: ["Front Delts"], sets: 3, reps: "10-15", rest: 60,
+              description: "Raise weight in front to shoulder height.",
+              cue: "Don't swing. Controlled lower.",
+              alternatives: ["Lateral Raise", "Shoulder Press"], category: "Gym" },
+            { id: 728, name: "Rear Delt Fly (Dumbbell)", muscles: ["Rear Delts"], sets: 3, reps: "10-15", rest: 60,
+              description: "Bent over, raise arms out to sides.",
+              cue: "Thumbs slightly down or neutral.",
+              alternatives: ["Face Pull", "Reverse Pec Deck"], category: "Gym" },
+            { id: 729, name: "Reverse Pec Deck", muscles: ["Rear Delts"], sets: 3, reps: "10-15", rest: 60,
+              description: "Machine reverse fly facing the pad.",
+              cue: "Squeeze rear delts at end.",
+              alternatives: ["Face Pull", "Band Pull-Apart"], category: "Gym" },
+            { id: 730, name: "Upright Row (wide)", muscles: ["Side Delts", "Traps"], sets: 3, reps: "10-15", rest: 60,
+              description: "Pull bar/DB to lower chest with wide grip.",
+              cue: "Elbows high but not above shoulders if painful.",
+              alternatives: ["Lateral Raise", "Face Pull"], category: "Gym" },
+            { id: 731, name: "Cable Y-Raise", muscles: ["Shoulders", "Upper Back"], sets: 3, reps: "10-15", rest: 60,
+              description: "Raise arms in Y shape against light cable/band.",
+              cue: "Thumb up. Slow tempo.",
+              alternatives: ["Lateral Raise", "Face Pull"], category: "Gym" },
+            { id: 732, name: "Landmine Press", muscles: ["Shoulders", "Chest"], sets: 3, reps: "10-15", rest: 60,
+              description: "Press landmine bar up and forward from shoulder.",
+              cue: "Core braced. Soft lockout.",
+              alternatives: ["Shoulder Press", "Push Press"], category: "Gym" },
+            { id: 733, name: "Pike Push-Up", muscles: ["Shoulders", "Triceps"], sets: 3, reps: "10-15", rest: 60,
+              description: "Hips high, lower head toward floor.",
+              cue: "Elbows in. Progress to handstand push-up.",
+              alternatives: ["Shoulder Press", "Arnold Press"], category: "Home" },
+            { id: 734, name: "Band Lateral Raise", muscles: ["Side Delts"], sets: 3, reps: "10-15", rest: 60,
+              description: "Stand on band, raise arms to sides.",
+              cue: "Control both directions.",
+              alternatives: ["Dumbbell Lateral Raise"], category: "Home" },
+            { id: 735, name: "Cuban Press", muscles: ["Rotator Cuff", "Shoulders"], sets: 3, reps: "10-15", rest: 60,
+              description: "Upright row to external rotation to press.",
+              cue: "Light weight. Smooth path.",
+              alternatives: ["Face Pull", "External Rotation"], category: "Gym" },
+            { id: 736, name: "External Rotation (Cable/Band)", muscles: ["Rotator Cuff"], sets: 3, reps: "10-15", rest: 60,
+              description: "Elbow at side, rotate forearm outward.",
+              cue: "Upper arm stays glued to side.",
+              alternatives: ["Face Pull", "Band Pull-Apart"], category: "Gym" },
+            { id: 737, name: "Barbell Bicep Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Curl bar without swinging torso.",
+              cue: "Elbows pinned. Squeeze at top.",
+              alternatives: ["Dumbbell Curl", "Cable Curl"], category: "Gym" },
+            { id: 738, name: "Hammer Curl", muscles: ["Biceps", "Forearms"], sets: 3, reps: "10-12", rest: 60,
+              description: "Neutral grip curl (palms face each other).",
+              cue: "Control the negative.",
+              alternatives: ["Dumbbell Curl", "Cable Curl"], category: "Gym" },
+            { id: 739, name: "Incline Dumbbell Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "On incline bench, arms hang, curl up.",
+              cue: "Full stretch at bottom.",
+              alternatives: ["Barbell Curl", "Cable Curl"], category: "Gym" },
+            { id: 740, name: "Preacher Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Arms on preacher pad, curl up.",
+              cue: "Don't hyperextend at bottom.",
+              alternatives: ["Barbell Curl", "Dumbbell Curl"], category: "Gym" },
+            { id: 741, name: "Cable Bicep Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Curl cable attachment with constant tension.",
+              cue: "No momentum.",
+              alternatives: ["Dumbbell Curl", "Hammer Curl"], category: "Gym" },
+            { id: 742, name: "Concentration Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Seated, elbow on inner thigh, curl one arm.",
+              cue: "Peak contraction focus.",
+              alternatives: ["Dumbbell Curl", "Preacher Curl"], category: "Gym" },
+            { id: 743, name: "Overhead Tricep Extension", muscles: ["Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Dumbbell or cable overhead, extend elbows.",
+              cue: "Elbows close to head.",
+              alternatives: ["Tricep Pushdown", "Skull Crusher"], category: "Gym" },
+            { id: 744, name: "Skull Crusher", muscles: ["Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Lie on bench, lower bar/DB to forehead, extend.",
+              cue: "Elbows stable.",
+              alternatives: ["Overhead Extension", "Pushdown"], category: "Gym" },
+            { id: 745, name: "Close-Grip Bench Press", muscles: ["Triceps", "Chest"], sets: 3, reps: "10-12", rest: 60,
+              description: "Bench with hands closer than shoulder width.",
+              cue: "Elbows close to body.",
+              alternatives: ["Pushdown", "Diamond Push-Up"], category: "Gym" },
+            { id: 746, name: "Kickback (Dumbbell)", muscles: ["Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Hinged, upper arm fixed, extend forearm back.",
+              cue: "Squeeze at full extension.",
+              alternatives: ["Pushdown", "Overhead Extension"], category: "Gym" },
+            { id: 747, name: "Bench Dip", muscles: ["Triceps", "Chest"], sets: 3, reps: "10-12", rest: 60,
+              description: "Hands on bench behind you, lower and press.",
+              cue: "Shoulders down. Don't go too deep if painful.",
+              alternatives: ["Chair Dip", "Pushdown"], category: "Home" },
+            { id: 748, name: "Band Tricep Pushdown", muscles: ["Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Band over door/bar, push down.",
+              cue: "Elbows fixed at sides.",
+              alternatives: ["Cable Pushdown"], category: "Home" },
+            { id: 749, name: "Wrist Curl", muscles: ["Forearms"], sets: 3, reps: "10-12", rest: 60,
+              description: "Forearms on thighs, curl wrists up.",
+              cue: "Full range. Light weight.",
+              alternatives: ["Reverse Wrist Curl", "Farmer Carry"], category: "Gym" },
+            { id: 750, name: "Reverse Curl", muscles: ["Forearms", "Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Curl with palms down.",
+              cue: "Controlled. Elbows still.",
+              alternatives: ["Hammer Curl", "Wrist Curl"], category: "Gym" },
+            { id: 751, name: "Barbell Back Squat", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Bar on upper back, squat to depth you can control.",
+              cue: "Knees track toes. Brace core.",
+              alternatives: ["Goblet Squat", "Leg Press"], category: "Gym" },
+            { id: 752, name: "Front Squat", muscles: ["Quads", "Core"], sets: 3, reps: "8-12", rest: 90,
+              description: "Bar on front delts, upright squat.",
+              cue: "Elbows high. Chest up.",
+              alternatives: ["Goblet Squat", "Leg Press"], category: "Gym" },
+            { id: 753, name: "Hack Squat", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Machine hack squat, feet mid platform.",
+              cue: "Don't lock knees violently.",
+              alternatives: ["Leg Press", "Goblet Squat"], category: "Gym" },
+            { id: 754, name: "Walking Lunge", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Step forward into lunge, alternate legs.",
+              cue: "Torso upright. Controlled.",
+              alternatives: ["Reverse Lunge", "Step-Up"], category: "Gym" },
+            { id: 755, name: "Lateral Lunge", muscles: ["Glutes", "Adductors"], sets: 3, reps: "8-12", rest: 90,
+              description: "Step side, sit into that hip, other leg straight.",
+              cue: "Push back to center.",
+              alternatives: ["Goblet Squat", "Cossack Squat"], category: "Gym" },
+            { id: 756, name: "Cossack Squat", muscles: ["Adductors", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Wide stance, squat to one side.",
+              cue: "Heel down on working leg.",
+              alternatives: ["Lateral Lunge", "Goblet Squat"], category: "Home" },
+            { id: 757, name: "Romanian Deadlift (Barbell)", muscles: ["Hamstrings", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Hinge with soft knees, bar along legs.",
+              cue: "Feel hamstring stretch. Flat back.",
+              alternatives: ["DB RDL", "Leg Curl"], category: "Gym" },
+            { id: 758, name: "Sumo Deadlift", muscles: ["Glutes", "Hamstrings", "Quads"], sets: 3, reps: "8-12", rest: 90,
+              description: "Wide stance deadlift, toes out.",
+              cue: "Hips through at top. Brace.",
+              alternatives: ["Conventional Deadlift", "RDL"], category: "Gym" },
+            { id: 759, name: "Conventional Deadlift", muscles: ["Posterior Chain"], sets: 3, reps: "8-12", rest: 90,
+              description: "Bar over mid-foot, hinge and stand.",
+              cue: "Lats tight. Don't round back.",
+              alternatives: ["RDL", "Trap Bar Deadlift"], category: "Gym" },
+            { id: 760, name: "Trap Bar Deadlift", muscles: ["Legs", "Back"], sets: 3, reps: "8-12", rest: 90,
+              description: "Stand inside trap bar and lift. More joint-friendly for many.",
+              cue: "Chest up. Drive floor away.",
+              alternatives: ["Conventional Deadlift", "Goblet Squat"], category: "Gym" },
+            { id: 761, name: "Hip Thrust", muscles: ["Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Upper back on bench, thrust hips up with weight on hips.",
+              cue: "Chin tucked. Full glute squeeze.",
+              alternatives: ["Glute Bridge", "RDL"], category: "Gym" },
+            { id: 762, name: "Single-Leg Glute Bridge", muscles: ["Glutes", "Hamstrings"], sets: 3, reps: "8-12", rest: 90,
+              description: "Bridge on one leg. Other leg extended or bent.",
+              cue: "Hips level. No rotation.",
+              alternatives: ["Glute Bridge", "Hip Thrust"], category: "Home" },
+            { id: 763, name: "Lying Leg Curl", muscles: ["Hamstrings"], sets: 3, reps: "8-12", rest: 90,
+              description: "Lie face down, curl pad toward glutes.",
+              cue: "Full squeeze. Slow lower.",
+              alternatives: ["Seated Leg Curl", "RDL"], category: "Gym" },
+            { id: 764, name: "Seated Leg Curl", muscles: ["Hamstrings"], sets: 3, reps: "8-12", rest: 90,
+              description: "Seated machine, curl heels under seat.",
+              cue: "Control both phases.",
+              alternatives: ["Lying Leg Curl", "RDL"], category: "Gym" },
+            { id: 765, name: "Leg Press (wide stance)", muscles: ["Glutes", "Quads"], sets: 3, reps: "8-12", rest: 90,
+              description: "Feet high and wide on platform.",
+              cue: "Push through heels.",
+              alternatives: ["Leg Press", "Goblet Squat"], category: "Gym" },
+            { id: 766, name: "Leg Press (narrow)", muscles: ["Quads"], sets: 3, reps: "8-12", rest: 90,
+              description: "Feet lower and closer on platform.",
+              cue: "Don't let low back round.",
+              alternatives: ["Hack Squat", "Goblet Squat"], category: "Gym" },
+            { id: 767, name: "Calf Raise Seated", muscles: ["Calves"], sets: 3, reps: "8-12", rest: 90,
+              description: "Seated machine, rise onto toes.",
+              cue: "Full stretch at bottom.",
+              alternatives: ["Standing Calf Raise"], category: "Gym" },
+            { id: 768, name: "Single-Leg Calf Raise", muscles: ["Calves"], sets: 3, reps: "8-12", rest: 90,
+              description: "One leg, rise onto toe. Hold support if needed.",
+              cue: "Slow lower.",
+              alternatives: ["Standing Calf Raise"], category: "Home" },
+            { id: 769, name: "Nordic Hamstring Curl (assisted)", muscles: ["Hamstrings"], sets: 3, reps: "8-12", rest: 90,
+              description: "Kneel, lower torso slowly with partner/band assist.",
+              cue: "Very challenging — use assist.",
+              alternatives: ["Leg Curl", "RDL"], category: "Gym" },
+            { id: 770, name: "Box Squat", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Squat to a box, pause lightly, stand.",
+              cue: "Sit back. Don't collapse on box.",
+              alternatives: ["Goblet Squat", "Leg Press"], category: "Gym" },
+            { id: 771, name: "Crunch", muscles: ["Abs"], sets: 3, reps: "10-15", rest: 45,
+              description: "Lie on back, curl shoulders off floor.",
+              cue: "Exhale up. Don't pull neck.",
+              alternatives: ["Cable Crunch", "Dead Bug"], category: "Home" },
+            { id: 772, name: "Reverse Crunch", muscles: ["Abs"], sets: 3, reps: "10-15", rest: 45,
+              description: "Curl hips off floor toward chest.",
+              cue: "Controlled. No swing.",
+              alternatives: ["Hanging Knee Raise", "Dead Bug"], category: "Home" },
+            { id: 773, name: "Bicycle Crunch", muscles: ["Abs", "Obliques"], sets: 3, reps: "10-15", rest: 45,
+              description: "Alternate elbow to opposite knee.",
+              cue: "Slow and controlled beats speed.",
+              alternatives: ["Russian Twist", "Cable Woodchop"], category: "Home" },
+            { id: 774, name: "Russian Twist", muscles: ["Obliques"], sets: 3, reps: "10-15", rest: 45,
+              description: "Seated lean-back, rotate torso side to side.",
+              cue: "Chest up. Optional weight.",
+              alternatives: ["Cable Woodchop", "Pallof Press"], category: "Home" },
+            { id: 775, name: "Side Plank", muscles: ["Obliques", "Core"], sets: 3, reps: "10-15", rest: 45,
+              description: "On forearm and side of foot, hold straight line.",
+              cue: "Hips up. Don't sag.",
+              alternatives: ["Pallof Press", "Suitcase Carry"], category: "Home" },
+            { id: 776, name: "Mountain Climber (slow)", muscles: ["Core", "Cardio"], sets: 3, reps: "10-15", rest: 45,
+              description: "Plank position, slowly drive knees in.",
+              cue: "Hips stable. Quality over speed.",
+              alternatives: ["Dead Bug", "Plank"], category: "Home" },
+            { id: 777, name: "Ab Wheel Rollout", muscles: ["Abs", "Core"], sets: 3, reps: "10-15", rest: 45,
+              description: "Kneel, roll wheel forward, pull back.",
+              cue: "Don't sag hips. Short range if needed.",
+              alternatives: ["Plank", "Dead Bug"], category: "Gym" },
+            { id: 778, name: "Hanging Leg Raise", muscles: ["Abs", "Hip Flexors"], sets: 3, reps: "10-15", rest: 45,
+              description: "Hang and raise straight legs.",
+              cue: "Minimize swing.",
+              alternatives: ["Hanging Knee Raise", "Captain's Chair"], category: "Pull-up Bar" },
+            { id: 779, name: "Captain's Chair Leg Raise", muscles: ["Abs"], sets: 3, reps: "10-15", rest: 45,
+              description: "Forearms on pads, raise knees or legs.",
+              cue: "Don't swing body.",
+              alternatives: ["Hanging Knee Raise", "Reverse Crunch"], category: "Gym" },
+            { id: 780, name: "Vacuum (stomach)", muscles: ["Deep Core"], sets: 3, reps: "10-15", rest: 45,
+              description: "Exhale fully, pull navel to spine, hold.",
+              cue: "Practice seated or standing.",
+              alternatives: ["Dead Bug", "Plank"], category: "Home" },
+            { id: 781, name: "Toe Touch Crunch", muscles: ["Abs"], sets: 3, reps: "10-15", rest: 45,
+              description: "Lie down, reach hands toward toes.",
+              cue: "Shoulders off floor.",
+              alternatives: ["Crunch", "Dead Bug"], category: "Home" },
+            { id: 782, name: "Stability Ball Crunch", muscles: ["Abs"], sets: 3, reps: "10-15", rest: 45,
+              description: "On ball, crunch up with support under low back.",
+              cue: "Full range.",
+              alternatives: ["Crunch", "Cable Crunch"], category: "Gym" },
+            { id: 783, name: "Sit-to-Stand (Chair Squat)", muscles: ["Quads", "Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "From seated, stand without using hands if possible.",
+              cue: "Drive through heels. Controlled sit.",
+              alternatives: ["Goblet Squat", "Leg Press"], category: "Home" },
+            { id: 784, name: "Countertop Push-Up", muscles: ["Chest", "Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Hands on counter, body angled. Easier than floor.",
+              cue: "Straight body line.",
+              alternatives: ["Wall Push-Up", "Knee Push-Up"], category: "Home" },
+            { id: 785, name: "Standing Hip Extension", muscles: ["Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "Hold chair, extend one leg back without arching.",
+              cue: "Squeeze glute. Small controlled motion.",
+              alternatives: ["Glute Bridge", "Kickback"], category: "Home" },
+            { id: 786, name: "Seated March", muscles: ["Hip Flexors", "Core"], sets: 3, reps: "10-12", rest: 60,
+              description: "Sit tall, alternate lifting knees.",
+              cue: "Great for mobility and warm-up 40+.",
+              alternatives: ["Standing March", "Dead Bug"], category: "Home" },
+            { id: 787, name: "Ankle Mobility Rocks", muscles: ["Ankles", "Calves"], sets: 3, reps: "10-12", rest: 60,
+              description: "In lunge position, rock knee over toes gently.",
+              cue: "Keep heel down as able.",
+              alternatives: ["Calf Raise", "Wall Sit"], category: "Home" },
+            { id: 788, name: "Cat-Cow", muscles: ["Spine Mobility"], sets: 3, reps: "10-12", rest: 60,
+              description: "On all fours, alternate arch and round spine.",
+              cue: "Move with breath. No force.",
+              alternatives: ["Bird Dog", "Back Extension"], category: "Home" },
+            { id: 789, name: "Thoracic Extension on Foam Roller", muscles: ["Upper Back"], sets: 3, reps: "10-12", rest: 60,
+              description: "Roller under upper back, extend gently.",
+              cue: "Support head. Don't force neck.",
+              alternatives: ["Band Pull-Apart", "Face Pull"], category: "Home" },
+            { id: 790, name: "Band Good Morning", muscles: ["Hamstrings", "Back"], sets: 3, reps: "10-12", rest: 60,
+              description: "Band on upper back, hinge pattern.",
+              cue: "Soft knees. Hip hinge not squat.",
+              alternatives: ["RDL", "Glute Bridge"], category: "Home" },
+            { id: 791, name: "Doorway Chest Stretch to Press", muscles: ["Chest", "Shoulders"], sets: 3, reps: "10-12", rest: 60,
+              description: "Light isometric press in doorway then open stretch.",
+              cue: "Gentle for tight shoulders 40+.",
+              alternatives: ["Wall Push-Up", "Band Press"], category: "Home" },
+            { id: 792, name: "Water Bottle Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Curl household weights if no dumbbells.",
+              cue: "Full range. Controlled.",
+              alternatives: ["Band Curl", "Hammer Curl"], category: "Home" },
+            { id: 793, name: "Towel Row", muscles: ["Back"], sets: 3, reps: "10-12", rest: 60,
+              description: "Towel around sturdy post, lean back and row.",
+              cue: "Body plank-like. Squeeze back.",
+              alternatives: ["Band Row", "Inverted Row"], category: "Home" },
+            { id: 794, name: "Step-Up on Stair", muscles: ["Quads", "Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "Use bottom stair, step up and down controlled.",
+              cue: "Full foot on step. No push off trailing leg.",
+              alternatives: ["Step-Up", "Reverse Lunge"], category: "Home" },
+            { id: 795, name: "Chin-Up", muscles: ["Lats", "Biceps"], sets: 3, reps: "5-10", rest: 90,
+              description: "Underhand grip pull-up.",
+              cue: "Full hang to chin over bar.",
+              alternatives: ["Pull-Up", "Lat Pulldown"], category: "Pull-up Bar" },
+            { id: 796, name: "Wide-Grip Pull-Up", muscles: ["Lats"], sets: 3, reps: "5-10", rest: 90,
+              description: "Wider than shoulder grip pull-up.",
+              cue: "Chest to bar if possible.",
+              alternatives: ["Lat Pulldown", "Assisted Pull-Up"], category: "Pull-up Bar" },
+            { id: 797, name: "Commando Pull-Up", muscles: ["Lats", "Biceps", "Core"], sets: 3, reps: "5-10", rest: 90,
+              description: "Sideways to bar, alternate sides each rep.",
+              cue: "Control rotation.",
+              alternatives: ["Chin-Up", "Pull-Up"], category: "Pull-up Bar" },
+            { id: 798, name: "Hanging Scapular Depression", muscles: ["Lats", "Shoulders"], sets: 3, reps: "5-10", rest: 90,
+              description: "From hang, depress scapulae without bending elbows.",
+              cue: "Same as scapular pull-up cue.",
+              alternatives: ["Dead Hang", "Scapular Pull-Up"], category: "Pull-up Bar" },
+            { id: 799, name: "Toes-to-Bar (tuck progress)", muscles: ["Abs", "Lats"], sets: 3, reps: "5-10", rest: 90,
+              description: "Hang and lift tucked knees toward bar.",
+              cue: "Minimize swing. Progress slowly.",
+              alternatives: ["Hanging Knee Raise", "Leg Raise"], category: "Pull-up Bar" },
+            { id: 800, name: "Active Hang", muscles: ["Shoulders", "Grip"], sets: 3, reps: "5-10", rest: 90,
+              description: "Hang with shoulders engaged (not fully passive).",
+              cue: "Slight tension in lats.",
+              alternatives: ["Dead Hang", "Scapular Pull-Up"], category: "Pull-up Bar" },
+            { id: 801, name: "Brisk Walk", muscles: ["Cardio", "Legs"], sets: 3, reps: "10-20 min", rest: 0,
+              description: "Steady walking for heart health — excellent for 40–50+.",
+              cue: "Tall posture. Comfortable pace you can talk at.",
+              alternatives: ["March in Place", "Step-Ups"], category: "Home" },
+            { id: 802, name: "March in Place", muscles: ["Cardio", "Hip Flexors"], sets: 3, reps: "10-20 min", rest: 0,
+              description: "Lift knees while standing in place.",
+              cue: "Arm swing optional. Low impact.",
+              alternatives: ["Brisk Walk", "Seated March"], category: "Home" },
+            { id: 803, name: "Jumping Jacks (step-out version)", muscles: ["Cardio"], sets: 3, reps: "10-20 min", rest: 0,
+              description: "Step side to side raising arms — no jump needed.",
+              cue: "Joint-friendly alternative to jumping jacks.",
+              alternatives: ["March in Place", "Brisk Walk"], category: "Home" },
+            { id: 804, name: "Bike (stationary)", muscles: ["Cardio", "Legs"], sets: 3, reps: "10-20 min", rest: 0,
+              description: "Steady or interval cycling.",
+              cue: "Light resistance to start. Smooth pedaling.",
+              alternatives: ["Brisk Walk", "Step-Ups"], category: "Gym" },
+            { id: 805, name: "Elliptical", muscles: ["Cardio"], sets: 3, reps: "10-20 min", rest: 0,
+              description: "Low-impact full-body cardio machine.",
+              cue: "Upright posture. Don't lean hard on handles.",
+              alternatives: ["Bike", "Brisk Walk"], category: "Gym" },
+            { id: 806, name: "Rowing Machine", muscles: ["Cardio", "Back", "Legs"], sets: 3, reps: "10-20 min", rest: 0,
+              description: "Drive with legs, then lean, then arms.",
+              cue: "Legs first. Don't yank with arms only.",
+              alternatives: ["Cable Row", "Brisk Walk"], category: "Gym" },
+            { id: 807, name: "Smith Machine Squat", muscles: ["Quads", "Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "Squat with bar on Smith path for stability.",
+              cue: "Feet slightly forward of bar line.",
+              alternatives: ["Goblet Squat", "Leg Press"], category: "Gym" },
+            { id: 808, name: "Smith Machine Romanian Deadlift", muscles: ["Hamstrings", "Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "RDL pattern on Smith for balance support.",
+              cue: "Hinge. Soft knees.",
+              alternatives: ["DB RDL", "Leg Curl"], category: "Gym" },
+            { id: 809, name: "Cable Kickback", muscles: ["Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "Cable on ankle, extend hip back.",
+              cue: "No arching low back.",
+              alternatives: ["Glute Bridge", "Hip Thrust"], category: "Gym" },
+            { id: 810, name: "Cable Lateral Walk / Monster Walk", muscles: ["Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "Band or cable side steps in athletic stance.",
+              cue: "Knees out. Stay low.",
+              alternatives: ["Clamshell", "Hip Abduction"], category: "Gym" },
+            { id: 811, name: "Adductor Machine", muscles: ["Adductors"], sets: 3, reps: "10-12", rest: 60,
+              description: "Squeeze pads together with inner thighs.",
+              cue: "Controlled tempo.",
+              alternatives: ["Cossack Squat", "Lateral Lunge"], category: "Gym" },
+            { id: 812, name: "Abductor Machine", muscles: ["Glutes"], sets: 3, reps: "10-12", rest: 60,
+              description: "Push pads outward.",
+              cue: "Sit tall.",
+              alternatives: ["Clamshell", "Cable Abduction"], category: "Gym" },
+            { id: 813, name: "Smith Close-Grip Press", muscles: ["Triceps", "Chest"], sets: 3, reps: "10-12", rest: 60,
+              description: "Close-grip press on Smith.",
+              cue: "Elbows tucked.",
+              alternatives: ["Pushdown", "Close-Grip Bench"], category: "Gym" },
+            { id: 814, name: "Assisted Dip Machine", muscles: ["Chest", "Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Dip with assistance weight.",
+              cue: "Shoulders down. Controlled depth.",
+              alternatives: ["Bench Dip", "Pushdown"], category: "Gym" },
+            { id: 815, name: "Hip Adduction Cable", muscles: ["Adductors"], sets: 3, reps: "10-12", rest: 60,
+              description: "Cable on ankle, pull leg toward midline.",
+              cue: "Stable torso.",
+              alternatives: ["Adductor Machine"], category: "Gym" },
+            { id: 816, name: "Standing Cable Crunch", muscles: ["Abs"], sets: 3, reps: "10-12", rest: 60,
+              description: "Standing, crunch down against high cable.",
+              cue: "Ribs to pelvis.",
+              alternatives: ["Cable Crunch", "Plank"], category: "Gym" },
+            { id: 817, name: "Smith Machine Incline Press", muscles: ["Upper Chest", "Shoulders"], sets: 3, reps: "8-12", rest: 90,
+              description: "Incline press on Smith path for stability.",
+              cue: "Feet flat. Controlled negative.",
+              alternatives: ["Incline DB Press", "Incline Machine"], category: "Gym" },
+            { id: 818, name: "Low-to-High Cable Fly", muscles: ["Upper Chest"], sets: 3, reps: "12-15", rest: 60,
+              description: "Cables from low position, fly upward and in.",
+              cue: "Slight elbow bend. Squeeze high.",
+              alternatives: ["Incline Press", "Cable Fly"], category: "Gym" },
+            { id: 819, name: "High-to-Low Cable Fly", muscles: ["Lower Chest"], sets: 3, reps: "12-15", rest: 60,
+              description: "Cables from high, fly downward and in.",
+              cue: "Don't shrug. Squeeze lower chest.",
+              alternatives: ["Cable Fly", "Decline Push-Up"], category: "Gym" },
+            { id: 820, name: "Plyo Push-Up (hands elevate)", muscles: ["Chest", "Power"], sets: 3, reps: "5-8", rest: 90,
+              description: "Explosive push-up with hands leaving floor lightly — optional for advanced.",
+              cue: "Land soft. Skip if joint issues.",
+              alternatives: ["Push-Up", "Incline Push-Up"], category: "Home" },
+            { id: 821, name: "Single-Arm Dumbbell Press", muscles: ["Chest", "Core"], sets: 3, reps: "8-10 / arm", rest: 60,
+              description: "One-arm bench press for stability challenge.",
+              cue: "Brace core hard. Controlled.",
+              alternatives: ["DB Bench", "Machine Press"], category: "Gym" },
+            { id: 822, name: "Kroc Row", muscles: ["Back", "Grip"], sets: 3, reps: "10-15 / arm", rest: 90,
+              description: "Heavy high-rep single-arm row with slight body English allowed.",
+              cue: "Still control the weight.",
+              alternatives: ["DB Row", "Cable Row"], category: "Gym" },
+            { id: 823, name: "Seal Row", muscles: ["Mid Back"], sets: 3, reps: "8-12", rest: 90,
+              description: "Chest-supported row lying face down on elevated bench.",
+              cue: "No momentum. Pure back.",
+              alternatives: ["Chest-Supported Row", "Machine Row"], category: "Gym" },
+            { id: 824, name: "Helms Row", muscles: ["Lats", "Mid Back"], sets: 3, reps: "8-12 / arm", rest: 60,
+              description: "Chest on incline bench, row dumbbell with free arm.",
+              cue: "Elbow to hip.",
+              alternatives: ["DB Row", "Cable Row"], category: "Gym" },
+            { id: 825, name: "Lat Prayer / Cable Pullover kneeling", muscles: ["Lats"], sets: 3, reps: "12-15", rest: 60,
+              description: "Kneeling cable pullover with rope.",
+              cue: "Long arms. Feel lats stretch.",
+              alternatives: ["Straight-Arm Pulldown", "DB Pullover"], category: "Gym" },
+            { id: 826, name: "Resistance Band Face Pull", muscles: ["Rear Delts", "Upper Back"], sets: 3, reps: "15-20", rest: 30,
+              description: "Band at face height, pull to face with external rotation.",
+              cue: "Elbows high.",
+              alternatives: ["Face Pull", "Band Pull-Apart"], category: "Home" },
+            { id: 827, name: "Machine Lateral Raise", muscles: ["Side Delts"], sets: 3, reps: "12-15", rest: 60,
+              description: "Side raise on a machine for constant tension.",
+              cue: "Don't shrug.",
+              alternatives: ["DB Lateral Raise", "Cable Lateral"], category: "Gym" },
+            { id: 828, name: "Cable Front Raise", muscles: ["Front Delts"], sets: 3, reps: "12-15", rest: 60,
+              description: "Raise cable handle in front to shoulder height.",
+              cue: "No swing.",
+              alternatives: ["DB Front Raise"], category: "Gym" },
+            { id: 829, name: "Behind-the-Neck Press (light, careful)", muscles: ["Shoulders"], sets: 3, reps: "8-10", rest: 90,
+              description: "Only if mobile and pain-free. Prefer front presses otherwise.",
+              cue: "Stop if any shoulder pain.",
+              alternatives: ["Shoulder Press", "Landmine Press"], category: "Gym" },
+            { id: 830, name: "Plate Front Raise", muscles: ["Front Delts"], sets: 3, reps: "12-15", rest: 60,
+              description: "Hold plate with both hands, raise to eye level.",
+              cue: "Controlled lower.",
+              alternatives: ["DB Front Raise"], category: "Gym" },
+            { id: 831, name: "Band Overhead Press", muscles: ["Shoulders", "Triceps"], sets: 3, reps: "10-15", rest: 60,
+              description: "Stand on band, press overhead.",
+              cue: "Don't over-arch low back.",
+              alternatives: ["DB Shoulder Press", "Pike Push-Up"], category: "Home" },
+            { id: 832, name: "Spider Curl", muscles: ["Biceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Chest on incline, arms hang, curl up for peak contraction.",
+              cue: "No swing.",
+              alternatives: ["Incline Curl", "Concentration Curl"], category: "Gym" },
+            { id: 833, name: "Cable Overhead Tricep Extension", muscles: ["Triceps"], sets: 3, reps: "10-12", rest: 60,
+              description: "Rope or bar from low/high cable, extend overhead.",
+              cue: "Elbows close.",
+              alternatives: ["DB Overhead Extension", "Pushdown"], category: "Gym" },
+            { id: 834, name: "JM Press", muscles: ["Triceps"], sets: 3, reps: "8-10", rest: 90,
+              description: "Hybrid of close-grip bench and skull crusher.",
+              cue: "Elbows track carefully.",
+              alternatives: ["Close-Grip Bench", "Skull Crusher"], category: "Gym" },
+            { id: 835, name: "Band Bicep Curl", muscles: ["Biceps"], sets: 3, reps: "12-15", rest: 45,
+              description: "Stand on band, curl handles.",
+              cue: "Full squeeze at top.",
+              alternatives: ["DB Curl", "Hammer Curl"], category: "Home" },
+            { id: 836, name: "Towel Hammer Curl", muscles: ["Biceps", "Forearms", "Grip"], sets: 3, reps: "10-12", rest: 60,
+              description: "Curl dumbbells with towels looped for grip challenge.",
+              cue: "Control the path.",
+              alternatives: ["Hammer Curl", "Farmer Carry"], category: "Gym" },
+            { id: 837, name: "Bulgarian Split Squat (rear foot elevated)", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-10 / leg", rest: 90,
+              description: "Rear foot on bench, lunge down on front leg.",
+              cue: "Front knee tracks forward toe.",
+              alternatives: ["Reverse Lunge", "Step-Up"], category: "Gym" },
+            { id: 838, name: "Deficit Reverse Lunge", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-10 / leg", rest: 90,
+              description: "Front foot elevated slightly, step back into lunge.",
+              cue: "Control descent.",
+              alternatives: ["Reverse Lunge", "Bulgarian Split Squat"], category: "Gym" },
+            { id: 839, name: "Smith Machine Lunge", muscles: ["Quads", "Glutes"], sets: 3, reps: "8-10 / leg", rest: 90,
+              description: "Lunges with Smith for balance support.",
+              cue: "Upright torso.",
+              alternatives: ["Reverse Lunge", "Goblet Squat"], category: "Gym" },
+            { id: 840, name: "Glute Kickback Machine", muscles: ["Glutes"], sets: 3, reps: "12-15 / leg", rest: 45,
+              description: "Machine kickback isolating glutes.",
+              cue: "No lumbar extension cheat.",
+              alternatives: ["Cable Kickback", "Hip Thrust"], category: "Gym" },
+            { id: 841, name: "Smith Hip Thrust", muscles: ["Glutes"], sets: 3, reps: "8-12", rest: 90,
+              description: "Hip thrust with Smith bar for loading ease.",
+              cue: "Chin tucked. Full lockout.",
+              alternatives: ["Hip Thrust", "Glute Bridge"], category: "Gym" },
+            { id: 842, name: "Sissy Squat (assisted)", muscles: ["Quads"], sets: 3, reps: "8-12", rest: 60,
+              description: "Lean back while bending knees, hold support. Advanced quad isolation.",
+              cue: "Only if knees feel good.",
+              alternatives: ["Leg Extension", "Goblet Squat"], category: "Gym" },
+            { id: 843, name: "Standing Hamstring Curl (band)", muscles: ["Hamstrings"], sets: 3, reps: "12-15 / leg", rest: 45,
+              description: "Band on ankle, curl heel to glute standing.",
+              cue: "Squeeze hamstring.",
+              alternatives: ["Leg Curl", "RDL"], category: "Home" },
+            { id: 844, name: "Toe Elevated RDL", muscles: ["Hamstrings"], sets: 3, reps: "8-10", rest: 90,
+              description: "RDL with toes on small plates for extra stretch.",
+              cue: "Flat back. Soft knees.",
+              alternatives: ["RDL", "Leg Curl"], category: "Gym" },
+            { id: 845, name: "Hollow Body Hold", muscles: ["Core"], sets: 3, reps: "20-40 sec", rest: 45,
+              description: "Lie on back, press low back down, lift shoulders and legs slightly.",
+              cue: "Ribs down. Breathe.",
+              alternatives: ["Dead Bug", "Plank"], category: "Home" },
+            { id: 846, name: "V-Up", muscles: ["Abs"], sets: 3, reps: "8-12", rest: 45,
+              description: "Simultaneously raise legs and torso to touch toes.",
+              cue: "Control. Bend knees if needed.",
+              alternatives: ["Toe Touch", "Dead Bug"], category: "Home" },
+            { id: 847, name: "Copenhagen Plank (modified)", muscles: ["Adductors", "Core"], sets: 3, reps: "15-30 sec / side", rest: 45,
+              description: "Side plank with top leg supported on bench. Modified for beginners.",
+              cue: "Hips high.",
+              alternatives: ["Side Plank", "Adductor Machine"], category: "Gym" },
+            { id: 848, name: "Pallof Press Kneeling", muscles: ["Core", "Obliques"], sets: 3, reps: "10-12 / side", rest: 45,
+              description: "Half-kneeling anti-rotation press with cable/band.",
+              cue: "Brace. Don't twist.",
+              alternatives: ["Pallof Press", "Side Plank"], category: "Gym" },
+            { id: 849, name: "Dead Bug with Band", muscles: ["Core"], sets: 3, reps: "8-10 / side", rest: 45,
+              description: "Dead bug while pressing band overhead or away for extra core demand.",
+              cue: "Low back glued down.",
+              alternatives: ["Dead Bug", "Plank"], category: "Home" },
+            { id: 850, name: "Kettlebell Swing", muscles: ["Glutes", "Hamstrings", "Core"], sets: 3, reps: "10-15", rest: 60,
+              description: "Hinge and swing KB to chest height with hip power.",
+              cue: "Hips not arms. Snap glutes.",
+              alternatives: ["RDL", "Hip Thrust"], category: "Gym" },
+            { id: 851, name: "Kettlebell Goblet Clean", muscles: ["Full Body"], sets: 3, reps: "8-10 / side", rest: 60,
+              description: "Clean KB to goblet position.",
+              cue: "Elbows tight. Soft catch.",
+              alternatives: ["Goblet Squat", "Swing"], category: "Gym" },
+            { id: 852, name: "Dumbbell Thruster", muscles: ["Quads", "Shoulders"], sets: 3, reps: "8-12", rest: 90,
+              description: "Squat then press dumbbells overhead in one flow.",
+              cue: "Drive through heels into press.",
+              alternatives: ["Goblet Squat", "Shoulder Press"], category: "Gym" },
+            { id: 853, name: "Burpee (step-back version)", muscles: ["Full Body", "Cardio"], sets: 3, reps: "5-10", rest: 60,
+              description: "Step back to plank, step in, stand. No jump required.",
+              cue: "Joint-friendly version.",
+              alternatives: ["Mountain Climber", "Squat to Chair"], category: "Home" },
+            { id: 854, name: "Medicine Ball Slam", muscles: ["Core", "Power"], sets: 3, reps: "8-12", rest: 60,
+              description: "Lift ball overhead and slam down with intent.",
+              cue: "Hinge to pick up. Soft knees.",
+              alternatives: ["Woodchop", "Cable Crunch"], category: "Gym" },
+            { id: 855, name: "Battle Ropes (alternating)", muscles: ["Cardio", "Shoulders", "Core"], sets: 3, reps: "20-40 sec", rest: 60,
+              description: "Alternating waves with ropes.",
+              cue: "Athletic stance. Soft knees.",
+              alternatives: ["Rowing Machine", "March"], category: "Gym" },
+            { id: 856, name: "World's Greatest Stretch", muscles: ["Mobility", "Hips"], sets: 2, reps: "5 / side", rest: 30,
+              description: "Lunge with rotation and hamstring stretch flow.",
+              cue: "Move slowly. Breathe.",
+              alternatives: ["Cat-Cow", "Lateral Lunge"], category: "Home" },
+            { id: 857, name: "90/90 Hip Stretch", muscles: ["Hips", "Glutes"], sets: 2, reps: "30-45 sec / side", rest: 30,
+              description: "Seated 90/90 hip position, gentle lean.",
+              cue: "Don't force range.",
+              alternatives: ["Clamshell", "Pigeon"], category: "Home" },
+            { id: 858, name: "Pigeon Pose (modified)", muscles: ["Glutes", "Hips"], sets: 2, reps: "30-45 sec / side", rest: 30,
+              description: "Hip opener from the floor or elevated.",
+              cue: "Support with props as needed.",
+              alternatives: ["90/90", "Figure-4"], category: "Home" },
+            { id: 859, name: "Figure-4 Stretch", muscles: ["Glutes"], sets: 2, reps: "30-45 sec / side", rest: 30,
+              description: "Ankle on opposite knee, gently pull leg in (lying or seated).",
+              cue: "Relax shoulders.",
+              alternatives: ["Pigeon", "Glute Bridge"], category: "Home" },
+            { id: 860, name: "Child's Pose", muscles: ["Back", "Recovery"], sets: 2, reps: "30-60 sec", rest: 0,
+              description: "Kneel and reach arms forward, rest forehead down.",
+              cue: "Breathe into back.",
+              alternatives: ["Cat-Cow", "Dead Hang"], category: "Home" },
+            { id: 861, name: "Open Book Stretch", muscles: ["Thoracic Spine"], sets: 2, reps: "8 / side", rest: 30,
+              description: "Side-lying, open top arm across body rotating upper back.",
+              cue: "Eyes follow hand.",
+              alternatives: ["Cat-Cow", "Band Pull-Apart"], category: "Home" },
+            { id: 862, name: "Standing Quad Stretch", muscles: ["Quads"], sets: 2, reps: "30 sec / side", rest: 0,
+              description: "Hold ankle behind you, knees together.",
+              cue: "Use wall for balance.",
+              alternatives: ["Couch Stretch", "Wall Sit"], category: "Home" },
+            { id: 863, name: "Couch Stretch", muscles: ["Hip Flexors", "Quads"], sets: 2, reps: "30-45 sec / side", rest: 30,
+              description: "Rear foot elevated on couch/wall, upright torso.",
+              cue: "Posterior tilt gently.",
+              alternatives: ["Standing Quad Stretch", "Glute Bridge"], category: "Home" },
+            { id: 864, name: "Calf Stretch on Wall", muscles: ["Calves"], sets: 2, reps: "30 sec / side", rest: 0,
+              description: "Hands on wall, one foot back, heel down.",
+              cue: "Both bent and straight knee versions.",
+              alternatives: ["Calf Raise", "Ankle Rocks"], category: "Home" },
+            { id: 865, name: "Neck Chin Tucks", muscles: ["Neck", "Posture"], sets: 2, reps: "10-15", rest: 0,
+              description: "Gently draw chin straight back (not down).",
+              cue: "Small motion. No pain.",
+              alternatives: ["Face Pull", "Band Pull-Apart"], category: "Home" },
         ];
 
         // ===== Safe Storage (prevents crash when localStorage is blocked) =====
@@ -1038,6 +1718,14 @@
             
             if (sectionId === 'library') {
                 showLibrary();
+                // If not in swap-pick mode, hide banner
+                if (pendingSwapExerciseId == null) {
+                    const banner = document.getElementById('library-swap-banner');
+                    if (banner) banner.classList.add('hidden');
+                }
+            } else if (sectionId !== 'library' && pendingSwapExerciseId != null && sectionId !== 'workout') {
+                // Left library without completing swap (except back to workout after swap)
+                // keep pending only while on library
             }
             
             // Load dynamic content
@@ -1183,13 +1871,14 @@
             if (!container) return;
             container.innerHTML = '';
 
-            // Combine all exercises including abs
+            // Combine all exercises including abs + expanded library
             allLibraryExercises = [
                 ...pushExercises,
                 ...pullExercises,
                 ...upperExercises,
                 ...lowerExercises,
-                ...absFinisherExercises
+                ...absFinisherExercises,
+                ...extraLibraryExercises
             ];
 
             // Remove duplicates by name
@@ -1205,6 +1894,13 @@
                 return;
             }
 
+            // Sort alphabetically for easier browsing
+            allLibraryExercises.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Show count above list
+            const countEl = document.getElementById('library-count');
+            if (countEl) countEl.textContent = `${allLibraryExercises.length} exercises`;
+
             renderLibraryCards(allLibraryExercises);
         }
 
@@ -1212,47 +1908,77 @@
             const container = document.getElementById('library-list');
             container.innerHTML = '';
 
+            const swapMode = pendingSwapExerciseId != null;
+
             exercises.forEach(ex => {
                 const card = document.createElement('div');
-                card.className = `bg-zinc-900 border border-zinc-700 rounded-3xl p-5 cursor-pointer hover:border-emerald-500/50 transition-all`;
+                card.className = `bg-zinc-900 border ${swapMode ? 'border-sky-600/40 hover:border-sky-400' : 'border-zinc-700 hover:border-emerald-500/50'} rounded-3xl p-5 cursor-pointer transition-all`;
                 card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="min-w-0">
                             <div class="font-semibold">${ex.name}</div>
                             <div class="flex gap-x-1 mt-1 flex-wrap">
+                                ${ex.category ? `<span class="text-[10px] px-2 py-px bg-sky-900/40 text-sky-300 rounded-full">${ex.category}</span>` : ''}
                                 ${ex.muscles.map(m => `<span class="text-[10px] px-2 py-px bg-white/10 rounded-full">${m}</span>`).join('')}
                             </div>
                         </div>
-                        <div class="text-right text-xs text-emerald-400">
-                            ${ex.sets} × ${ex.reps}
+                        <div class="text-right text-xs text-emerald-400 flex-shrink-0">
+                            ${swapMode ? '<span class="text-sky-400 font-semibold">Tap to swap</span>' : `${ex.sets} × ${ex.reps}`}
                         </div>
                     </div>
                     <div class="mt-3 text-xs text-zinc-400 line-clamp-2">${ex.description}</div>
                     
+                    ${!swapMode ? `
                     <div class="mt-4 flex gap-x-2">
                         <button onclick="event.stopImmediatePropagation(); showExerciseInfoFromLibrary(${ex.id});" 
                                 class="flex-1 text-xs py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl">
-                            Details &amp; Alternatives
+                            How-to
                         </button>
-                        ${currentWorkout ? `
-                            <button onclick="event.stopImmediatePropagation(); swapFromLibrary(${ex.id});" 
-                                    class="flex-1 text-xs py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl">
-                                Swap into Workout
-                            </button>
-                        ` : ''}
                     </div>
+                    ` : `
+                    <div class="mt-4">
+                        <button onclick="event.stopImmediatePropagation(); selectLibraryExerciseForSwap(${ex.id});" 
+                                class="w-full text-xs py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-semibold">
+                            Use this exercise
+                        </button>
+                    </div>
+                    `}
                 `;
-                card.onclick = () => showExerciseInfoFromLibrary(ex.id);
+                if (swapMode) {
+                    card.onclick = () => selectLibraryExerciseForSwap(ex.id);
+                } else {
+                    card.onclick = () => showExerciseInfoFromLibrary(ex.id);
+                }
                 container.appendChild(card);
             });
+        }
+
+        function selectLibraryExerciseForSwap(newExerciseId) {
+            if (pendingSwapExerciseId == null) return;
+            const lib = getFullLibrary();
+            const newEx = lib.find(e => e.id === newExerciseId) ||
+                [...extraLibraryExercises, ...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises, ...absFinisherExercises].find(e => e.id === newExerciseId);
+            if (!newEx) return;
+
+            const targetId = pendingSwapExerciseId;
+            pendingSwapExerciseId = null;
+            const banner = document.getElementById('library-swap-banner');
+            if (banner) banner.classList.add('hidden');
+
+            swapExerciseInWorkout(targetId, newEx.name);
+            showSection('workout');
+            showToast(`Swapped to ${newEx.name}`);
         }
 
         function filterLibrary() {
             const term = document.getElementById('library-search').value.toLowerCase();
             const filtered = allLibraryExercises.filter(ex => 
                 ex.name.toLowerCase().includes(term) || 
-                ex.muscles.join(' ').toLowerCase().includes(term)
+                (ex.muscles || []).join(' ').toLowerCase().includes(term) ||
+                (ex.category || '').toLowerCase().includes(term)
             );
+            const countEl = document.getElementById('library-count');
+            if (countEl) countEl.textContent = term ? `${filtered.length} results` : `${allLibraryExercises.length} exercises`;
             renderLibraryCards(filtered);
         }
 
@@ -1262,7 +1988,7 @@
         }
 
         function watchFormVideo(exerciseId) {
-            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises];
+            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises, ...absFinisherExercises, ...extraLibraryExercises];
             let ex = allEx.find(e => e.id === exerciseId);
             
             // Check for override (swapped exercise)
@@ -1571,34 +2297,61 @@
                         `;
                     }
                     
+                    // Check if this exercise is already fully completed
+                    const workoutExCheck = currentWorkout?.exercises.find(e => e.id === ex.id);
+                    const totalSetsCheck = (workoutExCheck && workoutExCheck.customSets) ? workoutExCheck.customSets : ex.sets;
+                    const completedCount = workoutExCheck ? workoutExCheck.completedSets.filter(Boolean).length : 0;
+                    const isFullyComplete = completedCount >= totalSetsCheck && totalSetsCheck > 0;
+                    
                     // Accordion: only first incomplete exercise starts expanded
-                    const isExpanded = index === 0;
+                    const isExpanded = index === 0 && !isFullyComplete;
+                    
+                    if (isFullyComplete) {
+                        card.classList.add('border-emerald-600');
+                        card.style.borderColor = '#059669';
+                    }
                     
                     card.innerHTML = `
                         <!-- Compact header - always visible, tap to expand/collapse -->
                         <div class="px-4 py-3.5 exercise-header cursor-pointer" onclick="toggleExerciseCard(${ex.id})">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-x-3 min-w-0 flex-1">
-                                    <span class="text-emerald-400 font-mono text-xs w-5">${String(index + 1).padStart(2, '0')}</span>
+                                    <span id="status-${ex.id}" class="flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold ${isFullyComplete ? 'bg-emerald-500 text-white' : 'text-emerald-400 font-mono'}">
+                                        ${isFullyComplete ? '<i class="fa-solid fa-check"></i>' : String(index + 1).padStart(2, '0')}
+                                    </span>
                                     <div class="min-w-0">
-                                        <h3 class="font-semibold text-base truncate">${displayName}</h3>
-                                        <div class="text-[11px] text-zinc-500 mt-0.5">${ex.sets}×${ex.reps} · ${ex.rest}s rest</div>
+                                        <h3 class="font-semibold text-base truncate ${isFullyComplete ? 'text-emerald-300' : ''}">${displayName}</h3>
+                                        <div class="text-[11px] text-zinc-500 mt-0.5">${ex.sets}×${ex.reps} · ${ex.rest}s rest${isFullyComplete ? ' · Done' : ''}</div>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-x-2 flex-shrink-0">
-                                    <button onclick="event.stopImmediatePropagation(); watchFormVideo(${ex.id});" 
-                                            class="text-[10px] px-2 py-1 bg-red-600/80 text-white rounded-lg">Form</button>
-                                    <i id="chevron-${ex.id}" class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-zinc-500 text-xs"></i>
+                                <div class="flex items-center flex-shrink-0">
+                                    <button type="button" onclick="event.stopImmediatePropagation(); toggleExerciseCard(${ex.id});"
+                                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400">
+                                        <i id="chevron-${ex.id}" class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-xs"></i>
+                                    </button>
                                 </div>
                             </div>
                             ${progressionHTML}
                         </div>
                         
                         <!-- Expandable body -->
-                        <div id="body-${ex.id}" class="${isExpanded ? '' : 'hidden'} px-4 pb-3">
-                            <div class="flex items-center gap-x-2 mb-2">
-                                <button onclick="showExerciseInfo(${ex.id})" class="text-[11px] text-zinc-400 hover:text-white flex items-center gap-x-1">
-                                    <i class="fa-solid fa-info-circle"></i> Info + Alternatives
+                        <div id="body-${ex.id}" class="${isExpanded ? '' : 'hidden'} px-5 pb-4">
+                            <!-- Action menu: Video | Swap | How-to -->
+                            <div class="flex items-center gap-x-2.5 mb-4 mt-1">
+                                <button onclick="watchFormVideo(${ex.id})" 
+                                        class="flex-1 py-3 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-2xl flex items-center justify-center gap-x-1.5">
+                                    <i class="fa-brands fa-youtube text-red-400"></i>
+                                    <span>Video</span>
+                                </button>
+                                <button onclick="showSwapPicker(${ex.id})" 
+                                        class="flex-1 py-3 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-2xl flex items-center justify-center gap-x-1.5">
+                                    <i class="fa-solid fa-right-left text-emerald-400"></i>
+                                    <span>Swap</span>
+                                </button>
+                                <button onclick="showExerciseInfo(${ex.id})" 
+                                        class="flex-1 py-3 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-2xl flex items-center justify-center gap-x-1.5">
+                                    <i class="fa-solid fa-info-circle text-sky-400"></i>
+                                    <span>How-to</span>
                                 </button>
                             </div>
                             
@@ -2124,26 +2877,34 @@
             const ex = exercises.find(e => e.id === exerciseId);
             const workoutEx = currentWorkout.exercises.find(e => e.id === exerciseId);
             
-            if (workoutEx && workoutEx.completedSets.length === ex.sets && 
-                workoutEx.completedSets.every(s => s !== null)) {
-                
-                // Mark exercise header as complete visually
+            if (!ex || !workoutEx) return;
+            
+            const totalSets = workoutEx.customSets || ex.sets;
+            const completedCount = workoutEx.completedSets.filter(Boolean).length;
+            
+            if (completedCount >= totalSets) {
+                // Mark exercise as complete with checkmark + green border
                 const card = document.getElementById(`exercise-${exerciseId}`);
                 if (card) {
-                    card.style.borderColor = '#166534';
-                    card.style.boxShadow = '0 0 0 1px #166534';
+                    card.style.borderColor = '#059669';
+                    card.classList.add('border-emerald-600');
                 }
                 
-                // Auto scroll to next incomplete exercise
+                // Replace number with green checkmark
+                const statusEl = document.getElementById(`status-${exerciseId}`);
+                if (statusEl) {
+                    statusEl.className = 'flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold bg-emerald-500 text-white';
+                    statusEl.innerHTML = '<i class="fa-solid fa-check"></i>';
+                }
+                
+                // Update title color
+                const titleEl = card?.querySelector('h3');
+                if (titleEl) titleEl.classList.add('text-emerald-300');
+                
+                // Auto expand next incomplete exercise
                 setTimeout(() => {
-                    const nextIncomplete = findNextIncompleteExercise();
-                    if (nextIncomplete) {
-                        const nextCard = document.getElementById(`exercise-${nextIncomplete}`);
-                        if (nextCard) {
-                            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                }, 800);
+                    autoExpandCurrentExercise();
+                }, 600);
             }
         }
 
@@ -2603,11 +3364,112 @@
         }
 
         // Show exercise info / form cues + Alternatives (with swap option)
+        // Get full library list (for swap + library tab)
+        function getFullLibrary() {
+            const all = [
+                ...pushExercises, ...pullExercises, ...upperExercises,
+                ...lowerExercises, ...absFinisherExercises, ...extraLibraryExercises
+            ];
+            const seen = new Set();
+            return all.filter(ex => {
+                if (seen.has(ex.name)) return false;
+                seen.add(ex.name);
+                return true;
+            });
+        }
+
+        // Dedicated Swap picker: recommended alternatives + browse full library
+        // When set, Library is in "pick to swap" mode
+        let pendingSwapExerciseId = null;
+
+        function showSwapPicker(exerciseId) {
+            const allEx = getFullLibrary();
+            let ex = allEx.find(e => e.id === exerciseId);
+            if (!ex) {
+                const base = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises, ...absFinisherExercises, ...extraLibraryExercises];
+                ex = base.find(e => e.id === exerciseId);
+            }
+            if (!ex) return;
+            
+            const override = (currentWorkout && currentWorkout.overrides && currentWorkout.overrides[exerciseId]) 
+                ? currentWorkout.overrides[exerciseId] : null;
+            const currentName = override ? override.name : ex.name;
+            
+            const alternatives = ex.alternatives || [];
+            
+            let recommendedHTML = '';
+            if (alternatives.length === 0) {
+                recommendedHTML = `<div class="text-zinc-500 text-sm py-2">No specific recommendations — open the Library to pick any exercise.</div>`;
+            } else {
+                recommendedHTML = alternatives.map(alt => `
+                    <button onclick="swapExerciseInWorkout(${exerciseId}, '${alt.replace(/'/g, "\\'")}'); document.getElementById('swap-picker-modal').remove();" 
+                            class="w-full flex items-center justify-between bg-zinc-950 border border-emerald-700/40 hover:border-emerald-500 active:bg-zinc-900 rounded-2xl px-4 py-3.5 text-sm transition-all">
+                        <span class="font-medium text-left">${alt}</span>
+                        <span class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-semibold flex-shrink-0 ml-3">Swap</span>
+                    </button>
+                `).join('');
+            }
+            
+            const modalHTML = `
+                <div id="swap-picker-modal" class="fixed inset-0 bg-black/70 z-[200] flex items-end md:items-center justify-center p-0 md:p-5" onclick="this.remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 w-full md:max-w-md md:rounded-3xl rounded-t-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-zinc-700">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-xl">Swap Exercise</div>
+                                    <div class="text-xs text-zinc-400 mt-0.5">Currently: <span class="text-zinc-200">${currentName}</span></div>
+                                </div>
+                                <button onclick="document.getElementById('swap-picker-modal').remove()" class="text-zinc-400 hover:text-white p-2">
+                                    <i class="fa-solid fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-y-auto p-4 space-y-5">
+                            <div>
+                                <div class="text-xs font-semibold tracking-wide text-emerald-400 uppercase mb-2">Recommended for this move</div>
+                                <div class="space-y-2">${recommendedHTML}</div>
+                            </div>
+                            
+                            <div class="pt-2 border-t border-zinc-700">
+                                <button onclick="openLibraryForSwap(${exerciseId})"
+                                        class="w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl text-sm font-semibold flex items-center justify-center gap-x-2">
+                                    <i class="fa-solid fa-book"></i>
+                                    <span>Browse full Library to pick</span>
+                                </button>
+                                <p class="text-[10px] text-center text-zinc-500 mt-2">Opens the Library — tap any exercise to swap it in</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function openLibraryForSwap(exerciseId) {
+            pendingSwapExerciseId = exerciseId;
+            const modal = document.getElementById('swap-picker-modal');
+            if (modal) modal.remove();
+            showSection('library');
+            showToast('Tap an exercise to swap it in');
+            // Update library banner
+            const banner = document.getElementById('library-swap-banner');
+            if (banner) banner.classList.remove('hidden');
+        }
+
+        function cancelLibrarySwapMode() {
+            pendingSwapExerciseId = null;
+            const banner = document.getElementById('library-swap-banner');
+            if (banner) banner.classList.add('hidden');
+            if (currentWorkout) showSection('workout');
+        }
+
+        // How-to only (form cues — no swap list)
         function showExerciseInfo(exerciseId) {
-            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises];
+            const allEx = [...pushExercises, ...pullExercises, ...upperExercises, ...lowerExercises, ...absFinisherExercises, ...extraLibraryExercises];
             let ex = allEx.find(e => e.id === exerciseId);
             
-            // Apply override if this exercise was swapped
             const override = (currentWorkout && currentWorkout.overrides && currentWorkout.overrides[exerciseId]) 
                 ? currentWorkout.overrides[exerciseId] : null;
             
@@ -2615,36 +3477,12 @@
                 ex = { 
                     ...ex, 
                     name: override.name, 
-                    description: override.description, 
-                    cue: override.cue 
+                    description: override.description || ex.description, 
+                    cue: override.cue || ex.cue 
                 };
             }
             
             if (!ex) return;
-            
-            const hasAlternatives = ex.alternatives && ex.alternatives.length > 0;
-            
-            let altHTML = '';
-            if (hasAlternatives) {
-                altHTML = `
-                    <div class="pt-4 border-t border-zinc-700">
-                        <div class="uppercase text-xs tracking-widest text-emerald-400 mb-2">ALTERNATIVES (if equipment busy)</div>
-                        <div class="space-y-2">
-                            ${ex.alternatives.map(alt => `
-                                <div class="flex items-center justify-between bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2 text-sm">
-                                    <span>${alt}</span>
-                                    ${currentWorkout ? `
-                                        <button onclick="swapExerciseInWorkout(${exerciseId}, '${alt}'); event.target.closest('.fixed').remove();" 
-                                                class="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">
-                                            Swap In
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
             
             const modalHTML = `
                 <div class="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-5" onclick="this.remove()">
@@ -2658,24 +3496,21 @@
                         
                         <div class="p-6 text-sm space-y-5">
                             <div>
-                                <div class="uppercase text-xs tracking-widest text-emerald-400 mb-1">HOW TO PERFORM</div>
+                                <div class="uppercase text-xs tracking-widest text-sky-400 mb-1">HOW TO PERFORM</div>
                                 <p class="leading-relaxed text-zinc-200">${ex.description}</p>
                             </div>
                             
                             <div>
-                                <div class="uppercase text-xs tracking-widest text-emerald-400 mb-1">KEY CUE</div>
-                                <p class="text-emerald-200 font-medium">"${ex.cue}"</p>
+                                <div class="uppercase text-xs tracking-widest text-sky-400 mb-1">KEY CUE</div>
+                                <p class="text-sky-200 font-medium">"${ex.cue}"</p>
                             </div>
                             
-                            ${altHTML}
-                            
                             <div class="pt-3 border-t border-zinc-700">
-                                <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name)}+proper+form+athlean+x+jeff+nippard" target="_blank"
-                                   class="w-full flex items-center justify-center gap-x-2 py-3.5 bg-red-600 hover:bg-red-500 active:bg-red-700 transition-colors text-white rounded-3xl text-sm font-semibold">
-                                    <i class="fa-brands fa-youtube mr-2"></i>
-                                    <span>Watch Proper Form Video</span>
-                                </a>
-                                <p class="text-[10px] text-center text-zinc-500 mt-1.5">Best results: Search for Athlean-X or Jeff Nippard form tutorials</p>
+                                <button onclick="watchFormVideo(${exerciseId}); event.target.closest('.fixed').remove();"
+                                        class="w-full flex items-center justify-center gap-x-2 py-3.5 bg-red-600 hover:bg-red-500 transition-colors text-white rounded-3xl text-sm font-semibold">
+                                    <i class="fa-brands fa-youtube"></i>
+                                    <span>Watch Form Video</span>
+                                </button>
                             </div>
                         </div>
                         

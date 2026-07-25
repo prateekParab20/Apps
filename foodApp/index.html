@@ -53,6 +53,26 @@ input:focus,select:focus{outline:none;border-color:#f97316}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:12px 20px;border-radius:30px;font-size:14px;z-index:300;display:none}
 .toast.show{display:block}
 .qty{font-size:12px;color:#64748b;margin-top:4px}
+.cal-day{
+  aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:10px;font-size:13px;font-weight:500;
+  cursor:pointer;position:relative;
+  color:#334155;background:transparent;
+  border:none;padding:0;
+}
+.cal-day:hover{background:#f1f5f9}
+.cal-day.other-month{color:#cbd5e1}
+.cal-day.today{font-weight:700;box-shadow:inset 0 0 0 1.5px #f97316}
+.cal-day.has-logs{font-weight:800;color:#c2410f}
+.cal-day.has-logs::after{
+  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  width:5px;height:5px;border-radius:50%;background:#f97316;
+}
+.cal-day.selected{
+  background:#ea580c !important;color:#fff !important;font-weight:700;
+}
+.cal-day.selected.has-logs::after{background:#fff}
 </style>
 </head>
 <body>
@@ -73,6 +93,7 @@ input:focus,select:focus{outline:none;border-color:#f97316}
   <nav>
     <a href="#" class="active" data-sec="profile" onclick="showSec('profile')">👤 Profile & Targets</a>
     <a href="#" data-sec="recipes" onclick="showSec('recipes')">📖 Recipes Library</a>
+    <a href="#" data-sec="myfoods" onclick="showSec('myfoods')">🥗 My Foods Database</a>
     <a href="#" data-sec="planner" onclick="showSec('planner')">📅 Daily Planner</a>
     <a href="#" data-sec="tracker" onclick="showSec('tracker')">📊 Macro Tracker</a>
     <a href="#" data-sec="guide" onclick="showSec('guide')">💡 Guide & Tips</a>
@@ -121,6 +142,9 @@ input:focus,select:focus{outline:none;border-color:#f97316}
 <div class="section" id="sec-recipes">
   <h2 id="t-recipes">Recipes Library</h2>
   <p class="sub" id="t-recipes-sub">Tap a recipe → view quantities → Add to Plan</p>
+  <div id="db-status" style="font-size:13px;color:#64748b;margin-bottom:10px;padding:8px 12px;background:#f1f5f9;border-radius:10px;">
+    Your food database: <strong id="db-count">0</strong> custom items saved
+  </div>
   <div class="filters">
     <button class="filter-btn active" onclick="filterMeals('all')">All</button>
     <button class="filter-btn" onclick="filterMeals('breakfast')">Breakfast</button>
@@ -128,8 +152,68 @@ input:focus,select:focus{outline:none;border-color:#f97316}
     <button class="filter-btn" onclick="filterMeals('dinner')">Dinner</button>
     <button class="filter-btn" onclick="filterMeals('snack')">Snacks</button>
   </div>
-  <button class="btn btn-block" style="margin-bottom:14px" onclick="generateRecipe()" id="btn-gen">✨ Generate New Recipe</button>
+  <button class="btn btn-block" style="margin-bottom:14px" onclick="generateRecipe()" id="btn-gen">✨ Generate New Recipe (uses your ingredients)</button>
   <div id="recipeList"></div>
+</div>
+
+<!-- MY FOODS DATABASE -->
+<div class="section" id="sec-myfoods">
+  <h2 id="t-myfoods">My Foods Database</h2>
+  <p class="sub" id="t-myfoods-sub">Add any food from the packet label. Macros are saved for that exact serving size.</p>
+
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:10px" id="t-addfood">➕ Add New Food / Ingredient</div>
+    
+    <label id="l-fname">Food Name</label>
+    <input type="text" id="f-name" placeholder="e.g. Multigrain Bread / Greek Yogurt / Boiled Egg">
+
+    <div class="grid2">
+      <div>
+        <label id="l-fserv">Serving Size</label>
+        <input type="number" id="f-serv" placeholder="100" step="0.1" min="0">
+      </div>
+      <div>
+        <label id="l-funit">Unit</label>
+        <select id="f-unit">
+          <option value="g">grams (g)</option>
+          <option value="ml">ml</option>
+          <option value="piece">piece</option>
+          <option value="slice">slice</option>
+          <option value="cup">cup</option>
+          <option value="tbsp">tbsp</option>
+          <option value="tsp">tsp</option>
+          <option value="bowl">bowl</option>
+          <option value="packet">packet</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label id="l-fprot">Protein (g)</label>
+        <input type="number" id="f-prot" placeholder="0" step="0.1" min="0">
+      </div>
+      <div>
+        <label id="l-fcarb">Carbs (g)</label>
+        <input type="number" id="f-carb" placeholder="0" step="0.1" min="0">
+      </div>
+      <div>
+        <label id="l-ffat">Fat (g)</label>
+        <input type="number" id="f-fat" placeholder="0" step="0.1" min="0">
+      </div>
+      <div>
+        <label id="l-fkcal">Calories (kcal)</label>
+        <input type="number" id="f-kcal" placeholder="0" step="1" min="0">
+      </div>
+    </div>
+
+    <button class="btn btn-block" style="margin-top:6px" onclick="addToMyFoods()" id="btn-addfood">Save to My Foods Database</button>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:8px" id="t-foodlist">Saved Foods (<span id="food-count">0</span>)</div>
+    <div id="myFoodsList" style="font-size:14px"></div>
+  </div>
 </div>
 
 <!-- PLANNER -->
@@ -160,11 +244,29 @@ input:focus,select:focus{outline:none;border-color:#f97316}
 <!-- TRACKER -->
 <div class="section" id="sec-tracker">
   <h2 id="t-tracker">Macro Tracker</h2>
-  <p class="sub" id="t-tracker-sub">Log what she actually ate today</p>
+  <p class="sub" id="t-tracker-sub">Tap a date on the calendar to view or log that day</p>
+
+  <!-- CALENDAR -->
+  <div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <button type="button" onclick="calPrevMonth()" style="background:#f1f5f9;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer">‹</button>
+      <div id="cal-month-label" style="font-weight:700;font-size:16px"></div>
+      <button type="button" onclick="calNextMonth()" style="background:#f1f5f9;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer">›</button>
+    </div>
+    <div id="cal-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:4px">
+      <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+    </div>
+    <div id="cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+    <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:#64748b;justify-content:center">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;margin-right:4px"></span> Has logs</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ea580c;margin-right:4px"></span> Selected</span>
+    </div>
+    <!-- hidden field so existing code still works -->
+    <input type="hidden" id="trackDate">
+  </div>
+
   <div class="card">
-    <label id="l-date">Date</label>
-    <input type="date" id="trackDate">
-    <div style="font-weight:600;margin:10px 0 6px" id="t-today">Today's Intake</div>
+    <div style="font-weight:600;margin:0 0 6px" id="t-today">Today's Intake</div>
     <div>Protein: <strong id="trackP">0</strong> / <span id="goalP">—</span> g</div>
     <div class="progress"><div class="progress-bar" id="barP" style="width:0%"></div></div>
     <div>Carbs: <strong id="trackC">0</strong> / <span id="goalC">—</span> g</div>
@@ -173,6 +275,36 @@ input:focus,select:focus{outline:none;border-color:#f97316}
     <div class="progress"><div class="progress-bar" id="barF" style="width:0%"></div></div>
     <div style="margin-top:8px">Calories: <strong id="trackK">0</strong></div>
   </div>
+
+  <!-- LOG FROM MY DATABASE WITH QUANTITY -->
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:8px" id="t-logdb">📋 Log from My Foods Database</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:10px" id="t-logdb-sub">Select a food you saved, enter how much you actually ate, and macros will scale automatically.</p>
+    
+    <label id="l-dbfood">Select Food</label>
+    <select id="db-food-select" onchange="onDbFoodSelect()">
+      <option value="">— Choose from your database —</option>
+    </select>
+
+    <div id="db-qty-area" style="display:none">
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <label id="l-dbqty">Quantity you ate</label>
+          <input type="number" id="db-qty" step="0.1" min="0" oninput="updateScaledMacros()">
+        </div>
+        <div>
+          <label id="l-dbunit">Unit</label>
+          <input type="text" id="db-unit" readonly style="background:#f8fafc">
+        </div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:10px;padding:10px;margin-top:8px;font-size:13px">
+        <div id="db-base-info" style="color:#64748b;margin-bottom:4px"></div>
+        <div id="db-scaled-info" style="font-weight:600;color:#166534"></div>
+      </div>
+      <button class="btn btn-block" style="margin-top:10px" onclick="logScaledFood()" id="btn-logscaled">Add Scaled Amount to Log</button>
+    </div>
+  </div>
+
   <div class="card">
     <div style="font-weight:600;margin-bottom:8px" id="t-quick">Quick Add</div>
     <div class="grid2" id="quickAdds"></div>
@@ -267,6 +399,23 @@ let log = [];
 let targets = {cal:0, p:0, c:0, f:0};
 let dietPref = 'veg'; // 'veg' or 'nonveg'
 
+// Safe storage (works even when localStorage is blocked by sandbox / iOS)
+const memoryStore = {};
+function safeSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    memoryStore[key] = value;
+  }
+}
+function safeGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    return memoryStore[key] || null;
+  }
+}
+
 function getFilteredMeals(cat) {
   let list = meals;
   // Strict: Vegetarian mode never shows eggs, chicken or fish
@@ -305,7 +454,8 @@ function showSec(id){
   toggleMenu();
   if(id==='recipes') renderRecipes();
   if(id==='planner') fillSelects();
-  if(id==='tracker') updateTrackerUI();
+  if(id==='tracker') { updateTrackerUI(); renderCalendar(); }
+  if(id==='myfoods') renderMyFoodsList();
 }
 function setLang(l){
   lang = l;
@@ -313,6 +463,7 @@ function setLang(l){
   applyLang();
   renderRecipes();
   fillSelects();
+  renderCalendar();
 }
 function toast(msg){
   const t = document.getElementById('toast');
@@ -332,10 +483,17 @@ const T = {
     btnSave:"Save Profile & Calculate Targets", lCal:"kcal / day", lProt:"g protein", lCarb:"g carbs", lFat:"g fats",
     dietVeg:"Vegetarian (no eggs/chicken/fish)", dietNonveg:"Non-Vegetarian (Eggs + Chicken + Fish)",
     note:"Higher protein (1.3–1.5 g/kg) helps preserve muscle at 55-60 years. Low-GI carbs from millets, barley, dals + lots of sabzi keep blood sugar steady. Always check with her doctor.",
-    tRecipes:"Recipes Library", tRecipesSub:"Tap a recipe → view quantities → Add to Plan", btnGen:"✨ Generate New Recipe",
+    tRecipes:"Recipes Library", tRecipesSub:"Tap a recipe → view quantities → Add to Plan", btnGen:"✨ Generate New Recipe (uses your ingredients)",
+    tMyfoods:"My Foods Database", tMyfoodsSub:"Add any food from the packet label. Macros are saved for that exact serving size.",
+    tAddfood:"➕ Add New Food / Ingredient", lFname:"Food Name", lFserv:"Serving Size", lFunit:"Unit",
+    lFprot:"Protein (g)", lFcarb:"Carbs (g)", lFfat:"Fat (g)", lFkcal:"Calories (kcal)",
+    btnAddfood:"Save to My Foods Database", tFoodlist:"Saved Foods",
     tPlanner:"Daily Planner", tPlannerSub:"Select meals or generate a full day", lBf:"Breakfast", lSn1:"Snack 1", lLu:"Lunch", lSn2:"Snack 2", lDi:"Dinner",
     tTotals:"Plan Totals", btnAddPlan:"Add Entire Plan to Tracker", btnFullDay:"🎲 Generate Full Day",
-    tTracker:"Macro Tracker", tTrackerSub:"Log what she actually ate today", lDate:"Date", tToday:"Today's Intake", tQuick:"Quick Add", tLog:"Logged Items", btnClear:"Clear Today's Log",
+    tTracker:"Macro Tracker", tTrackerSub:"Tap a date on the calendar to view or log that day", lDate:"Date", tToday:"Today's Intake",
+    tLogdb:"📋 Log from My Foods Database", tLogdbSub:"Select a food you saved, enter how much you actually ate, and macros will scale automatically.",
+    lDbfood:"Select Food", lDbqty:"Quantity you ate", lDbunit:"Unit", btnLogscaled:"Add Scaled Amount to Log",
+    tQuick:"Quick Add", tLog:"Logged Items", btnClear:"Clear Today's Log",
     tGuide:"Guide & Tips", mAdd:"Add to Plan", mYt:"▶ Watch on YouTube"
   },
   hi:{
@@ -344,10 +502,17 @@ const T = {
     btnSave:"प्रोफ़ाइल सेव करें और लक्ष्य निकालें", lCal:"kcal / दिन", lProt:"g प्रोटीन", lCarb:"g कार्ब्स", lFat:"g फैट",
     dietVeg:"शाकाहारी (अंडा/चिकन/मछली नहीं)", dietNonveg:"मांसाहारी (अंडे + चिकन + मछली)",
     note:"55-60 साल में मांसपेशियों को बनाए रखने के लिए ज्यादा प्रोटीन (1.3–1.5 g/kg) जरूरी है। बाजरा, जौ, दाल + सब्जी से लो-GI कार्ब्स लें। डॉक्टर से जरूर पूछें।",
-    tRecipes:"रेसिपी लाइब्रेरी", tRecipesSub:"रेसिपी पर टैप करें → मात्रा देखें → प्लान में जोड़ें", btnGen:"✨ नई रेसिपी जनरेट करें",
+    tRecipes:"रेसिपी लाइब्रेरी", tRecipesSub:"रेसिपी पर टैप करें → मात्रा देखें → प्लान में जोड़ें", btnGen:"✨ नई रेसिपी जनरेट करें (आपकी सामग्री से)",
+    tMyfoods:"मेरा फूड डेटाबेस", tMyfoodsSub:"पैकेट लेबल से कोई भी खाना जोड़ें। मैक्रोज़ उसी सर्विंग साइज के लिए सेव होते हैं।",
+    tAddfood:"➕ नया फूड / सामग्री जोड़ें", lFname:"खाने का नाम", lFserv:"सर्विंग साइज", lFunit:"यूनिट",
+    lFprot:"प्रोटीन (g)", lFcarb:"कार्ब्स (g)", lFfat:"फैट (g)", lFkcal:"कैलोरी (kcal)",
+    btnAddfood:"मेरे फूड डेटाबेस में सेव करें", tFoodlist:"सेव किए गए फूड्स",
     tPlanner:"दैनिक प्लानर", tPlannerSub:"मील चुनें या पूरा दिन जनरेट करें", lBf:"नाश्ता", lSn1:"स्नैक 1", lLu:"दोपहर का खाना", lSn2:"स्नैक 2", lDi:"रात का खाना",
     tTotals:"प्लान टोटल", btnAddPlan:"पूरा प्लान ट्रैकर में जोड़ें", btnFullDay:"🎲 पूरा दिन जनरेट करें",
-    tTracker:"मैक्रो ट्रैकर", tTrackerSub:"आज वास्तव में क्या खाया वो लॉग करें", lDate:"तारीख", tToday:"आज का सेवन", tQuick:"क्विक ऐड", tLog:"लॉग किए आइटम", btnClear:"आज का लॉग साफ करें",
+    tTracker:"मैक्रो ट्रैकर", tTrackerSub:"कैलेंडर पर तारीख चुनें और उस दिन का लॉग देखें / जोड़ें", lDate:"तारीख", tToday:"आज का सेवन",
+    tLogdb:"📋 मेरे फूड डेटाबेस से लॉग करें", tLogdbSub:"सेव किया हुआ खाना चुनें, जितना खाया उतना डालें, मैक्रोज़ अपने आप बदल जाएंगे।",
+    lDbfood:"खाना चुनें", lDbqty:"आपने कितना खाया", lDbunit:"यूनिट", btnLogscaled:"स्केल्ड मात्रा लॉग में जोड़ें",
+    tQuick:"क्विक ऐड", tLog:"लॉग किए आइटम", btnClear:"आज का लॉग साफ करें",
     tGuide:"गाइड और टिप्स", mAdd:"प्लान में जोड़ें", mYt:"▶ यूट्यूब पर देखें"
   },
   mr:{
@@ -356,10 +521,17 @@ const T = {
     btnSave:"प्रोफाइल सेव्ह करा आणि लक्ष्य काढा", lCal:"kcal / दिवस", lProt:"g प्रोटीन", lCarb:"g कार्ब्स", lFat:"g फॅट",
     dietVeg:"शाकाहारी (अंडी/चिकन/मासा नाही)", dietNonveg:"मांसाहारी (अंडी + चिकन + मासा)",
     note:"55-60 वर्षांत स्नायू टिकवण्यासाठी जास्त प्रोटीन (1.3–1.5 g/kg) आवश्यक. बाजरी, जव, डाळ + भाजीने लो-GI कार्ब्स घ्या. डॉक्टरांचा सल्ला घ्या.",
-    tRecipes:"रेसिपी लायब्ररी", tRecipesSub:"रेसिपीवर टॅप करा → प्रमाण पाहा → प्लानमध्ये जोडा", btnGen:"✨ नवीन रेसिपी जनरेट करा",
+    tRecipes:"रेसिपी लायब्ररी", tRecipesSub:"रेसिपीवर टॅप करा → प्रमाण पाहा → प्लानमध्ये जोडा", btnGen:"✨ नवीन रेसिपी जनरेट करा (तुमच्या घटकांमधून)",
+    tMyfoods:"माझे फूड डेटाबेस", tMyfoodsSub:"पॅकेट लेबलमधून कोणतेही खाणे जोडा. मॅक्रो त्याच सर्व्हिंग साइजसाठी सेव्ह होतात.",
+    tAddfood:"➕ नवीन फूड / घटक जोडा", lFname:"खाण्याचे नाव", lFserv:"सर्व्हिंग साइज", lFunit:"युनिट",
+    lFprot:"प्रोटीन (g)", lFcarb:"कार्ब्स (g)", lFfat:"फॅट (g)", lFkcal:"कॅलरी (kcal)",
+    btnAddfood:"माझ्या फूड डेटाबेसमध्ये सेव्ह करा", tFoodlist:"सेव्ह केलेले फूड्स",
     tPlanner:"दैनिक प्लानर", tPlannerSub:"जेवण निवडा किंवा पूर्ण दिवस जनरेट करा", lBf:"नाश्ता", lSn1:"स्नॅक १", lLu:"दुपारचे जेवण", lSn2:"स्नॅक २", lDi:"रात्रीचे जेवण",
     tTotals:"प्लान टोटल", btnAddPlan:"पूर्ण प्लान ट्रॅकरमध्ये जोडा", btnFullDay:"🎲 पूर्ण दिवस जनरेट करा",
-    tTracker:"मॅक्रो ट्रॅकर", tTrackerSub:"आज खरंच काय खाल्ले ते लॉग करा", lDate:"तारीख", tToday:"आजचे सेवन", tQuick:"क्विक अॅड", tLog:"लॉग केलेले आयटम", btnClear:"आजचा लॉग साफ करा",
+    tTracker:"मॅक्रो ट्रॅकर", tTrackerSub:"कॅलेंडरवर तारीख निवडा आणि त्या दिवसाचे लॉग पाहा / जोडा", lDate:"तारीख", tToday:"आजचे सेवन",
+    tLogdb:"📋 माझ्या फूड डेटाबेसमधून लॉग करा", tLogdbSub:"सेव्ह केलेले खाणे निवडा, जितके खाल्ले तितके टाका, मॅक्रो आपोआप स्केल होतील.",
+    lDbfood:"खाणे निवडा", lDbqty:"तुम्ही किती खाल्ले", lDbunit:"युनिट", btnLogscaled:"स्केल्ड प्रमाण लॉगमध्ये जोडा",
+    tQuick:"क्विक अॅड", tLog:"लॉग केलेले आयटम", btnClear:"आजचा लॉग साफ करा",
     tGuide:"गाईड आणि टिप्स", mAdd:"प्लानमध्ये जोडा", mYt:"▶ युट्यूबवर पाहा"
   }
 };
@@ -389,6 +561,21 @@ function applyLang(){
   document.getElementById('t-recipes').textContent = t.tRecipes;
   document.getElementById('t-recipes-sub').textContent = t.tRecipesSub;
   document.getElementById('btn-gen').textContent = t.btnGen;
+  // My Foods section
+  if (document.getElementById('t-myfoods')) {
+    document.getElementById('t-myfoods').textContent = t.tMyfoods;
+    document.getElementById('t-myfoods-sub').textContent = t.tMyfoodsSub;
+    document.getElementById('t-addfood').textContent = t.tAddfood;
+    document.getElementById('l-fname').textContent = t.lFname;
+    document.getElementById('l-fserv').textContent = t.lFserv;
+    document.getElementById('l-funit').textContent = t.lFunit;
+    document.getElementById('l-fprot').textContent = t.lFprot;
+    document.getElementById('l-fcarb').textContent = t.lFcarb;
+    document.getElementById('l-ffat').textContent = t.lFfat;
+    document.getElementById('l-fkcal').textContent = t.lFkcal;
+    document.getElementById('btn-addfood').textContent = t.btnAddfood;
+    document.getElementById('t-foodlist').childNodes[0].textContent = t.tFoodlist + ' (';
+  }
   document.getElementById('t-planner').textContent = t.tPlanner;
   document.getElementById('t-planner-sub').textContent = t.tPlannerSub;
   document.getElementById('l-bf').textContent = t.lBf;
@@ -401,8 +588,17 @@ function applyLang(){
   document.getElementById('btn-fullday').textContent = t.btnFullDay;
   document.getElementById('t-tracker').textContent = t.tTracker;
   document.getElementById('t-tracker-sub').textContent = t.tTrackerSub;
-  document.getElementById('l-date').textContent = t.lDate;
+  const lDateEl = document.getElementById('l-date');
+  if (lDateEl) lDateEl.textContent = t.lDate;
   document.getElementById('t-today').textContent = t.tToday;
+  if (document.getElementById('t-logdb')) {
+    document.getElementById('t-logdb').textContent = t.tLogdb;
+    document.getElementById('t-logdb-sub').textContent = t.tLogdbSub;
+    document.getElementById('l-dbfood').textContent = t.lDbfood;
+    document.getElementById('l-dbqty').textContent = t.lDbqty;
+    document.getElementById('l-dbunit').textContent = t.lDbunit;
+    document.getElementById('btn-logscaled').textContent = t.btnLogscaled;
+  }
   document.getElementById('t-quick').textContent = t.tQuick;
   document.getElementById('t-log').textContent = t.tLog;
   document.getElementById('btn-clear').textContent = t.btnClear;
@@ -430,14 +626,14 @@ function calcTargets(){
   document.getElementById('protTarget').textContent = p;
   document.getElementById('carbTarget').textContent = c;
   document.getElementById('fatTarget').textContent = f;
-  localStorage.setItem('momProfile', JSON.stringify({age,wt,ht,act,pg,dietPref,targets}));
+  safeSet('momProfile', JSON.stringify({age,wt,ht,act,pg,dietPref,targets}));
   renderRecipes();
   fillSelects();
   toast(lang==='hi'?'लक्ष्य सेव हो गए!':lang==='mr'?'लक्ष्य सेव्ह झाले!':'Targets saved!');
   updateTrackerUI();
 }
 function loadProfile(){
-  const s = localStorage.getItem('momProfile');
+  const s = safeGet('momProfile');
   if(s){
     const d = JSON.parse(s);
     document.getElementById('age').value = d.age;
@@ -558,11 +754,12 @@ function updatePlanTotals(){
   document.getElementById('planBar').style.width = pct+'%';
 }
 function addPlanToTracker(){
+  const selectedDate = getSelectedDate();
   ['sel-bf','sel-sn1','sel-lu','sel-sn2','sel-di'].forEach(id=>{
     const v = document.getElementById(id).value;
     if(v){
       const m = meals.find(x=>x.id==v);
-      if(m) log.push({...m, time:Date.now()});
+      if(m) log.push({...m, time:Date.now(), date: selectedDate});
     }
   });
   saveLog();
@@ -589,6 +786,77 @@ function generateFullDay(){
 function generateRecipe(){
   const cats = ['breakfast','lunch','dinner','snack'];
   const cat = cats[Math.floor(Math.random()*cats.length)];
+
+  // ========== 1. Try to build a recipe from USER's own custom foods database ==========
+  if (customFoods.length > 0) {
+    // Pick 1-2 high-protein items from what the user has saved
+    const proteinItems = customFoods.filter(f => f.p >= 8).sort(() => Math.random() - 0.5);
+    const otherItems = customFoods.filter(f => f.p < 8).sort(() => Math.random() - 0.5);
+
+    if (proteinItems.length > 0) {
+      const main = proteinItems[0];
+      const side = otherItems.length > 0 ? otherItems[0] : null;
+
+      let totalP = main.p, totalC = main.c, totalF = main.f, totalK = main.k;
+      let nameParts = [main.n.en];
+      let qtyParts = [main.n.en + (main.note ? ' ('+main.note+')' : '')];
+
+      if (side) {
+        totalP += side.p; totalC += side.c; totalF += side.f; totalK += side.k;
+        nameParts.push(side.n.en);
+        qtyParts.push(side.n.en + (side.note ? ' ('+side.note+')' : ''));
+      }
+
+      // Add a sensible Indian low-GI companion depending on meal type
+      const companions = {
+        breakfast: [
+          {en:' + 1 Jowar / Multigrain Roti + Salad', hi:' + 1 ज्वार / मल्टीग्रेन रोटी + सलाद', mr:' + १ ज्वारी / मल्टीग्रेन रोटी + सलाड', p:4, c:22, f:2, k:110},
+          {en:' + Curd (100g) + Cucumber', hi:' + दही (100g) + खीरा', mr:' + दही (100g) + काकडी', p:5, c:6, f:4, k:80}
+        ],
+        lunch: [
+          {en:' + 1-2 Jowar / Bajra Roti + Mixed Sabzi', hi:' + 1-2 ज्वार / बाजरा रोटी + मिक्स्ड सब्जी', mr:' + १-२ ज्वारी / बाजरी रोटी + मिक्स्ड भाजी', p:5, c:30, f:3, k:160},
+          {en:' + Foxtail / Brown Rice (small) + Salad', hi:' + फॉक्सटेल / ब्राउन राइस + सलाद', mr:' + कांगणी / ब्राउन राईस + सलाड', p:3, c:28, f:2, k:140}
+        ],
+        dinner: [
+          {en:' + Steamed Veggies + 1 Small Roti', hi:' + स्टीम्ड सब्जियां + 1 छोटी रोटी', mr:' + स्टीम भाज्या + १ छोटी रोटी', p:3, c:18, f:2, k:100},
+          {en:' + Large Salad + Curd', hi:' + बड़ा सलाद + दही', mr:' + मोठा सलाड + दही', p:5, c:8, f:4, k:90}
+        ],
+        snack: [
+          {en:' + Cucumber / Tomato', hi:' + खीरा / टमाटर', mr:' + काकडी / टोमॅटो', p:1, c:4, f:0, k:20},
+          {en:'', hi:'', mr:'', p:0, c:0, f:0, k:0}
+        ]
+      };
+      const comp = companions[cat][Math.floor(Math.random()*companions[cat].length)];
+      totalP += comp.p; totalC += comp.c; totalF += comp.f; totalK += comp.k;
+
+      const finalName = nameParts.join(' + ') + comp.en;
+      const finalNameHi = nameParts.join(' + ') + (comp.hi || comp.en);
+      const finalNameMr = nameParts.join(' + ') + (comp.mr || comp.en);
+
+      const newM = {
+        id: Date.now(),
+        isVeg: dietPref === 'veg',
+        cat,
+        name: {en: finalName, hi: finalNameHi, mr: finalNameMr},
+        p: Math.round(totalP), c: Math.round(totalC), f: Math.round(totalF), k: Math.round(totalK),
+        qty: {en: qtyParts.join(', ') + (comp.en ? comp.en : ''), hi: qtyParts.join(', '), mr: qtyParts.join(', ')},
+        desc: {
+          en: 'Generated from YOUR saved ingredients + low-GI Indian sides',
+          hi: 'आपकी सेव की हुई सामग्री + लो-GI भारतीय साइड से बनाई गई',
+          mr: 'तुमच्या सेव्ह केलेल्या घटकांमधून + लो-GI भारतीय साईड्स'
+        },
+        fromUserDB: true
+      };
+      meals.push(newM);
+      currentFilter = cat;
+      renderRecipes();
+      openModal(newM);
+      toast(lang==='hi' ? 'आपकी सामग्री से नई रेसिपी बनी!' : lang==='mr' ? 'तुमच्या घटकांमधून नवीन रेसिपी!' : 'Recipe created from YOUR ingredients!');
+      return;
+    }
+  }
+
+  // ========== 2. Fallback: use built-in templates (when user has no custom foods yet) ==========
   const vegTemplates = {
     breakfast: [
       {en:'Sprouts + Paneer Paratha (1) + Curd',hi:'स्प्राउट्स + पनीर पराठा (1) + दही',mr:'स्प्राउट्स + पनीर पराठा (१) + दही', p:27, c:34, f:14, k:370},
@@ -644,20 +912,371 @@ function generateRecipe(){
 }
 
 // ========== TRACKER ==========
+let customFoods = []; // saved custom items for quick add
+
+function loadCustomFoods() {
+  const s = safeGet('momCustomFoods');
+  if (s) {
+    try { customFoods = JSON.parse(s); } catch(e) { customFoods = []; }
+  }
+  updateDbCount();
+}
+function saveCustomFoods() {
+  safeSet('momCustomFoods', JSON.stringify(customFoods));
+  updateDbCount();
+}
+function updateDbCount() {
+  const el = document.getElementById('db-count');
+  if (el) el.textContent = customFoods.length;
+  const el2 = document.getElementById('food-count');
+  if (el2) el2.textContent = customFoods.length;
+}
+
+function addToMyFoods() {
+  const name = (document.getElementById('f-name').value || '').trim();
+  const serv = parseFloat(document.getElementById('f-serv').value) || 0;
+  const unit = document.getElementById('f-unit').value || 'g';
+  const p = parseFloat(document.getElementById('f-prot').value) || 0;
+  const c = parseFloat(document.getElementById('f-carb').value) || 0;
+  const f = parseFloat(document.getElementById('f-fat').value) || 0;
+  let k = parseFloat(document.getElementById('f-kcal').value) || 0;
+
+  if (!name) {
+    toast(lang==='hi' ? 'कृपया नाम लिखें' : lang==='mr' ? 'कृपया नाव लिहा' : 'Please enter a name');
+    return;
+  }
+  if (!serv) {
+    toast(lang==='hi' ? 'सर्विंग साइज डालें' : lang==='mr' ? 'सर्व्हिंग साइज टाका' : 'Please enter serving size');
+    return;
+  }
+  if (!k) k = Math.round(p*4 + c*4 + f*9);
+
+  const servingText = serv + unit;
+  const item = {
+    n: {en: name, hi: name, mr: name},
+    p, c, f, k,
+    serv, unit,
+    note: servingText,          // for compatibility with older code
+    servingText
+  };
+
+  // Prevent exact name duplicates
+  const exists = customFoods.some(cf => cf.n.en.toLowerCase() === name.toLowerCase() && cf.servingText === servingText);
+  if (exists) {
+    toast(lang==='hi' ? 'यह आइटम पहले से मौजूद है' : lang==='mr' ? 'हा आयटम आधीच आहे' : 'This item already exists');
+    return;
+  }
+
+  customFoods.push(item);
+  saveCustomFoods();
+  renderMyFoodsList();
+
+  // Clear form
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-serv').value = '';
+  document.getElementById('f-prot').value = '';
+  document.getElementById('f-carb').value = '';
+  document.getElementById('f-fat').value = '';
+  document.getElementById('f-kcal').value = '';
+
+  toast(lang==='hi' ? 'सेव हो गया!' : lang==='mr' ? 'सेव्ह झाले!' : 'Saved to database!');
+}
+
+function renderMyFoodsList() {
+  const list = document.getElementById('myFoodsList');
+  if (!list) return;
+  updateDbCount();
+
+  if (customFoods.length === 0) {
+    list.innerHTML = '<p style="color:#94a3b8;padding:12px 0">No custom foods yet. Add your first item above.</p>';
+    return;
+  }
+
+  list.innerHTML = customFoods.map((item, idx) => {
+    const name = item.n[lang] || item.n.en;
+    const serv = item.servingText || (item.serv ? item.serv + (item.unit||'g') : item.note || '');
+    return `<div style="padding:12px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div>
+        <div style="font-weight:600">${name}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">Serving: <strong>${serv}</strong></div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">
+          P ${item.p}g &nbsp;•&nbsp; C ${item.c}g &nbsp;•&nbsp; F ${item.f}g &nbsp;•&nbsp; ${item.k} kcal
+        </div>
+      </div>
+      <button onclick="deleteMyFood(${idx})" style="background:#fef2f2;color:#ef4444;border:none;border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">Delete</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteMyFood(idx) {
+  if (!confirm(lang==='hi' ? 'डिलीट करें?' : lang==='mr' ? 'डिलीट करायचे?' : 'Delete this food?')) return;
+  customFoods.splice(idx, 1);
+  saveCustomFoods();
+  renderMyFoodsList();
+  updateTrackerUI(); // refresh quick adds
+  toast(lang==='hi' ? 'डिलीट हो गया' : lang==='mr' ? 'डिलीट झाले' : 'Deleted');
+}
+
+function populateDbSelect() {
+  const sel = document.getElementById('db-food-select');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Choose from your database —</option>';
+  customFoods.forEach((item, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    const name = item.n[lang] || item.n.en;
+    const serv = item.servingText || (item.serv + (item.unit||'g'));
+    opt.textContent = `${name} (${serv})`;
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
+}
+
+function onDbFoodSelect() {
+  const sel = document.getElementById('db-food-select');
+  const area = document.getElementById('db-qty-area');
+  const idx = sel.value;
+  if (idx === '') {
+    area.style.display = 'none';
+    return;
+  }
+  const item = customFoods[idx];
+  if (!item) return;
+
+  area.style.display = 'block';
+  document.getElementById('db-qty').value = item.serv || 1;
+  document.getElementById('db-unit').value = item.unit || 'g';
+  document.getElementById('db-base-info').textContent = 
+    `Base: ${item.serv||1}${item.unit||'g'} = P ${item.p}g • C ${item.c}g • F ${item.f}g • ${item.k} kcal`;
+  updateScaledMacros();
+}
+
+function updateScaledMacros() {
+  const sel = document.getElementById('db-food-select');
+  const idx = sel.value;
+  if (idx === '') return;
+  const item = customFoods[idx];
+  if (!item) return;
+
+  const baseServ = item.serv || 1;
+  const qty = parseFloat(document.getElementById('db-qty').value) || 0;
+  const factor = qty / baseServ;
+
+  const sp = (item.p * factor).toFixed(1);
+  const sc = (item.c * factor).toFixed(1);
+  const sf = (item.f * factor).toFixed(1);
+  const sk = Math.round(item.k * factor);
+
+  document.getElementById('db-scaled-info').textContent = 
+    `For ${qty}${item.unit||'g'} → P ${sp}g • C ${sc}g • F ${sf}g • ${sk} kcal`;
+}
+
+// Always use LOCAL date (not UTC) so "today" is correct in India / any timezone
+function toLocalDateString(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt.getTime())) return null;
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getSelectedDate() {
+  const el = document.getElementById('trackDate');
+  if (el && el.value) return el.value; // YYYY-MM-DD
+  return toLocalDateString(new Date());
+}
+
+function setSelectedDate(dateStr) {
+  const el = document.getElementById('trackDate');
+  if (el) el.value = dateStr;
+}
+
+function getItemDate(item) {
+  if (item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) return item.date;
+  if (item.time) {
+    const local = toLocalDateString(item.time);
+    if (local) return local;
+  }
+  return getSelectedDate();
+}
+
+// ========== CALENDAR ==========
+let calViewYear = new Date().getFullYear();
+let calViewMonth = new Date().getMonth(); // 0-11
+
+function getDatesWithLogs() {
+  const set = new Set();
+  log.forEach(item => {
+    const d = getItemDate(item);
+    if (d) set.add(d);
+  });
+  return set;
+}
+
+function renderCalendar() {
+  const label = document.getElementById('cal-month-label');
+  const daysEl = document.getElementById('cal-days');
+  if (!label || !daysEl) return;
+
+  const monthNames = lang === 'hi'
+    ? ['जनवरी','फरवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितंबर','अक्टूबर','नवंबर','दिसंबर']
+    : lang === 'mr'
+    ? ['जानेवारी','फेब्रुवारी','मार्च','एप्रिल','मे','जून','जुलै','ऑगस्ट','सप्टेंबर','ऑक्टोबर','नोव्हेंबर','डिसेंबर']
+    : ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  label.textContent = monthNames[calViewMonth] + ' ' + calViewYear;
+
+  const firstDay = new Date(calViewYear, calViewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+  const daysInPrev = new Date(calViewYear, calViewMonth, 0).getDate();
+
+  const selected = getSelectedDate();
+  const todayStr = toLocalDateString(new Date());
+  const logDates = getDatesWithLogs();
+
+  let html = '';
+
+  // Previous month trailing days
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = daysInPrev - i;
+    const m = calViewMonth === 0 ? 12 : calViewMonth;
+    const y = calViewMonth === 0 ? calViewYear - 1 : calViewYear;
+    const ds = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    html += `<button type="button" class="cal-day other-month${logDates.has(ds)?' has-logs':''}${ds===selected?' selected':''}" onclick="selectCalDate('${ds}')">${d}</button>`;
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = calViewYear + '-' + String(calViewMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    let cls = 'cal-day';
+    if (ds === todayStr) cls += ' today';
+    if (logDates.has(ds)) cls += ' has-logs';
+    if (ds === selected) cls += ' selected';
+    html += `<button type="button" class="${cls}" onclick="selectCalDate('${ds}')">${d}</button>`;
+  }
+
+  // Next month leading days
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= remaining; d++) {
+    const m = calViewMonth === 11 ? 1 : calViewMonth + 2;
+    const y = calViewMonth === 11 ? calViewYear + 1 : calViewYear;
+    const ds = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    html += `<button type="button" class="cal-day other-month${logDates.has(ds)?' has-logs':''}${ds===selected?' selected':''}" onclick="selectCalDate('${ds}')">${d}</button>`;
+  }
+
+  daysEl.innerHTML = html;
+}
+
+function selectCalDate(dateStr) {
+  setSelectedDate(dateStr);
+  // If selected date is in another month, jump calendar view to it
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    calViewYear = parseInt(parts[0], 10);
+    calViewMonth = parseInt(parts[1], 10) - 1;
+  }
+  updateTrackerUI();
+}
+
+function calPrevMonth() {
+  calViewMonth--;
+  if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+  renderCalendar();
+}
+
+function calNextMonth() {
+  calViewMonth++;
+  if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+  renderCalendar();
+}
+
+function logScaledFood() {
+  const sel = document.getElementById('db-food-select');
+  const idx = sel.value;
+  if (idx === '') {
+    toast(lang==='hi'?'फूड चुनें':lang==='mr'?'फूड निवडा':'Please select a food');
+    return;
+  }
+  const item = customFoods[idx];
+  if (!item) return;
+
+  const baseServ = item.serv || 1;
+  const qty = parseFloat(document.getElementById('db-qty').value) || 0;
+  if (qty <= 0) {
+    toast(lang==='hi'?'मात्रा डालें':lang==='mr'?'प्रमाण टाका':'Enter quantity');
+    return;
+  }
+  const factor = qty / baseServ;
+  const selectedDate = getSelectedDate();
+
+  const scaled = {
+    name: item.n,
+    p: Math.round(item.p * factor * 10) / 10,
+    c: Math.round(item.c * factor * 10) / 10,
+    f: Math.round(item.f * factor * 10) / 10,
+    k: Math.round(item.k * factor),
+    note: qty + (item.unit || 'g'),
+    time: Date.now(),
+    date: selectedDate,
+    isCustom: true,
+    scaledFrom: item.n.en
+  };
+
+  log.push(scaled);
+  saveLog();
+  updateTrackerUI();
+
+  // Reset
+  document.getElementById('db-food-select').value = '';
+  document.getElementById('db-qty-area').style.display = 'none';
+
+  toast(lang==='hi' ? 'जोड़ दिया!' : lang==='mr' ? 'जोडले!' : 'Added to log!');
+}
+
 function updateTrackerUI(){
   document.getElementById('goalP').textContent = targets.p || '—';
   document.getElementById('goalC').textContent = targets.c || '—';
   document.getElementById('goalF').textContent = targets.f || '—';
+
+  // Only show / sum items for the currently selected date
+  const selectedDate = getSelectedDate();
+  const todayStr = toLocalDateString(new Date());
+  const isToday = selectedDate === todayStr;
+
+  // Update the heading so user knows which day they are looking at
+  const todayLabel = document.getElementById('t-today');
+  if (todayLabel) {
+    if (isToday) {
+      todayLabel.textContent = (lang === 'hi' ? 'आज का सेवन' : lang === 'mr' ? 'आजचे सेवन' : "Today's Intake");
+    } else {
+      todayLabel.textContent = (lang === 'hi' ? 'सेवन — ' : lang === 'mr' ? 'सेवन — ' : 'Intake — ') + selectedDate;
+    }
+  }
+
+  // Refresh calendar highlight
+  renderCalendar();
+
+  const dayLog = log
+    .map((m, originalIdx) => ({...m, originalIdx}))
+    .filter(m => getItemDate(m) === selectedDate);
+
   let p=0,c=0,f=0,k=0;
-  log.forEach(m=>{ p+=m.p; c+=m.c; f+=m.f; k+=m.k; });
-  document.getElementById('trackP').textContent = p;
-  document.getElementById('trackC').textContent = c;
-  document.getElementById('trackF').textContent = f;
-  document.getElementById('trackK').textContent = k;
+  dayLog.forEach(m=>{ p+=m.p; c+=m.c; f+=m.f; k+=m.k; });
+  document.getElementById('trackP').textContent = Math.round(p*10)/10;
+  document.getElementById('trackC').textContent = Math.round(c*10)/10;
+  document.getElementById('trackF').textContent = Math.round(f*10)/10;
+  document.getElementById('trackK').textContent = Math.round(k);
   document.getElementById('barP').style.width = (targets.p?Math.min(100,p/targets.p*100):0)+'%';
   document.getElementById('barC').style.width = (targets.c?Math.min(100,c/targets.c*100):0)+'%';
   document.getElementById('barF').style.width = (targets.f?Math.min(100,f/targets.f*100):0)+'%';
-  // quick adds
+
+  // Populate the database select
+  populateDbSelect();
+
+  // Quick adds = built-in + saved custom foods
   const qa = document.getElementById('quickAdds');
   qa.innerHTML = '';
   const quicks = [
@@ -668,35 +1287,99 @@ function updateTrackerUI(){
     {n:{en:'Roasted Chana 40g',hi:'रोस्टेड चना 40g',mr:'रोस्टेड चणा 40g'},p:14,c:18,f:5,k:160},
     {n:{en:'1 Jowar Roti',hi:'1 ज्वार रोटी',mr:'१ ज्वारी रोटी'},p:3,c:18,f:1,k:90}
   ];
-  quicks.forEach(q=>{
+  // Add saved custom foods at the top
+  const allQuicks = [...customFoods, ...quicks];
+  allQuicks.forEach(q=>{
     const b = document.createElement('button');
     b.className = 'btn btn-sm';
-    b.style.background = '#f1f5f9';
+    b.style.background = q.note !== undefined || q.servingText ? '#fff7ed' : '#f1f5f9';
     b.style.color = '#334155';
-    b.textContent = q.n[lang] + ` (${q.p}p)`;
-    b.onclick = ()=>{ log.push({name:q.n, p:q.p,c:q.c,f:q.f,k:q.k, time:Date.now()}); saveLog(); updateTrackerUI(); toast('+ '+q.n[lang]); };
+    const label = (q.n && q.n[lang]) ? q.n[lang] : (q.n?.en || 'Item');
+    b.textContent = label + ` (${q.p}p)`;
+    b.onclick = ()=>{
+      const selectedDate = getSelectedDate();
+      log.push({
+        name: q.n || {en:label,hi:label,mr:label},
+        p:q.p, c:q.c, f:q.f, k:q.k,
+        note: q.note || q.servingText || '',
+        time: Date.now(),
+        date: selectedDate
+      });
+      saveLog();
+      updateTrackerUI();
+      toast('+ ' + label);
+    };
     qa.appendChild(b);
   });
-  // log list
+
+  // Log list (only for selected date)
   const ll = document.getElementById('logList');
-  if(log.length===0) ll.innerHTML = '<em style="color:#94a3b8">No items yet</em>';
-  else ll.innerHTML = log.map((m,i)=>`<div style="padding:6px 0;border-bottom:1px solid #f1f5f9">${(m.name&&m.name[lang])||m.name?.en||'Item'} — ${m.p}p</div>`).join('');
+  if(dayLog.length===0) {
+    ll.innerHTML = '<em style="color:#94a3b8">No items logged for this date</em>';
+  } else {
+    ll.innerHTML = dayLog.map((m)=>{
+      const nm = (m.name && m.name[lang]) || m.name?.en || 'Item';
+      const note = m.note ? ` (${m.note})` : '';
+      return `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+        <span>${nm}${note} — ${m.p}p / ${m.k}kcal</span>
+        <button onclick="removeLogItem(${m.originalIdx})" style="background:none;border:none;color:#ef4444;font-size:16px;padding:0 6px;cursor:pointer">×</button>
+      </div>`;
+    }).join('');
+  }
 }
-function saveLog(){ localStorage.setItem('momLog', JSON.stringify(log)); }
+function removeLogItem(idx) {
+  log.splice(idx, 1);
+  saveLog();
+  updateTrackerUI();
+}
+function saveLog(){ safeSet('momLog', JSON.stringify(log)); }
 function loadLog(){
-  const s = localStorage.getItem('momLog');
-  if(s) log = JSON.parse(s);
+  const s = safeGet('momLog');
+  if(s) {
+    try {
+      log = JSON.parse(s);
+      // Give older entries (that only had a timestamp) a proper local date
+      let changed = false;
+      log.forEach(item => {
+        if (!item.date && item.time) {
+          item.date = toLocalDateString(item.time);
+          changed = true;
+        }
+      });
+      if (changed) saveLog();
+    } catch(e) {
+      log = [];
+    }
+  }
 }
-function clearLog(){ log=[]; saveLog(); updateTrackerUI(); toast('Cleared'); }
+function clearLog(){
+  // Clear only the currently selected date
+  const selectedDate = getSelectedDate();
+  const before = log.length;
+  log = log.filter(m => getItemDate(m) !== selectedDate);
+  saveLog();
+  updateTrackerUI();
+  const removed = before - log.length;
+  toast(lang==='hi' ? (removed + ' आइटम हटाए') : lang==='mr' ? (removed + ' आयटम काढले') : (removed + ' item(s) cleared for this date'));
+}
 
 // ========== INIT ==========
-document.getElementById('trackDate').valueAsDate = new Date();
+(function() {
+  const today = toLocalDateString(new Date());
+  setSelectedDate(today);
+  const parts = today.split('-');
+  calViewYear = parseInt(parts[0], 10);
+  calViewMonth = parseInt(parts[1], 10) - 1;
+})();
 loadProfile();
 loadLog();
+loadCustomFoods();
 applyLang();
 renderRecipes();
 fillSelects();
 updateTrackerUI();
+updateDbCount();
+renderCalendar();
 </script>
 </body>
 </html>
