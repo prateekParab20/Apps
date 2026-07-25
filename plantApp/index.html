@@ -11,6 +11,15 @@
       --g45: #16a34a; --g45-bg: #f0fdf4; --g56: #15803d; --g56-bg: #dcfce7;
       --g67: #166534; --g67-bg: #bbf7d0; --blue: #2563eb; --blue-bg: #eff6ff;
     }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted2: #94a3b8;
+        --border: #334155; --accent: #2dd4bf; --red: #f87171; --red-bg: #450a0a;
+        --g45: #4ade80; --g45-bg: #064e3b; --g56: #22c55e; --g56-bg: #14532d;
+        --g67: #16a34a; --g67-bg: #065f46; --blue: #60a5fa; --blue-bg: #1e3a8a;
+      }
+      body { background: linear-gradient(180deg, #020617 0%, #0f172a 100%); }
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -610,6 +619,23 @@
       alert(`Added to My Garden!`);
     }
 
+    function getAvatar(name) {
+      const n = name.toLowerCase();
+      if (n.includes('cactus') || n.includes('cacti') || n.includes('succulent') || n.includes('aloe') || n.includes('jade') || n.includes('agave') || n.includes('stone')) return '🌵';
+      if (n.includes('fern') || n.includes('palm') || n.includes('ficus') || n.includes('dracaena') || n.includes('monstera') || n.includes('pothos') || n.includes('spider')) return '🪴';
+      if (n.includes('flower') || n.includes('lily') || n.includes('orchid') || n.includes('begonia') || n.includes('hibiscus') || n.includes('rose')) return '🌸';
+      if (n.includes('vine') || n.includes('ivy') || n.includes('string')) return '🌿';
+      return '🌱';
+    }
+
+    function removePlant(idx) {
+      if (confirm('Are you sure you want to remove this plant from your garden?')) {
+        garden.splice(idx, 1);
+        localStorage.setItem('myGarden', JSON.stringify(garden));
+        renderGarden();
+      }
+    }
+
     function renderGarden() {
       const list = document.getElementById('my-garden-list');
       if (garden.length === 0) {
@@ -627,12 +653,18 @@
           
         return `<div class="garden-item">
           <div class="garden-header">
-            <div style="font-weight:600;font-size:1.05rem">${p.name}</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.5rem;">${getAvatar(p.name)}</span>
+              <div style="font-weight:600;font-size:1.05rem">${p.name}</div>
+            </div>
             <div class="zone-badge ${zoneClasses[p.zone]}">${zoneLabels[p.zone]}</div>
           </div>
           ${potBadge}
           <div style="font-size:0.85rem; color:var(--muted2); margin-top:6px">${status}</div>
-          <button class="water-btn" onclick="waterPlant(${i})">💧 Mark as Watered Today</button>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button class="water-btn" style="flex:1; margin-top:0;" onclick="waterPlant(${i})">💧 Mark as Watered</button>
+            <button style="background:var(--red-bg); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:0 12px; font-size:1rem; cursor:pointer;" onclick="removePlant(${i})" title="Remove Plant">🗑️</button>
+          </div>
         </div>`;
       }).join('');
     }
