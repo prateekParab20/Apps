@@ -136,6 +136,33 @@ input:focus,select:focus{outline:none;border-color:#f97316}
     <div class="macro-box"><div class="val" id="fatTarget">—</div><div class="lbl" id="l-fat">g fats</div></div>
   </div>
   <div class="note" id="t-note">Higher protein (1.3–1.5 g/kg) helps preserve muscle at 55-60 years. Low-GI carbs from millets, barley, dals + lots of sabzi keep blood sugar steady. Always check with her doctor.</div>
+
+  <!-- REMINDERS -->
+  <div class="card" style="margin-top:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-weight:600;font-size:16px" id="t-rem">⏰ Meal Reminders</div>
+      <button class="btn btn-sm btn-outline" onclick="enableNotifications()" id="btn-notify">Enable</button>
+    </div>
+    <div class="grid2">
+      <div>
+        <label>Breakfast Time</label>
+        <input type="time" id="rem-bf" value="09:00" onchange="saveReminders()">
+      </div>
+      <div>
+        <label>Lunch Time</label>
+        <input type="time" id="rem-lu" value="13:30" onchange="saveReminders()">
+      </div>
+      <div>
+        <label>Snack Time</label>
+        <input type="time" id="rem-sn" value="17:00" onchange="saveReminders()">
+      </div>
+      <div>
+        <label>Dinner Time</label>
+        <input type="time" id="rem-di" value="20:00" onchange="saveReminders()">
+      </div>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-top:8px">We'll send a system notification to remind you.</div>
+  </div>
 </div>
 
 <!-- RECIPES -->
@@ -1363,6 +1390,87 @@ function clearLog(){
   toast(lang==='hi' ? (removed + ' आइटम हटाए') : lang==='mr' ? (removed + ' आयटम काढले') : (removed + ' item(s) cleared for this date'));
 }
 
+// ========== NOTIFICATIONS & REMINDERS ==========
+let remindersEnabled = false;
+function loadReminders() {
+  const r = safeGet('momReminders');
+  if(r) {
+    try {
+      const data = JSON.parse(r);
+      if(data.bf) document.getElementById('rem-bf').value = data.bf;
+      if(data.lu) document.getElementById('rem-lu').value = data.lu;
+      if(data.sn) document.getElementById('rem-sn').value = data.sn;
+      if(data.di) document.getElementById('rem-di').value = data.di;
+    } catch(e) {}
+  }
+  if ("Notification" in window && Notification.permission === "granted") {
+    remindersEnabled = true;
+    document.getElementById('btn-notify').textContent = "Enabled";
+    document.getElementById('btn-notify').classList.remove('btn-outline');
+  }
+}
+function saveReminders() {
+  const data = {
+    bf: document.getElementById('rem-bf').value,
+    lu: document.getElementById('rem-lu').value,
+    sn: document.getElementById('rem-sn').value,
+    di: document.getElementById('rem-di').value
+  };
+  safeSet('momReminders', JSON.stringify(data));
+  toast("Reminders saved");
+}
+function enableNotifications() {
+  if (!("Notification" in window)) {
+    alert("This browser does not support system notifications.");
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      remindersEnabled = true;
+      document.getElementById('btn-notify').textContent = "Enabled";
+      document.getElementById('btn-notify').classList.remove('btn-outline');
+      toast("Notifications enabled!");
+    } else {
+      toast("Permission denied");
+    }
+  });
+}
+
+// Check every minute if a reminder should be shown
+setInterval(() => {
+  if (!remindersEnabled) return;
+  const now = new Date();
+  const hrs = String(now.getHours()).padStart(2, '0');
+  const mins = String(now.getMinutes()).padStart(2, '0');
+  const currentTime = `${hrs}:${mins}`;
+  
+  const r = safeGet('momReminders');
+  if(r) {
+    try {
+      const data = JSON.parse(r);
+      const times = {
+        'Breakfast': data.bf || '09:00',
+        'Lunch': data.lu || '13:30',
+        'Snack': data.sn || '17:00',
+        'Dinner': data.di || '20:00'
+      };
+      
+      for (const [meal, time] of Object.entries(times)) {
+        if (time === currentTime) {
+          // Check if anything was logged for today
+          const today = toLocalDateString(now);
+          const loggedToday = log.some(m => getItemDate(m) === today);
+          // Only skip if they've logged a substantial amount? For simplicity, we just remind if time matches.
+          new Notification("Meal Reminder", {
+            body: `It's time for ${meal}! Don't forget to eat and log your meal.`,
+            icon: "https://cdn-icons-png.flaticon.com/512/3114/3114813.png"
+          });
+        }
+      }
+    } catch(e) {}
+  }
+}, 60000);
+
 // ========== INIT ==========
 (function() {
   const today = toLocalDateString(new Date());
@@ -1372,6 +1480,7 @@ function clearLog(){
   calViewMonth = parseInt(parts[1], 10) - 1;
 })();
 loadProfile();
+loadReminders();
 loadLog();
 loadCustomFoods();
 applyLang();

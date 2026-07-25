@@ -57,6 +57,17 @@
     .recog { background: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 14px; margin-top: 16px; font-size: 0.88rem; }
     .recog strong { color: #854d0e; }
     footer { text-align: center; margin: 24px 0 12px; font-size: 0.78rem; color: var(--muted2); }
+
+    .tabs { display:flex; gap:10px; margin-bottom:16px; background:#fff; padding:4px; border-radius:12px; border:1px solid var(--border); }
+    .tab { flex:1; text-align:center; padding:10px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.9rem; color:var(--muted2); transition:all 0.2s; }
+    .tab.active { background:var(--accent); color:#fff; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+    .btn-add { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:0.8rem; font-weight:600; cursor:pointer; margin-top:10px; width:100%; }
+    .garden-item { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; }
+    .garden-header { display:flex; justify-content:space-between; align-items:center; }
+    .water-btn { width:100%; margin-top:12px; padding:10px; border-radius:8px; border:none; background:#ecfdf5; color:var(--g67); font-weight:600; cursor:pointer; border:1px solid var(--border); transition:background 0.2s; }
+    .water-btn:hover { background:#dcfce7; }
   </style>
 </head>
 <body>
@@ -67,16 +78,22 @@
       <span class="badge">Extended + Dracaena Heavy</span>
     </header>
 
-    <div class="search-box">
-      <span class="icon">🔍</span>
-      <input type="text" id="search" placeholder="Try: Dracaena Compact, Compacta, Janet Craig, Monstera…" autocomplete="off" autofocus>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('search')" id="tabBtn-search">Search Library</div>
+      <div class="tab" onclick="switchTab('garden')" id="tabBtn-garden">My Garden</div>
     </div>
 
-    <div class="results-info" id="info"></div>
-    <div class="results" id="results"></div>
+    <div id="tab-search" class="tab-content active">
+      <div class="search-box">
+        <span class="icon">🔍</span>
+        <input type="text" id="search" placeholder="Try: Dracaena Compact, Compacta, Janet Craig, Monstera…" autocomplete="off" autofocus>
+      </div>
 
-    <div class="section">
-      <h2>Zone meanings (soil moisture meter)</h2>
+      <div class="results-info" id="info"></div>
+      <div class="results" id="results"></div>
+
+      <div class="section">
+        <h2>Zone meanings (soil moisture meter)</h2>
       <div class="legend-item"><span class="dot dot-red"></span> <div><strong>Red 0-3</strong> — Let soil dry almost completely</div></div>
       <div class="legend-item"><span class="dot dot-g45"></span> <div><strong>Green 4-5</strong> — Allow top layer to dry</div></div>
       <div class="legend-item"><span class="dot dot-g56"></span> <div><strong>Green 5-6</strong> — Keep lightly moist</div></div>
@@ -85,11 +102,23 @@
       <p class="note">Original plants from your printed guide are marked “Guide”. Everything else is expanded common knowledge.</p>
     </div>
 
-    <div class="recog">
-      <strong>📷 Plant recognition</strong><br>
-      This offline app cannot identify plants from photos.<br>
-      Use PictureThis, PlantNet, Google Lens or Seek, then search the name here.<br>
-      Or upload a photo in chat and I will identify it for you.
+      <div class="recog">
+        <strong>📷 Plant recognition</strong><br>
+        This offline app cannot identify plants from photos.<br>
+        Use PictureThis, PlantNet, Google Lens or Seek, then search the name here.<br>
+        Or upload a photo in chat and I will identify it for you.
+      </div>
+    </div> <!-- end tab-search -->
+
+    <div id="tab-garden" class="tab-content">
+      <div class="section" style="margin-top:0">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="margin:0">My Garden</h2>
+          <button class="btn-add" id="btn-plant-notify" onclick="enablePlantNotifications()" style="width:auto; margin:0; padding:6px 10px; font-size:0.75rem;">Enable Alerts</button>
+        </div>
+        <p class="note" style="margin-top:8px">Add plants from the library to track their watering schedule.</p>
+        <div id="my-garden-list" style="margin-top:16px"></div>
+      </div>
     </div>
 
     <footer>Original guide + massive expanded houseplant library</footer>
@@ -473,17 +502,102 @@
       });
       infoEl.textContent = matches.length + " plant" + (matches.length === 1 ? "" : "s") + " found";
       resultsEl.innerHTML = matches.map(p => `
-        <div class="plant-card">
-          <div>
-            <div class="plant-name">${p.n}</div>
-            <div class="source">${p.s === "guide" ? "From your guide" : "Expanded library"}</div>
+        <div class="plant-card" style="flex-direction:column; align-items:stretch">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div class="plant-name">${p.n}</div>
+              <div class="source">${p.s === "guide" ? "From your guide" : "Expanded library"}</div>
+            </div>
+            <div class="zone-badge ${zoneClasses[p.z]}">${zoneLabels[p.z]}</div>
           </div>
-          <div class="zone-badge ${zoneClasses[p.z]}">${zoneLabels[p.z]}</div>
+          <button class="btn-add" onclick="addToGarden('${p.n.replace(/'/g, "\\'")}', '${p.z}')">+ Add to Garden</button>
         </div>`).join("");
     }
 
     searchInput.addEventListener("input", e => search(e.target.value));
     search("");
+
+    // Garden & Notifications Logic
+    let garden = JSON.parse(localStorage.getItem('myGarden') || '[]');
+    let notificationsEnabled = false;
+    const waterIntervals = { red:14, green45:10, green56:7, green67:4, blue:30 };
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tabBtn-' + tabId).classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+      if (tabId === 'garden') renderGarden();
+    }
+
+    function addToGarden(name, zone) {
+      garden.push({ name, zone, nextWater: Date.now() });
+      localStorage.setItem('myGarden', JSON.stringify(garden));
+      alert(`Added ${name} to My Garden!`);
+    }
+
+    function renderGarden() {
+      const list = document.getElementById('my-garden-list');
+      if (garden.length === 0) {
+        list.innerHTML = `<div class="empty-state" style="padding:20px 10px; font-size:0.9rem">No plants in your garden yet. Search the library and add some!</div>`;
+        return;
+      }
+      list.innerHTML = garden.map((p, i) => {
+        const daysLeft = Math.ceil((p.nextWater - Date.now()) / (1000 * 60 * 60 * 24));
+        let status = `Needs water in ${daysLeft} days`;
+        if (daysLeft <= 0) status = `<span style="color:var(--red);font-weight:bold">Needs water today!</span>`;
+        
+        return `<div class="garden-item">
+          <div class="garden-header">
+            <div style="font-weight:600;font-size:1.05rem">${p.name}</div>
+            <div class="zone-badge ${zoneClasses[p.zone]}">${zoneLabels[p.zone]}</div>
+          </div>
+          <div style="font-size:0.85rem; color:var(--muted2); margin-top:6px">${status}</div>
+          <button class="water-btn" onclick="waterPlant(${i})">💧 Mark as Watered Today</button>
+        </div>`;
+      }).join('');
+    }
+
+    function waterPlant(idx) {
+      const p = garden[idx];
+      const days = waterIntervals[p.zone] || 7;
+      p.nextWater = Date.now() + (days * 24 * 60 * 60 * 1000);
+      localStorage.setItem('myGarden', JSON.stringify(garden));
+      renderGarden();
+    }
+
+    function enablePlantNotifications() {
+      if (!("Notification" in window)) {
+        alert("This browser does not support system notifications.");
+        return;
+      }
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          notificationsEnabled = true;
+          document.getElementById('btn-plant-notify').textContent = "Alerts Enabled";
+          document.getElementById('btn-plant-notify').style.background = "var(--muted2)";
+        }
+      });
+    }
+
+    setTimeout(() => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        notificationsEnabled = true;
+        const btn = document.getElementById('btn-plant-notify');
+        if (btn) {
+          btn.textContent = "Alerts Enabled";
+          btn.style.background = "var(--muted2)";
+        }
+        
+        const needsWater = garden.filter(p => p.nextWater <= Date.now());
+        if (needsWater.length > 0) {
+          new Notification("Watering Reminder", {
+            body: `${needsWater.length} plant(s) need watering today! Open your garden to check.`,
+            icon: "https://cdn-icons-png.flaticon.com/512/3233/3233857.png"
+          });
+        }
+      }
+    }, 1000);
   </script>
 </body>
 </html>
