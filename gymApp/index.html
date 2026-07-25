@@ -273,7 +273,7 @@
                     <div class="text-xs text-zinc-400">Get alerted when your rest is over, even if you switch apps.</div>
                 </div>
             </div>
-            <button onclick="enableNotifications()" id="btn-gym-notify"
+            <button onclick="toggleNotifications()" id="btn-gym-notify"
                     class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs rounded-2xl transition-colors whitespace-nowrap">
                 Enable
             </button>
@@ -3023,43 +3023,60 @@
             showToast("Rest skipped. Ready for next set!");
         }
 
-        function enableNotifications() {
+        let notificationsEnabled = localStorage.getItem('gymNotifications') !== 'false';
+
+        function toggleNotifications() {
             if (!("Notification" in window)) {
                 alert("This browser does not support system notifications.");
                 return;
             }
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    const btn = document.getElementById('btn-gym-notify');
-                    if (btn) {
-                        btn.textContent = "Enabled";
-                        btn.disabled = true;
-                        btn.classList.add('opacity-50', 'cursor-not-allowed');
+            if (Notification.permission !== "granted") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        notificationsEnabled = true;
+                        localStorage.setItem('gymNotifications', 'true');
+                        updateNotificationBtn();
                     }
+                });
+            } else {
+                notificationsEnabled = !notificationsEnabled;
+                localStorage.setItem('gymNotifications', notificationsEnabled ? 'true' : 'false');
+                updateNotificationBtn();
+            }
+        }
+        
+        function updateNotificationBtn() {
+            const btn = document.getElementById('btn-gym-notify');
+            if (btn) {
+                if ("Notification" in window && Notification.permission === "granted" && notificationsEnabled) {
+                    btn.textContent = "Disable";
+                    btn.classList.remove('bg-zinc-800', 'hover:bg-zinc-700');
+                    btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                } else {
+                    btn.textContent = "Enable";
+                    btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                    btn.classList.add('bg-zinc-800', 'hover:bg-zinc-700');
                 }
-            });
+            }
         }
         
         setTimeout(() => {
-            if ("Notification" in window && Notification.permission === "granted") {
-                const btn = document.getElementById('btn-gym-notify');
-                if (btn) {
-                    btn.textContent = "Enabled";
-                    btn.disabled = true;
-                    btn.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            }
+            updateNotificationBtn();
         }, 500);
 
         function timerComplete() {
             if (timerInterval) clearInterval(timerInterval);
             timerRemaining = 0;
             
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("Rest Complete!", {
+            if ("Notification" in window && Notification.permission === "granted" && notificationsEnabled) {
+                const notif = new Notification("Rest Complete!", {
                     body: "Time for your next set. Let's go! 💪",
                     icon: "https://cdn-icons-png.flaticon.com/512/2964/2964514.png"
                 });
+                notif.onclick = function() {
+                    window.focus();
+                    showSection('workout');
+                };
             }
 
             // Play beep + vibrate
@@ -3084,31 +3101,41 @@
         function playBeep() {
             try {
                 const audio = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audio.createOscillator();
-                const gain = audio.createGain();
                 
-                oscillator.type = 'sine';
-                oscillator.frequency.value = 880;
-                gain.gain.value = 0.2;
+                // First note (C5 - 523.25Hz)
+                const osc1 = audio.createOscillator();
+                const gain1 = audio.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.value = 523.25;
                 
-                const filter = audio.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.frequency.value = 1200;
+                gain1.gain.setValueAtTime(0, audio.currentTime);
+                gain1.gain.linearRampToValueAtTime(0.3, audio.currentTime + 0.1);
+                gain1.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 1.5);
                 
-                oscillator.connect(filter);
-                filter.connect(gain);
-                gain.connect(audio.destination);
+                osc1.connect(gain1);
+                gain1.connect(audio.destination);
                 
-                oscillator.start();
+                // Second note (E5 - 659.25Hz) delayed slightly
+                const osc2 = audio.createOscillator();
+                const gain2 = audio.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.value = 659.25;
                 
-                setTimeout(() => {
-                    gain.gain.linearRampToValueAtTime(0.001, audio.currentTime + 0.6);
-                    setTimeout(() => {
-                        oscillator.stop();
-                        audio.close();
-                    }, 700);
-                }, 280);
-            } catch(e) {}
+                gain2.gain.setValueAtTime(0, audio.currentTime + 0.3);
+                gain2.gain.linearRampToValueAtTime(0.2, audio.currentTime + 0.4);
+                gain2.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 2.0);
+                
+                osc2.connect(gain2);
+                gain2.connect(audio.destination);
+                
+                osc1.start(audio.currentTime);
+                osc2.start(audio.currentTime + 0.3);
+                
+                osc1.stop(audio.currentTime + 1.5);
+                osc2.stop(audio.currentTime + 2.0);
+                
+                setTimeout(() => audio.close(), 2500);
+            } catch(e) { console.error("Audio failed", e); }
         }
 
         function scrollToNextSet() {
