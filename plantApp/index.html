@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Plant Watering Guide – Mega Library</title>
+  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
   <style>
     :root {
       --bg: #f0fdf4; --card: #ffffff; --text: #134e4a; --muted2: #64748b;
@@ -79,8 +80,9 @@
     </header>
 
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('search')" id="tabBtn-search">Search Library</div>
+      <div class="tab active" onclick="switchTab('search')" id="tabBtn-search">Search</div>
       <div class="tab" onclick="switchTab('garden')" id="tabBtn-garden">My Garden</div>
+      <div class="tab" onclick="switchTab('identify')" id="tabBtn-identify">Identify</div>
     </div>
 
     <div id="tab-search" class="tab-content active">
@@ -102,11 +104,9 @@
       <p class="note">Original plants from your printed guide are marked “Guide”. Everything else is expanded common knowledge.</p>
     </div>
 
-      <div class="recog">
-        <strong>📷 Plant recognition</strong><br>
-        This offline app cannot identify plants from photos.<br>
-        Use PictureThis, PlantNet, Google Lens or Seek, then search the name here.<br>
-        Or upload a photo in chat and I will identify it for you.
+      <div class="recog" style="display:flex; justify-content:space-between; align-items:center;">
+        <div><strong>📷 Plant recognition</strong><br>Not sure what plant you have?</div>
+        <button class="btn-add" style="width:auto; margin:0;" onclick="switchTab('identify')">Use AI</button>
       </div>
     </div> <!-- end tab-search -->
 
@@ -118,6 +118,25 @@
         </div>
         <p class="note" style="margin-top:8px">Add plants from the library to track their watering schedule.</p>
         <div id="my-garden-list" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+    <div id="tab-identify" class="tab-content">
+      <div class="section" style="margin-top:0">
+        <h2 style="margin:0">Identify Plant via Camera</h2>
+        <p class="note" style="margin-top:8px; margin-bottom:16px">Upload a clear photo of the leaves or flower to identify the plant type using our on-device AI.</p>
+        
+        <input type="file" id="image-upload" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(event)">
+        <button class="btn-add" onclick="document.getElementById('image-upload').click()" style="display:flex; justify-content:center; align-items:center; gap:8px; padding:12px; width:100%; font-size:0.9rem;">
+          <span style="font-size:1.2rem">📸</span> Take Photo or Upload
+        </button>
+
+        <div id="image-preview-container" style="display:none; margin-top:20px; text-align:center;">
+          <img id="image-preview" style="max-width:100%; border-radius:12px; border:1px solid var(--border);" />
+        </div>
+
+        <div id="identify-status" style="margin-top:16px; font-weight:600; text-align:center; color:var(--accent);"></div>
+        <div id="identify-results" style="margin-top:16px;"></div>
       </div>
     </div>
 
@@ -528,6 +547,7 @@
       document.getElementById('tabBtn-' + tabId).classList.add('active');
       document.getElementById('tab-' + tabId).classList.add('active');
       if (tabId === 'garden') renderGarden();
+      if (tabId === 'identify') initClassifier();
     }
 
     function addToGarden(name, zone) {
@@ -598,6 +618,73 @@
         }
       }
     }, 1000);
+
+    // AI Recognition Logic
+    let classifier;
+    function initClassifier() {
+      if (!classifier) {
+        document.getElementById('identify-status').textContent = "Loading AI Model (this may take a moment)...";
+        classifier = ml5.imageClassifier('MobileNet', () => {
+          document.getElementById('identify-status').textContent = "AI Model Ready! Upload a photo.";
+        });
+      }
+    }
+
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const imgPreview = document.getElementById('image-preview');
+      const container = document.getElementById('image-preview-container');
+      const resultsDiv = document.getElementById('identify-results');
+      const statusDiv = document.getElementById('identify-status');
+
+      imgPreview.src = URL.createObjectURL(file);
+      container.style.display = "block";
+      resultsDiv.innerHTML = "";
+      
+      if (!classifier) {
+         statusDiv.textContent = "Please wait, model is still loading...";
+      }
+      
+      imgPreview.onload = () => {
+        if (classifier) {
+          statusDiv.textContent = "Analyzing image...";
+          classifier.classify(imgPreview, (err, results) => {
+            if (err) {
+              console.error(err);
+              statusDiv.textContent = "Error analyzing image.";
+              return;
+            }
+            statusDiv.textContent = "Results:";
+            renderIdentifyResults(results);
+          });
+        }
+      };
+    }
+
+    function renderIdentifyResults(results) {
+      const resultsDiv = document.getElementById('identify-results');
+      let html = `<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px;">`;
+      
+      results.slice(0, 3).forEach((res, index) => {
+        const confidence = Math.round(res.confidence * 100);
+        // MobileNet labels often have multiple comma separated values
+        const name = res.label.split(',')[0].trim();
+        
+        html += `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${index === 2 ? '0' : '10px'}; border-bottom:${index === 2 ? 'none' : '1px solid var(--border)'}; padding-bottom:${index === 2 ? '0' : '8px'}">
+            <div>
+              <div style="font-weight:600; text-transform:capitalize;">${name}</div>
+              <div style="font-size:0.8rem; color:var(--muted2)">Confidence: ${confidence}%</div>
+            </div>
+            <button class="water-btn" style="width:auto; padding:6px 12px; margin:0; font-size:0.8rem;" onclick="document.getElementById('search').value='${name}'; switchTab('search'); search('${name}')">Search</button>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      resultsDiv.innerHTML = html;
+    }
   </script>
 </body>
 </html>
