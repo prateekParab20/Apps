@@ -737,7 +737,7 @@
             body: JSON.stringify({
               contents: [{
                 parts: [
-                  { text: 'Identify this plant. Return ONLY a valid JSON array of the top 3 most likely plant names. Example: ["Dracaena fragrans", "Ficus elastica", "Monstera deliciosa"]' },
+                  { text: 'Identify this plant and analyze its health based on the image. Return ONLY a valid JSON object with the following structure: { "plant_names": ["Top Name", "Alternative Name"], "health_status": "Healthy / Needs Attention / Critical", "issues": "A brief sentence describing visible issues, or None if healthy", "action_plan": ["Step 1 to fix", "Step 2 to fix"] }' },
                   { inlineData: { mimeType: file.type, data: base64String } }
                 ]
               }]
@@ -757,17 +757,18 @@
             return;
           }
           
-          let suggestions = [];
+          let resultData = null;
           try {
-            const jsonMatch = rawText.match(/\[.*\]/s);
-            suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(rawText);
+            // Find the JSON object within the text (often wrapped in markdown)
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            resultData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(rawText);
           } catch(e) {
             statusDiv.textContent = "Error parsing response: " + rawText;
             return;
           }
           
           statusDiv.textContent = "Results:";
-          renderIdentifyResults(suggestions);
+          renderIdentifyResults(resultData);
         } catch (e) {
           console.error(e);
           statusDiv.textContent = "Network Error: " + e.message;
@@ -776,26 +777,57 @@
       reader.readAsDataURL(file);
     }
 
-    function renderIdentifyResults(results) {
+    function renderIdentifyResults(data) {
       const resultsDiv = document.getElementById('identify-results');
-      let html = `<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px;">`;
       
-      const confidences = [95, 80, 50]; // Mock confidences since Gemini just returns names
+      const names = data.plant_names || [];
+      const primaryName = names[0] || "Unknown Plant";
+      const status = data.health_status || "Unknown";
+      const issues = data.issues || "No issues detected.";
+      const actionPlan = data.action_plan || [];
       
-      results.slice(0, 3).forEach((name, index) => {
-        const confidence = confidences[index] || 40;
-        
-        html += `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${index === 2 ? '0' : '10px'}; border-bottom:${index === 2 ? 'none' : '1px solid var(--border)'}; padding-bottom:${index === 2 ? '0' : '8px'}">
-            <div>
-              <div style="font-weight:600;">${name}</div>
-              <div style="font-size:0.8rem; color:var(--muted2)">Confidence: ~${confidence}%</div>
-            </div>
-            <button class="water-btn" style="width:auto; padding:6px 12px; margin:0; font-size:0.8rem;" onclick="document.getElementById('search').value='${name}'; switchTab('search'); search('${name}')">Search</button>
+      let statusColor = "var(--green)";
+      if (status.toLowerCase().includes("attention") || status.toLowerCase().includes("issue")) statusColor = "#f59e0b"; // orange
+      if (status.toLowerCase().includes("critical") || status.toLowerCase().includes("dying") || status.toLowerCase().includes("bad")) statusColor = "var(--red)";
+
+      let html = `<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">`;
+      
+      // Top section: Plant Name
+      html += `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:16px;">
+          <div>
+            <div style="font-weight:700; font-size:1.1rem; color:var(--text);">${primaryName}</div>
+            ${names.length > 1 ? `<div style="font-size:0.8rem; color:var(--muted2); margin-top:2px;">Also known as: ${names.slice(1).join(', ')}</div>` : ''}
           </div>
-        `;
-      });
-      html += `</div>`;
+          <button class="water-btn" style="width:auto; padding:8px 16px; margin:0; font-size:0.85rem;" onclick="document.getElementById('search').value='${primaryName.split(' ')[0]}'; switchTab('search'); search('${primaryName.split(' ')[0]}')">Search Library</button>
+        </div>
+      `;
+      
+      // Health Report section
+      html += `
+        <div style="background:var(--bg); border-radius:8px; padding:12px;">
+          <div style="font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted2); margin-bottom:8px;">Health Report</div>
+          
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <div style="width:12px; height:12px; border-radius:50%; background:${statusColor};"></div>
+            <div style="font-weight:600; font-size:0.95rem;">${status}</div>
+          </div>
+          
+          <div style="font-size:0.9rem; color:var(--text); margin-bottom:12px; line-height:1.4;">
+            <strong>Diagnosis:</strong> ${issues}
+          </div>
+      `;
+      
+      if (actionPlan.length > 0) {
+        html += `<div style="font-size:0.9rem; font-weight:600; margin-bottom:6px;">Action Plan:</div>
+                 <ul style="margin:0; padding-left:20px; font-size:0.85rem; color:var(--text); line-height:1.5;">`;
+        actionPlan.forEach(step => {
+          html += `<li style="margin-bottom:4px;">${step}</li>`;
+        });
+        html += `</ul>`;
+      }
+      
+      html += `</div></div>`;
       resultsDiv.innerHTML = html;
     }
   </script>
