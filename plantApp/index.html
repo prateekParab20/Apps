@@ -148,6 +148,34 @@
         <div id="identify-status" style="margin-top:16px; font-weight:600; text-align:center; color:var(--accent);"></div>
         <div id="identify-results" style="margin-top:16px;"></div>
       </div>
+      </div>
+    </div>
+
+    <!-- Pot Type Modal -->
+    <div id="pot-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; justify-content:center; align-items:center;">
+      <div style="background:var(--card); width:90%; max-width:400px; border-radius:16px; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <h3 style="margin-top:0; color:var(--text);">Add to Garden</h3>
+        <p style="font-size:0.95rem; color:var(--muted2); margin-bottom:20px;">What type of pot is <strong id="modal-plant-name">this plant</strong> in?</p>
+        
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <button class="btn-add" style="width:100%; margin:0; padding:12px; font-size:1rem; display:flex; justify-content:flex-start; align-items:center; gap:12px;" onclick="confirmAddToGarden('standard')">
+            <span style="font-size:1.5rem">🪴</span> 
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Standard Pot</div>
+              <div style="font-size:0.75rem; color:rgba(255,255,255,0.8); font-weight:normal;">Normal watering schedule</div>
+            </div>
+          </button>
+          
+          <button class="btn-add" style="width:100%; margin:0; padding:12px; font-size:1rem; background:var(--muted2); display:flex; justify-content:flex-start; align-items:center; gap:12px;" onclick="confirmAddToGarden('self-watering')">
+            <span style="font-size:1.5rem">💧</span> 
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Self-Watering Pot</div>
+              <div style="font-size:0.75rem; color:rgba(255,255,255,0.8); font-weight:normal;">Watering interval is tripled (3x)</div>
+            </div>
+          </button>
+        </div>
+        <button style="background:none; border:none; color:var(--muted2); font-weight:600; width:100%; padding:12px; margin-top:12px; cursor:pointer;" onclick="document.getElementById('pot-modal').style.display='none'">Cancel</button>
+      </div>
     </div>
 
     <footer>Original guide + massive expanded houseplant library</footer>
@@ -539,7 +567,7 @@
             </div>
             <div class="zone-badge ${zoneClasses[p.z]}">${zoneLabels[p.z]}</div>
           </div>
-          <button class="btn-add" onclick="addToGarden('${p.n.replace(/'/g, "\\'")}', '${p.z}')">+ Add to Garden</button>
+          <button class="btn-add" onclick="promptPotType('${p.n.replace(/'/g, "\\'")}', '${p.z}')">+ Add to Garden</button>
         </div>`).join("");
     }
 
@@ -560,10 +588,26 @@
       if (tabId === 'identify') initClassifier();
     }
 
-    function addToGarden(name, zone) {
-      garden.push({ name, zone, nextWater: Date.now() });
+    let pendingPlant = null;
+
+    function promptPotType(name, zone) {
+      pendingPlant = { name, zone };
+      document.getElementById('modal-plant-name').textContent = name;
+      document.getElementById('pot-modal').style.display = 'flex';
+    }
+
+    function confirmAddToGarden(potType) {
+      if (!pendingPlant) return;
+      garden.push({ 
+        name: pendingPlant.name, 
+        zone: pendingPlant.zone, 
+        potType: potType,
+        nextWater: Date.now() 
+      });
       localStorage.setItem('myGarden', JSON.stringify(garden));
-      alert(`Added ${name} to My Garden!`);
+      document.getElementById('pot-modal').style.display = 'none';
+      pendingPlant = null;
+      alert(`Added to My Garden!`);
     }
 
     function renderGarden() {
@@ -577,11 +621,16 @@
         let status = `Needs water in ${daysLeft} days`;
         if (daysLeft <= 0) status = `<span style="color:var(--red);font-weight:bold">Needs water today!</span>`;
         
+        const potBadge = p.potType === 'self-watering' 
+          ? `<div style="font-size:0.75rem; color:var(--muted2); margin-top:2px;">💧 Self-Watering Pot (3x longer)</div>`
+          : ``;
+          
         return `<div class="garden-item">
           <div class="garden-header">
             <div style="font-weight:600;font-size:1.05rem">${p.name}</div>
             <div class="zone-badge ${zoneClasses[p.zone]}">${zoneLabels[p.zone]}</div>
           </div>
+          ${potBadge}
           <div style="font-size:0.85rem; color:var(--muted2); margin-top:6px">${status}</div>
           <button class="water-btn" onclick="waterPlant(${i})">💧 Mark as Watered Today</button>
         </div>`;
@@ -590,7 +639,10 @@
 
     function waterPlant(idx) {
       const p = garden[idx];
-      const days = waterIntervals[p.zone] || 7;
+      let days = waterIntervals[p.zone] || 7;
+      if (p.potType === 'self-watering') {
+        days *= 3;
+      }
       p.nextWater = Date.now() + (days * 24 * 60 * 60 * 1000);
       localStorage.setItem('myGarden', JSON.stringify(garden));
       renderGarden();
