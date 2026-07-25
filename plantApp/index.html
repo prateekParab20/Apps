@@ -798,7 +798,7 @@
             body: JSON.stringify({
               contents: [{
                 parts: [
-                  { text: 'Identify this plant and analyze its health based on the image. Return ONLY a valid JSON object with the following structure: { "plant_names": ["Top Name", "Alternative Name"], "health_status": "Healthy / Needs Attention / Critical", "issues": "A brief sentence describing visible issues, or None if healthy", "action_plan": ["Step 1 to fix", "Step 2 to fix"] }' },
+                  { text: 'Identify this plant and analyze its health based on the image. Be extremely specific with cultivars and varieties (e.g., if it is a Dracaena Compacta, explicitly name it rather than just Dracaena fragrans). Return ONLY a valid JSON object with the following structure: { "plant_names": ["Top Name", "Alternative Name"], "health_status": "Healthy / Needs Attention / Critical", "issues": "A brief sentence describing visible issues, or None if healthy", "action_plan": ["Step 1 to fix", "Step 2 to fix"] }' },
                   { inlineData: { mimeType: file.type, data: base64String } }
                 ]
               }]
