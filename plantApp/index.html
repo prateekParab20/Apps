@@ -140,6 +140,12 @@
             <input type="password" id="gemini-key" placeholder="Enter API Key" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); font-family:monospace;">
             <button class="btn-add" style="width:auto; margin:0;" onclick="saveApiKey()">Save</button>
           </div>
+          <div style="margin-top:12px; display:flex; align-items:center; justify-content:center; gap:12px;">
+            <div style="flex:1; height:1px; background:var(--border);"></div>
+            <div style="font-size:0.75rem; color:var(--muted2); font-weight:600; text-transform:uppercase;">or</div>
+            <div style="flex:1; height:1px; background:var(--border);"></div>
+          </div>
+          <button style="width:100%; margin-top:12px; background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); padding:10px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer;" onclick="requestApiKey()">Request Key from Admin</button>
         </div>
         
         <div id="upload-section" style="display:none;">
@@ -751,6 +757,10 @@
         localStorage.removeItem('geminiApiKey');
         document.getElementById('upload-section').style.display = 'none';
       }
+    }
+
+    function requestApiKey() {
+      alert("A request has been sent to the admin. You will receive an email once your API key is generated.");
     }
 
     function handleImageUpload(event) {
