@@ -636,17 +636,17 @@
       }
     }
 
-    function togglePotType(idx) {
+    function changePotType(idx, potType) {
       const p = garden[idx];
-      p.potType = (p.potType === 'self-watering') ? 'standard' : 'self-watering';
+      if (p.potType === potType) return;
       
+      p.potType = potType;
       let days = waterIntervals[p.zone] || 7;
       if (p.potType === 'self-watering') days *= 3;
       p.nextWater = Date.now() + (days * 24 * 60 * 60 * 1000);
       
       localStorage.setItem('myGarden', JSON.stringify(garden));
       renderGarden();
-      alert(`Changed pot type to ${p.potType === 'self-watering' ? 'Self-Watering' : 'Standard'} Pot! Watering schedule updated.`);
     }
 
     function renderGarden() {
@@ -676,8 +676,11 @@
           <div style="font-size:0.85rem; color:var(--muted2); margin-top:6px">${status}</div>
           <div style="display:flex; gap:8px; margin-top:12px;">
             <button class="water-btn" style="flex:1; margin-top:0;" onclick="waterPlant(${i})">💧 Mark as Watered</button>
-            <button style="background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); border-radius:8px; padding:0 12px; font-size:1rem; cursor:pointer;" onclick="togglePotType(${i})" title="Change Pot Type">🪴</button>
-            <button style="background:var(--red-bg); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:0 12px; font-size:1rem; cursor:pointer;" onclick="removePlant(${i})" title="Remove Plant">🗑️</button>
+            <select style="background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); border-radius:8px; padding:0 8px; font-size:0.85rem; font-weight:600; cursor:pointer; outline:none;" onchange="changePotType(${i}, this.value)" title="Change Pot Type">
+              <option value="standard" ${p.potType !== 'self-watering' ? 'selected' : ''}>🪴 Standard</option>
+              <option value="self-watering" ${p.potType === 'self-watering' ? 'selected' : ''}>💧 Self-Watering</option>
+            </select>
+            <button style="background:var(--red-bg); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:0 12px; font-size:1rem; cursor:pointer;" onclick="removePlant(${i})" title="Remove Plant">❌</button>
           </div>
         </div>`;
       }).join('');
