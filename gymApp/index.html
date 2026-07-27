@@ -105,30 +105,40 @@
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
         }
     
-    /* --- Light Mode for Gym App (Invert Hack) --- */
+    /* --- Light Mode for Gym App (Proper Overrides) --- */
     body.light-mode {
-      filter: invert(1) hue-rotate(180deg);
-      background: #e7e7e4; /* inverted zinc-950 */
+      background-color: #f4f4f5 !important; /* zinc-100 */
+      color: #18181b !important; /* zinc-900 */
     }
-    /* Re-invert media so they look normal */
-    body.light-mode img, body.light-mode video, body.light-mode iframe, body.light-mode .theme-toggle {
-      filter: invert(1) hue-rotate(180deg);
-    }
+    body.light-mode .bg-zinc-950,
+    body.light-mode .bg-zinc-900/50,
+    body.light-mode .bg-zinc-950/80 { background-color: #f4f4f5 !important; }
+    body.light-mode .bg-zinc-900 { background-color: #ffffff !important; }
+    body.light-mode .bg-zinc-800 { background-color: #e4e4e7 !important; }
+    body.light-mode .bg-zinc-800/50 { background-color: #e4e4e7 !important; }
     
-    .theme-toggle {
-      position: fixed; bottom: 100px; right: 20px;
-      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-      color: white; border-radius: 50%; width: 44px; height: 44px;
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
-      z-index: 99999; backdrop-filter: blur(10px); transition: all 0.3s;
-    }
-    .theme-toggle:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
-    .theme-toggle .light-icon { display: none; }
-    body.light-mode .theme-toggle .dark-icon { display: none; }
-    body.light-mode .theme-toggle .light-icon { display: block; }
+    body.light-mode .text-zinc-200, 
+    body.light-mode .text-white,
+    body.light-mode h1,
+    body.light-mode h2,
+    body.light-mode h3 { color: #18181b !important; }
     
-
-    body.light-mode .theme-toggle-header .dark-icon { display: none !important; }
+    body.light-mode .text-zinc-400, 
+    body.light-mode .text-zinc-500 { color: #52525b !important; } /* zinc-600 */
+    body.light-mode .text-zinc-300 { color: #3f3f46 !important; } /* zinc-700 */
+    
+    body.light-mode .border-zinc-800,
+    body.light-mode .border-zinc-800/50 { border-color: #d4d4d8 !important; } /* zinc-300 */
+    
+    body.light-mode .bg-zinc-700 { background-color: #d4d4d8 !important; }
+    body.light-mode .hover\:bg-zinc-800:hover { background-color: #f4f4f5 !important; }
+    
+    body.light-mode .ring-zinc-950 { --tw-ring-color: #f4f4f5 !important; }
+    body.light-mode .ring-zinc-700 { --tw-ring-color: #d4d4d8 !important; }
+    
+    /* Make toggle icon visible on light mode background */
+    body.light-mode .theme-toggle-header { color: #52525b !important; }
+    .theme-toggle-header .dark-icon { display: none !important; }
     body.light-mode .theme-toggle-header .light-icon { display: block !important; }
     
 </style>
