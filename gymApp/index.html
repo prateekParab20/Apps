@@ -104,9 +104,46 @@
         .gym-shadow {
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
         }
-    </style>
+    
+    /* --- Light Mode for Gym App (Invert Hack) --- */
+    body.light-mode {
+      filter: invert(1) hue-rotate(180deg);
+      background: #e7e7e4; /* inverted zinc-950 */
+    }
+    /* Re-invert media so they look normal */
+    body.light-mode img, body.light-mode video, body.light-mode iframe, body.light-mode .theme-toggle {
+      filter: invert(1) hue-rotate(180deg);
+    }
+    
+    .theme-toggle {
+      position: fixed; bottom: 100px; right: 20px;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: white; border-radius: 50%; width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      z-index: 99999; backdrop-filter: blur(10px); transition: all 0.3s;
+    }
+    .theme-toggle:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
+    .theme-toggle .light-icon { display: none; }
+    body.light-mode .theme-toggle .dark-icon { display: none; }
+    body.light-mode .theme-toggle .light-icon { display: block; }
+    
+</style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
+<button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle Theme">
+  <i class="fas fa-moon dark-icon"></i>
+  <i class="fas fa-sun light-icon"></i>
+</button>
+<script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light-mode');
+  }
+  function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+  }
+</script>
+
     <!-- Navbar -->
     <nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4">
