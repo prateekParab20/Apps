@@ -3,132 +3,378 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Apps</title>
+  <title>App Suite Portal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
     :root {
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --accent: #0f766e;
-      --border: #e2e8f0;
-      --shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+      --bg-gradient-start: #0f172a;
+      --bg-gradient-end: #020617;
+      --card-bg: rgba(30, 41, 59, 0.4);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover-bg: rgba(30, 41, 59, 0.7);
+      --card-hover-border: rgba(56, 189, 248, 0.4);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      
+      --gym-gradient: linear-gradient(135deg, #f43f5e 0%, #fb923c 100%);
+      --plant-gradient: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+      --food-gradient: linear-gradient(135deg, #8b5cf6 0%, #c084fc 100%);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      color: var(--text-main);
+      line-height: 1.6;
       min-height: 100vh;
-      padding: 24px 16px 48px;
+      overflow-x: hidden;
+      position: relative;
     }
+    
+    /* Dynamic background blobs */
+    .blob {
+      position: absolute;
+      filter: blur(100px);
+      z-index: 0;
+      opacity: 0.5;
+      animation: float 10s infinite alternate ease-in-out;
+    }
+    .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; }
+    .blob-2 { bottom: -20%; right: -10%; width: 600px; height: 600px; background: rgba(244, 63, 94, 0.15); border-radius: 50%; animation-delay: -5s; }
+    
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(50px, 30px) scale(1.1); }
+    }
+    
     .container {
-      max-width: 720px;
+      max-width: 1000px;
       margin: 0 auto;
+      padding: 60px 20px;
+      position: relative;
+      z-index: 10;
     }
+    
     header {
       text-align: center;
-      margin-bottom: 40px;
-      padding-top: 20px;
+      margin-bottom: 60px;
     }
+    
     h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 8px;
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
+    
     .subtitle {
-      color: var(--muted);
-      font-size: 1.05rem;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      font-weight: 400;
+      max-width: 500px;
+      margin: 0 auto;
     }
+    
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 30px;
     }
+    
     .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      transition: transform 0.2s, box-shadow 0.2s;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 30px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
       color: inherit;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      position: relative;
+      overflow: hidden;
     }
+    
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: var(--accent);
+      opacity: 0.8;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    
+    .card.gym::before { background: var(--gym-gradient); }
+    .card.plant::before { background: var(--plant-gradient); }
+    .card.food::before { background: var(--food-gradient); }
+    
     .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+      transform: translateY(-8px);
+      background: var(--card-hover-bg);
+      border-color: var(--card-hover-border);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 40px var(--accent-glow);
     }
-    .card-icon {
-      font-size: 2.2rem;
-      line-height: 1;
+    
+    .card:hover::before {
+      transform: scaleX(1);
     }
+    
+    .card.gym:hover { border-color: rgba(244, 63, 94, 0.4); }
+    .card.plant:hover { border-color: rgba(16, 185, 129, 0.4); }
+    .card.food:hover { border-color: rgba(139, 92, 246, 0.4); }
+    
+    .icon-wrapper {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      color: var(--text-main);
+    }
+    
+    .card.gym .icon-wrapper { background: var(--gym-gradient); box-shadow: 0 8px 20px rgba(244, 63, 94, 0.3); }
+    .card.plant .icon-wrapper { background: var(--plant-gradient); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); }
+    .card.food .icon-wrapper { background: var(--food-gradient); box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3); }
+    
     .card-title {
-      font-size: 1.2rem;
-      font-weight: 650;
-      color: var(--text);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
     }
+    
     .card-desc {
       font-size: 0.95rem;
-      color: var(--muted);
+      color: var(--text-muted);
       flex-grow: 1;
+      margin-bottom: 24px;
     }
-    .card-link {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--accent);
+    
+    .feature-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+    
+    .feature-list li i {
+      font-size: 0.75rem;
       margin-top: 4px;
+      color: var(--accent);
     }
+    
+    .card.gym .feature-list li i { color: #fb923c; }
+    .card.plant .feature-list li i { color: #34d399; }
+    .card.food .feature-list li i { color: #c084fc; }
+    
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .card-link {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: gap 0.2s;
+    }
+    
+    .card:hover .card-link {
+      gap: 12px;
+    }
+    
+    .card.gym .card-link { color: #fda4af; }
+    .card.plant .card-link { color: #6ee7b7; }
+    .card.food .card-link { color: #d8b4fe; }
+    
     footer {
       text-align: center;
-      margin-top: 48px;
-      font-size: 0.85rem;
-      color: var(--muted);
+      margin-top: 80px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 30px;
     }
-  </style>
+    
+    @media (max-width: 768px) {
+      h1 { font-size: 2.5rem; }
+      .container { padding: 40px 16px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  
+    /* --- Light Mode Overrides --- */
+    body.light-mode {
+      --bg-gradient-start: #f8fafc;
+      --bg-gradient-end: #e2e8f0;
+      --card-bg: rgba(255, 255, 255, 0.6);
+      --card: rgba(255, 255, 255, 0.6); /* plant app uses --card */
+      --card-border: rgba(255, 255, 255, 0.9);
+      --border: rgba(255, 255, 255, 0.9); /* plant app */
+      --card-hover-bg: rgba(255, 255, 255, 0.9);
+      --card-hover: rgba(255, 255, 255, 0.9);
+      --text-main: #0f172a;
+      --text: #0f172a; /* plant app */
+      --text-muted: #475569;
+      --muted2: #475569; /* plant app */
+    }
+    body.light-mode .header { background: rgba(255, 255, 255, 0.6); color: #0f172a; border-color: rgba(0,0,0,0.1); }
+    body.light-mode .header h1 { -webkit-text-fill-color: #0f172a; background: none; }
+    body.light-mode .sidebar { background: rgba(255, 255, 255, 0.9); color: #0f172a; border-color: rgba(0,0,0,0.1); }
+    body.light-mode .sidebar-header { color: #0f172a; background: rgba(0,0,0,0.05); }
+    body.light-mode h1, body.light-mode h2, body.light-mode h3 { color: #0f172a !important; }
+    body.light-mode .macro-box .val, body.light-mode .meal-card h3 { color: #0f172a; }
+    body.light-mode input, body.light-mode select, body.light-mode textarea { background: rgba(255,255,255,0.8); color: #0f172a; }
+    
+    body.light-mode .theme-toggle { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #0f172a; }
+    body.light-mode .theme-toggle:hover { background: rgba(0,0,0,0.1); }
+    body.light-mode .cal-day { color: #0f172a; background: rgba(0,0,0,0.05); }
+    
+    .theme-toggle {
+      position: fixed; bottom: 100px; right: 20px;
+      background: rgba(255,255,255,0.1); border: 1px solid var(--card-border, var(--border));
+      color: var(--text-main, var(--text)); border-radius: 50%; width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      z-index: 9999; backdrop-filter: blur(10px); transition: all 0.3s;
+    }
+    .theme-toggle:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
+    .theme-toggle .light-icon { display: none; }
+    body.light-mode .theme-toggle .dark-icon { display: none; }
+    body.light-mode .theme-toggle .light-icon { display: block; }
+    /* ----------------------------- */
+
+
+    /* Light Mode Contrast Fixes */
+    body.light-mode { --accent: #0284c7; }
+    
+</style>
 </head>
 <body>
+<button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle Theme">
+  <i class="fas fa-moon dark-icon"></i>
+  <i class="fas fa-sun light-icon"></i>
+</button>
+<script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light-mode');
+  }
+  function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+  }
+</script>
+
+  
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
   <div class="container">
     <header>
-      <h1>My Apps</h1>
-      <p class="subtitle">Simple tools & utilities</p>
+      <h1>App Suite Portal</h1>
+      <p class="subtitle">A collection of powerful, modern web applications designed for everyday utility.</p>
     </header>
 
     <div class="grid">
-      <!-- Plant Watering Guide -->
-      <a href="plantApp/" class="card">
-        <div class="card-icon">🌱</div>
-        <div class="card-title">Plant Watering Guide</div>
-        <div class="card-desc">
-          Look up the ideal soil moisture zone for hundreds of houseplants using your soil meter.
+      
+      <!-- Gym App -->
+      <a href="gymApp/" class="card gym">
+        <div class="icon-wrapper">
+          <i class="fa-solid fa-dumbbell"></i>
         </div>
-        <div class="card-link">Open app →</div>
+        <div class="card-title">StrongLean Gym App</div>
+        <div class="card-desc">
+          A highly advanced strength training tracker designed for maximum hypertrophy and performance tracking.
+          <ul class="feature-list" style="list-style-type: none;">
+            <li><i class="fa-solid fa-check"></i> Dynamic Visual Muscle Heatmap based on active workouts</li>
+            <li><i class="fa-solid fa-check"></i> 1RM Est. progression line graphs for every exercise</li>
+            <li><i class="fa-solid fa-check"></i> Build, save, and launch Custom Workout Templates</li>
+            <li><i class="fa-solid fa-check"></i> Cross-browser Data Export & Import (JSON)</li>
+          </ul>
+        </div>
+        <div class="card-footer">
+          <div class="card-link">Launch App <i class="fa-solid fa-arrow-right"></i></div>
+        </div>
       </a>
 
-      <!-- Gym App -->
-      <a href="gymApp/" class="card">
-        <div class="card-icon">💪</div>
-        <div class="card-title">Gym App</div>
-        <div class="card-desc">
-          Track workouts, log exercises, and stay consistent with your fitness routine.
+      <!-- Plant App -->
+      <a href="plantApp/" class="card plant">
+        <div class="icon-wrapper">
+          <i class="fa-solid fa-leaf"></i>
         </div>
-        <div class="card-link">Open app →</div>
+        <div class="card-title">Smart Garden AI</div>
+        <div class="card-desc">
+          An intelligent plant watering guide and library powered by on-device computer vision and generative AI.
+          <ul class="feature-list" style="list-style-type: none;">
+            <li><i class="fa-solid fa-check"></i> On-Device AI Plant Camera using Google Gemini Flash</li>
+            <li><i class="fa-solid fa-check"></i> Granular 1-10 Soil Moisture Zones for precise watering</li>
+            <li><i class="fa-solid fa-check"></i> Custom avatars, Dark Mode, and Smart UI Library</li>
+            <li><i class="fa-solid fa-check"></i> Admin API Key & Model Configuration settings</li>
+          </ul>
+        </div>
+        <div class="card-footer">
+          <div class="card-link">Launch App <i class="fa-solid fa-arrow-right"></i></div>
+        </div>
       </a>
 
       <!-- Food App -->
-      <a href="foodApp/" class="card">
-        <div class="card-icon">🍽️</div>
-        <div class="card-title">Food App</div>
-        <div class="card-desc">
-          Track meals, calories, and nutrition to stay on top of your diet goals.
+      <a href="foodApp/" class="card food">
+        <div class="icon-wrapper">
+          <i class="fa-solid fa-utensils"></i>
         </div>
-        <div class="card-link">Open app →</div>
+        <div class="card-title">Food Macro Tracker</div>
+        <div class="card-desc">
+          A minimalist nutrition diary to track your meals, count macros, and stay on top of your dietary goals.
+          <ul class="feature-list" style="list-style-type: none;">
+            <li><i class="fa-solid fa-check"></i> Simple, fast daily macro logging</li>
+            <li><i class="fa-solid fa-check"></i> Caloric goal progress indicators</li>
+            <li><i class="fa-solid fa-check"></i> Works seamlessly offline</li>
+          </ul>
+        </div>
+        <div class="card-footer">
+          <div class="card-link">Launch App <i class="fa-solid fa-arrow-right"></i></div>
+        </div>
       </a>
+      
     </div>
 
     <footer>

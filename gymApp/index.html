@@ -104,9 +104,62 @@
         .gym-shadow {
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
         }
-    </style>
+    
+    /* --- Light Mode for Gym App (Proper Overrides) --- */
+    body.light-mode {
+      background-color: #f4f4f5 !important; /* zinc-100 */
+      color: #18181b !important; /* zinc-900 */
+    }
+    body.light-mode .bg-zinc-950,
+    body.light-mode .bg-zinc-900\/50,
+    body.light-mode .bg-zinc-950\/80 { background-color: #f4f4f5 !important; }
+    body.light-mode .bg-zinc-900 { background-color: #ffffff !important; }
+    body.light-mode .bg-zinc-800 { background-color: #e4e4e7 !important; }
+    body.light-mode .bg-zinc-800\/50 { background-color: #e4e4e7 !important; }
+    
+    body.light-mode .text-zinc-200, 
+    body.light-mode .text-white,
+    body.light-mode h1,
+    body.light-mode h2,
+    body.light-mode h3 { color: #18181b !important; }
+    
+    body.light-mode .text-zinc-400, 
+    body.light-mode .text-zinc-500 { color: #52525b !important; } /* zinc-600 */
+    body.light-mode .text-zinc-300 { color: #3f3f46 !important; } /* zinc-700 */
+    
+    body.light-mode .border-zinc-800,
+    body.light-mode .border-zinc-800\/50 { border-color: #d4d4d8 !important; } /* zinc-300 */
+    
+    body.light-mode input, 
+    body.light-mode textarea { color: #18181b !important; }
+    body.light-mode input::placeholder, 
+    body.light-mode textarea::placeholder { color: #a1a1aa !important; }
+    body.light-mode .metric-card { background: #ffffff !important; border-color: #e4e4e7 !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    body.light-mode .bg-zinc-700 { background-color: #d4d4d8 !important; }
+    body.light-mode .hover\:bg-zinc-800:hover { background-color: #f4f4f5 !important; }
+    
+    body.light-mode .ring-zinc-950 { --tw-ring-color: #f4f4f5 !important; }
+    body.light-mode .ring-zinc-700 { --tw-ring-color: #d4d4d8 !important; }
+    
+    /* Make toggle icon visible on light mode background */
+    body.light-mode .theme-toggle-header { color: #52525b !important; }
+    .theme-toggle-header .dark-icon { display: none !important; }
+    body.light-mode .theme-toggle-header .light-icon { display: block !important; }
+    
+</style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
+
+<script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light-mode');
+  }
+  function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+  }
+</script>
+
     <!-- Navbar -->
     <nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4">
@@ -169,6 +222,10 @@
 
                 <!-- Profile -->
                 <div class="flex items-center gap-x-3">
+                    <button onclick="toggleTheme()" class="theme-toggle-header w-9 h-9 bg-zinc-800 rounded-2xl flex items-center justify-center hover:bg-zinc-700 transition-colors text-zinc-400" title="Toggle Theme">
+                        <i class="fa-solid fa-moon dark-icon"></i>
+                        <i class="fa-solid fa-sun light-icon" style="display:none;"></i>
+                    </button>
                     <div class="text-right hidden sm:block">
                         <div class="text-sm font-medium">65 kg</div>
                         <div class="text-[10px] text-emerald-400">Goal: Strong + Lean</div>
@@ -691,6 +748,7 @@
         
         // Global state
         let currentWorkout = null;
+            if(typeof clearGymState === 'function') clearGymState();
         let currentDayType = null; // 'push' or 'pull'
         let timerInterval = null;
         let timerRemaining = 0;
@@ -1930,6 +1988,23 @@
         ];
 
         // Show section
+        
+        function saveGymState() {
+            if (!currentWorkout && !document.querySelector('.section.active')) return;
+            const state = {
+                currentWorkout,
+                currentDayType,
+                workoutStartTime,
+                timerRemaining,
+                timerPaused,
+                activeSection: document.querySelector('.section.active')?.id || 'dashboard'
+            };
+            localStorage.setItem('gymActiveState', JSON.stringify(state));
+        }
+        function clearGymState() {
+            localStorage.removeItem('gymActiveState');
+        }
+  
         function showSection(sectionId) {
             // Hide all
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -2532,6 +2607,7 @@
             
             // Start elapsed time counter
             startElapsedTimer();
+            if(typeof saveGymState === 'function') saveGymState();
             
             // Show workout timer + sticky action bar
             document.getElementById('workout-timer').classList.remove('hidden');
@@ -4303,6 +4379,48 @@
 
         // Boot app
         window.onload = function() {
+
+            const savedStateStr = localStorage.getItem('gymActiveState');
+            if (savedStateStr) {
+                try {
+                    const saved = JSON.parse(savedStateStr);
+                    if (saved.currentWorkout) {
+                        currentWorkout = saved.currentWorkout;
+                        currentDayType = saved.currentDayType;
+                        workoutStartTime = saved.workoutStartTime;
+                        
+                        // Start timer immediately
+                        startElapsedTimer();
+                        document.getElementById('workout-timer').classList.remove('hidden');
+                        document.getElementById('workout-timer').classList.add('flex');
+                        
+                        const stickyActions = document.getElementById('sticky-actions');
+                        if (stickyActions) stickyActions.classList.remove('hidden');
+                        
+                        // Force exercises list to recover UI
+                        let exercises = [];
+                        if (currentDayType === 'push') exercises = pushExercises;
+                        else if (currentDayType === 'pull') exercises = pullExercises;
+                        else if (currentDayType === 'upper') exercises = upperExercises;
+                        else if (currentDayType === 'lower') exercises = lowerExercises;
+                        else if (currentDayType === 'abs') exercises = absFinisherExercises;
+                        else exercises = pushExercises;
+                        
+                        // Set titles
+                        const header = document.getElementById('workout-header');
+                        const subtitle = document.getElementById('workout-subtitle');
+                        const titles = { push: 'PUSH DAY', pull: 'PULL DAY', upper: 'UPPER BODY', lower: 'LOWER BODY', abs: 'ABS ONLY' };
+                        if(header) header.innerHTML = (titles[currentDayType] || currentDayType.toUpperCase()) + ' <span class="text-xs align-super text-emerald-400 font-mono">STRENGTH</span>';
+                        if(subtitle) subtitle.textContent = currentWorkout.exercises.length + ' exercises • RESUMED';
+                        
+                        initializeWorkoutUI(exercises);
+                    }
+                    if (saved.activeSection) {
+                        showSection(saved.activeSection);
+                    }
+                } catch(e) { console.error('Failed to load state', e); }
+            }
+    
             initializeApp();
         };
         
