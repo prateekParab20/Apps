@@ -127,6 +127,10 @@
     body.light-mode .theme-toggle .dark-icon { display: none; }
     body.light-mode .theme-toggle .light-icon { display: block; }
     
+
+    body.light-mode .theme-toggle-header .dark-icon { display: none !important; }
+    body.light-mode .theme-toggle-header .light-icon { display: block !important; }
+    
 </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -147,7 +151,7 @@
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
                 <div class="flex items-center gap-x-3">
-                    <div onclick="toggleTheme()" class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center cursor-pointer">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center">
                         <i class="fa-solid fa-dumbbell text-white text-2xl"></i>
                     </div>
                     <div>
@@ -203,6 +207,10 @@
 
                 <!-- Profile -->
                 <div class="flex items-center gap-x-3">
+                    <button onclick="toggleTheme()" class="theme-toggle-header w-9 h-9 bg-zinc-800 rounded-2xl flex items-center justify-center hover:bg-zinc-700 transition-colors text-zinc-400" title="Toggle Theme">
+                        <i class="fa-solid fa-moon dark-icon"></i>
+                        <i class="fa-solid fa-sun light-icon" style="display:none;"></i>
+                    </button>
                     <div class="text-right hidden sm:block">
                         <div class="text-sm font-medium">65 kg</div>
                         <div class="text-[10px] text-emerald-400">Goal: Strong + Lean</div>
