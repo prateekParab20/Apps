@@ -144,10 +144,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 </style>
 </head>
 <body>
-<button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle Theme">
-  <i class="fas fa-moon dark-icon"></i>
-  <i class="fas fa-sun light-icon"></i>
-</button>
+
 <script>
   if (localStorage.getItem('theme') === 'light') {
     document.body.classList.add('light-mode');
@@ -181,6 +178,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
     <a href="#" data-sec="planner" onclick="showSec('planner')">📅 Daily Planner</a>
     <a href="#" data-sec="tracker" onclick="showSec('tracker')">📊 Macro Tracker</a>
     <a href="#" data-sec="guide" onclick="showSec('guide')">💡 Guide & Tips</a>
+    <a href="#" onclick="toggleTheme(); return false;">🌗 Toggle Theme</a>
   </nav>
   <div style="padding:16px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0">All data stays private in your browser</div>
 </div>

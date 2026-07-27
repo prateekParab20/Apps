@@ -130,10 +130,7 @@
 </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
-<button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle Theme">
-  <i class="fas fa-moon dark-icon"></i>
-  <i class="fas fa-sun light-icon"></i>
-</button>
+
 <script>
   if (localStorage.getItem('theme') === 'light') {
     document.body.classList.add('light-mode');
@@ -150,7 +147,7 @@
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
                 <div class="flex items-center gap-x-3">
-                    <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center">
+                    <div onclick="toggleTheme()" class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center cursor-pointer">
                         <i class="fa-solid fa-dumbbell text-white text-2xl"></i>
                     </div>
                     <div>
