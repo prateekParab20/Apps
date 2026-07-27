@@ -590,6 +590,7 @@
         
         // Global state
         let currentWorkout = null;
+            if(typeof clearGymState === 'function') clearGymState();
         let currentDayType = null; // 'push' or 'pull'
         let timerInterval = null;
         let timerRemaining = 0;
@@ -1772,6 +1773,23 @@
         ];
 
         // Show section
+        
+        function saveGymState() {
+            if (!currentWorkout && !document.querySelector('.section.active')) return;
+            const state = {
+                currentWorkout,
+                currentDayType,
+                workoutStartTime,
+                timerRemaining,
+                timerPaused,
+                activeSection: document.querySelector('.section.active')?.id || 'dashboard'
+            };
+            localStorage.setItem('gymActiveState', JSON.stringify(state));
+        }
+        function clearGymState() {
+            localStorage.removeItem('gymActiveState');
+        }
+  
         function showSection(sectionId) {
             // Hide all
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -2235,6 +2253,7 @@
             
             // Start elapsed time counter
             startElapsedTimer();
+            if(typeof saveGymState === 'function') saveGymState();
             
             // Show workout timer + sticky action bar
             document.getElementById('workout-timer').classList.remove('hidden');
@@ -3806,6 +3825,48 @@
 
         // Boot app
         window.onload = function() {
+
+            const savedStateStr = localStorage.getItem('gymActiveState');
+            if (savedStateStr) {
+                try {
+                    const saved = JSON.parse(savedStateStr);
+                    if (saved.currentWorkout) {
+                        currentWorkout = saved.currentWorkout;
+                        currentDayType = saved.currentDayType;
+                        workoutStartTime = saved.workoutStartTime;
+                        
+                        // Start timer immediately
+                        startElapsedTimer();
+                        document.getElementById('workout-timer').classList.remove('hidden');
+                        document.getElementById('workout-timer').classList.add('flex');
+                        
+                        const stickyActions = document.getElementById('sticky-actions');
+                        if (stickyActions) stickyActions.classList.remove('hidden');
+                        
+                        // Force exercises list to recover UI
+                        let exercises = [];
+                        if (currentDayType === 'push') exercises = pushExercises;
+                        else if (currentDayType === 'pull') exercises = pullExercises;
+                        else if (currentDayType === 'upper') exercises = upperExercises;
+                        else if (currentDayType === 'lower') exercises = lowerExercises;
+                        else if (currentDayType === 'abs') exercises = absFinisherExercises;
+                        else exercises = pushExercises;
+                        
+                        // Set titles
+                        const header = document.getElementById('workout-header');
+                        const subtitle = document.getElementById('workout-subtitle');
+                        const titles = { push: 'PUSH DAY', pull: 'PULL DAY', upper: 'UPPER BODY', lower: 'LOWER BODY', abs: 'ABS ONLY' };
+                        if(header) header.innerHTML = (titles[currentDayType] || currentDayType.toUpperCase()) + ' <span class="text-xs align-super text-emerald-400 font-mono">STRENGTH</span>';
+                        if(subtitle) subtitle.textContent = currentWorkout.exercises.length + ' exercises • RESUMED';
+                        
+                        initializeWorkoutUI(exercises);
+                    }
+                    if (saved.activeSection) {
+                        showSection(saved.activeSection);
+                    }
+                } catch(e) { console.error('Failed to load state', e); }
+            }
+    
             initializeApp();
         };
         

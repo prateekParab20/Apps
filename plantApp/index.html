@@ -686,13 +686,16 @@
     let notificationsEnabled = false;
     const waterIntervals = { red:14, green45:10, green56:7, green67:4, blue:30 };
 
-    function switchTab(tabId) {
+    function switchTab(tabId, skipSave) { if(!skipSave) localStorage.setItem("plantAppActiveTab", tabId);
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tabBtn-' + tabId).classList.add('active');
       document.getElementById('tab-' + tabId).classList.add('active');
       if (tabId === 'garden') renderGarden();
       if (tabId === 'identify') initClassifier();
+    const savedTab = localStorage.getItem("plantAppActiveTab");
+    if (savedTab) switchTab(savedTab, true);
+
     }
 
     let pendingPlant = null;

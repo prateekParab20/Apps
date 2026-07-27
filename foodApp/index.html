@@ -554,7 +554,7 @@ function toggleMenu(){
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('show');
 }
-function showSec(id){
+function showSec(id, skipSave){ if(!skipSave) localStorage.setItem("foodAppActiveSec", id);
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   document.querySelectorAll('.sidebar a').forEach(a=>{
@@ -1562,6 +1562,9 @@ setInterval(() => {
   calViewMonth = parseInt(parts[1], 10) - 1;
 })();
 loadProfile();
+  const savedSec = localStorage.getItem("foodAppActiveSec");
+  if (savedSec) showSec(savedSec, true);
+
 loadReminders();
 loadLog();
 loadCustomFoods();
