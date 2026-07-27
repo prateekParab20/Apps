@@ -594,7 +594,7 @@
         }
         
         // Global state
-        let currentWorkout = null;
+        let currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
             if(typeof clearGymState === 'function') clearGymState();
         let currentDayType = null; // 'push' or 'pull'
         let timerInterval = null;
@@ -1829,6 +1829,7 @@
                 // Show day selector if no active workout
                 showDaySelector();
             }
+            if(typeof saveGymState === 'function') saveGymState();
         }
 
         function getCurrentExercises() {
@@ -2194,7 +2195,7 @@
                 var dayBack = document.getElementById('day-selector-back');
                 if (dayBack) {
                     dayBack.onclick = function() {
-                        currentWorkout = null;
+                        currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
                         currentDayType = null;
                         document.querySelectorAll('.section').forEach(function(el) { el.classList.remove('active'); });
                         var dash = document.getElementById('dashboard');
@@ -2282,7 +2283,7 @@
             } catch (e) {
                 console.error(e);
                 // Hard fallback
-                currentWorkout = null;
+                currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
                 document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
                 const dash = document.getElementById('dashboard');
                 if (dash) dash.classList.add('active');
@@ -2319,7 +2320,7 @@
             const timerEl = document.getElementById('workout-timer');
             if (timerEl) timerEl.classList.add('hidden');
             
-            currentWorkout = null;
+            currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
             currentDayType = null;
             workoutStartTime = null;
             
@@ -3012,6 +3013,7 @@
         function updateLiveStats() {
             // Could update a live volume counter in header if wanted
             // For now it's simple
+            if(typeof saveGymState === 'function') saveGymState();
         }
 
         // === TIMER FUNCTIONS ===
@@ -3304,7 +3306,7 @@
             showCompletionScreen(currentWorkout);
             
             // Reset
-            currentWorkout = null;
+            currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
             workoutStartTime = null;
         }
 
@@ -3765,7 +3767,7 @@
                     try {
                         if (currentWorkout) {
                             if (!confirm('Cancel this workout? Progress will not be saved.')) return;
-                            currentWorkout = null;
+                            currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
                             currentDayType = null;
                             try { if (timerInterval) clearInterval(timerInterval); } catch(err) {}
                             try { if (elapsedInterval) clearInterval(elapsedInterval); } catch(err) {}
