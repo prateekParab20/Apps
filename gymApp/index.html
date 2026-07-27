@@ -3831,6 +3831,8 @@
         // Boot app
         window.onload = function() {
 
+            initializeApp();
+            
             const savedStateStr = localStorage.getItem('gymActiveState');
             if (savedStateStr) {
                 try {
@@ -3866,13 +3868,13 @@
                         
                         initializeWorkoutUI(exercises);
                     }
+                    
+                    // Recover active section ONLY after initializeApp has set defaults
                     if (saved.activeSection) {
                         showSection(saved.activeSection);
                     }
                 } catch(e) { console.error('Failed to load state', e); }
             }
-    
-            initializeApp();
         };
         
         // Expose some functions for debugging if needed
