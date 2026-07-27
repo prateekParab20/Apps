@@ -94,9 +94,64 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
   background:var(--accent) !important;color:#fff !important;font-weight:700;box-shadow:0 4px 15px var(--accent-glow);border-color:var(--accent);
 }
 .cal-day.selected.has-logs::after{background:#fff;box-shadow:none;}
+
+    /* --- Light Mode Overrides --- */
+    body.light-mode {
+      --bg-gradient-start: #f8fafc;
+      --bg-gradient-end: #e2e8f0;
+      --card-bg: rgba(255, 255, 255, 0.6);
+      --card: rgba(255, 255, 255, 0.6); /* plant app uses --card */
+      --card-border: rgba(255, 255, 255, 0.9);
+      --border: rgba(255, 255, 255, 0.9); /* plant app */
+      --card-hover-bg: rgba(255, 255, 255, 0.9);
+      --card-hover: rgba(255, 255, 255, 0.9);
+      --text-main: #0f172a;
+      --text: #0f172a; /* plant app */
+      --text-muted: #475569;
+      --muted2: #475569; /* plant app */
+    }
+    body.light-mode .header { background: rgba(255, 255, 255, 0.6); color: #0f172a; border-color: rgba(0,0,0,0.1); }
+    body.light-mode .header h1 { -webkit-text-fill-color: #0f172a; background: none; }
+    body.light-mode .sidebar { background: rgba(255, 255, 255, 0.9); color: #0f172a; border-color: rgba(0,0,0,0.1); }
+    body.light-mode .sidebar-header { color: #0f172a; background: rgba(0,0,0,0.05); }
+    body.light-mode h1, body.light-mode h2, body.light-mode h3 { color: #0f172a !important; }
+    body.light-mode .macro-box .val, body.light-mode .meal-card h3 { color: #0f172a; }
+    body.light-mode input, body.light-mode select, body.light-mode textarea { background: rgba(255,255,255,0.8); color: #0f172a; }
+    
+    body.light-mode .theme-toggle { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #0f172a; }
+    body.light-mode .theme-toggle:hover { background: rgba(0,0,0,0.1); }
+    body.light-mode .cal-day { color: #0f172a; background: rgba(0,0,0,0.05); }
+    
+    .theme-toggle {
+      position: fixed; top: 20px; right: 20px;
+      background: rgba(255,255,255,0.1); border: 1px solid var(--card-border, var(--border));
+      color: var(--text-main, var(--text)); border-radius: 50%; width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      z-index: 9999; backdrop-filter: blur(10px); transition: all 0.3s;
+    }
+    .theme-toggle:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
+    .theme-toggle .light-icon { display: none; }
+    body.light-mode .theme-toggle .dark-icon { display: none; }
+    body.light-mode .theme-toggle .light-icon { display: block; }
+    /* ----------------------------- */
+
 </style>
 </head>
 <body>
+<button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle Theme">
+  <i class="fas fa-moon dark-icon"></i>
+  <i class="fas fa-sun light-icon"></i>
+</button>
+<script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light-mode');
+  }
+  function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+  }
+</script>
+
 <div class="blob blob-1"></div>
 <div class="blob blob-2"></div>
 
