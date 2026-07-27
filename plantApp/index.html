@@ -142,6 +142,58 @@
     /* ----------------------------- */
 
 
+    
+    /* --- Semantic Classes (Replacing Inline Styles) --- */
+    .flex-col-gap-8 { display: flex; flex-direction: column; gap: 8px; }
+    .flex-row-gap-8 { display: flex; gap: 8px; }
+    .select-input { padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; outline: none; background: var(--bg); color: var(--text); }
+    .text-input { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-family: monospace; }
+    .divider-row { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-text { font-size: 0.75rem; color: var(--muted2); font-weight: 600; text-transform: uppercase; }
+    .btn-blue { width: 100%; margin-top: 12px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-blue:hover { transform: translateY(-1px); }
+    .btn-photo { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px; width: 100%; font-size: 0.9rem; }
+    .image-preview { max-width: 100%; border-radius: 12px; border: 1px solid var(--border); }
+    
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+    .modal-content { background: var(--card); width: 90%; max-width: 400px; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-title { margin-top: 0; color: var(--text); }
+    .modal-desc { font-size: 0.95rem; color: var(--muted2); margin-bottom: 20px; }
+    .pot-option-btn { width: 100%; margin: 0; padding: 12px; font-size: 1rem; display: flex; justify-content: flex-start; align-items: center; gap: 12px; text-align: left; }
+    .pot-option-btn.selected { background: var(--muted2); }
+    .pot-title { font-weight: 600; }
+    .pot-desc { font-size: 0.75rem; color: var(--muted2); font-weight: normal; }
+    .btn-cancel { background: none; border: none; color: var(--muted2); font-weight: 600; width: 100%; padding: 12px; margin-top: 12px; cursor: pointer; transition: all 0.2s; }
+    .btn-cancel:hover { color: var(--text); }
+    
+    .water-status-alert { color: var(--red); font-weight: bold; }
+    .water-status-info { font-size: 0.75rem; color: var(--muted2); margin-top: 2px; }
+    .plant-list-header { display: flex; align-items: center; gap: 8px; }
+    .plant-list-name { font-weight: 600; font-size: 1.05rem; }
+    .plant-status { font-size: 0.85rem; color: var(--muted2); margin-top: 6px; }
+    .plant-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .select-pot-small { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue); border-radius: 8px; padding: 0 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; outline: none; }
+    .btn-remove-small { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); border-radius: 8px; padding: 0 12px; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+    
+    .ai-report-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .ai-report-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    .ai-report-title { font-weight: 700; font-size: 1.1rem; color: var(--text); }
+    .ai-report-aka { font-size: 0.8rem; color: var(--muted2); margin-top: 2px; }
+    .ai-health-box { background: var(--bg); border-radius: 8px; padding: 12px; }
+    .ai-health-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted2); margin-bottom: 8px; }
+    .ai-health-status { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .ai-health-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .ai-health-text { font-weight: 600; font-size: 0.95rem; }
+    .ai-health-desc { font-size: 0.9rem; color: var(--text); margin-bottom: 12px; line-height: 1.4; }
+    .ai-action-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
+    .ai-action-list { margin: 0; padding-left: 20px; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+    
+    body.light-mode .btn-blue { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); color: #2563eb; }
+    body.light-mode .select-pot-small { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); color: #2563eb; }
+    body.light-mode .btn-remove-small { background: #fef2f2; border-color: #fca5a5; color: #ef4444; }
+    body.light-mode .water-status-alert { color: #dc2626; }
+
     /* Light Mode Contrast Fixes */
     body.light-mode { --accent: #059669; }
     body.light-mode .water-btn { color: #047857; border-color: #047857; }
@@ -222,34 +274,34 @@
         <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:12px; margin-bottom:16px;">
           <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px;">Gemini Settings</div>
           <p style="font-size:0.75rem; color:var(--muted2); margin-bottom:8px;">Get a free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">Google AI Studio</a>.</p>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <select id="gemini-model" style="padding:8px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; outline:none; background:var(--bg); color:var(--text);">
+          <div class="flex-col-gap-8">
+            <select id="gemini-model" class="select-input">
               <option value="gemini-flash-latest">Gemini Flash (Fastest)</option>
               <option value="gemini-pro-latest">Gemini Pro (Most Accurate)</option>
             </select>
-            <div style="display:flex; gap:8px;">
-              <input type="password" id="gemini-key" placeholder="Enter API Key" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); font-family:monospace;">
+            <div class="flex-row-gap-8">
+              <input type="password" id="gemini-key" placeholder="Enter API Key" class="text-input">
               <button class="btn-add" style="width:auto; margin:0;" onclick="saveApiKey()">Save</button>
             </div>
           </div>
-          <div style="margin-top:12px; display:flex; align-items:center; justify-content:center; gap:12px;">
-            <div style="flex:1; height:1px; background:var(--border);"></div>
-            <div style="font-size:0.75rem; color:var(--muted2); font-weight:600; text-transform:uppercase;">or</div>
-            <div style="flex:1; height:1px; background:var(--border);"></div>
+          <div class="divider-row">
+            <div class="divider-line"></div>
+            <div class="divider-text">or</div>
+            <div class="divider-line"></div>
           </div>
-          <button style="width:100%; margin-top:12px; background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); padding:10px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer;" onclick="requestApiKey()">Request Key from Admin</button>
+          <button class="btn-blue" onclick="requestApiKey()">Request Key from Admin</button>
         </div>
         
         <div id="upload-section" style="display:none;">
           <p class="note" style="margin-top:8px; margin-bottom:16px">Upload a clear photo of the leaves or flower.</p>
           <input type="file" id="image-upload" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(event)">
-          <button class="btn-add" onclick="document.getElementById('image-upload').click()" style="display:flex; justify-content:center; align-items:center; gap:8px; padding:12px; width:100%; font-size:0.9rem;">
+          <button class="btn-add" onclick="document.getElementById('image-upload').click()" class="btn-photo">
             <span style="font-size:1.2rem">📸</span> Take Photo or Upload
           </button>
         </div>
 
         <div id="image-preview-container" style="display:none; margin-top:20px; text-align:center;">
-          <img id="image-preview" style="max-width:100%; border-radius:12px; border:1px solid var(--border);" />
+          <img id="image-preview" class="image-preview" />
         </div>
 
         <div id="identify-status" style="margin-top:16px; font-weight:600; text-align:center; color:var(--accent);"></div>
@@ -259,29 +311,29 @@
     </div>
 
     <!-- Pot Type Modal -->
-    <div id="pot-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; justify-content:center; align-items:center;">
-      <div style="background:var(--card); width:90%; max-width:400px; border-radius:16px; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-        <h3 style="margin-top:0; color:var(--text);">Add to Garden</h3>
-        <p style="font-size:0.95rem; color:var(--muted2); margin-bottom:20px;">What type of pot is <strong id="modal-plant-name">this plant</strong> in?</p>
+    <div id="pot-modal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title">Add to Garden</h3>
+        <p class="modal-desc">What type of pot is <strong id="modal-plant-name">this plant</strong> in?</p>
         
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <button class="btn-add" style="width:100%; margin:0; padding:12px; font-size:1rem; display:flex; justify-content:flex-start; align-items:center; gap:12px;" onclick="confirmAddToGarden('standard')">
+        <div class="flex-col-gap-8">
+          <button class="btn-add pot-option-btn" onclick="confirmAddToGarden('standard')">
             <span style="font-size:1.5rem">🪴</span> 
             <div style="text-align:left;">
-              <div style="font-weight:600;">Standard Pot</div>
-              <div style="font-size:0.75rem; color:rgba(255,255,255,0.8); font-weight:normal;">Normal watering schedule</div>
+              <div class="pot-title">Standard Pot</div>
+              <div class="pot-desc">Normal watering schedule</div>
             </div>
           </button>
           
-          <button class="btn-add" style="width:100%; margin:0; padding:12px; font-size:1rem; background:var(--muted2); display:flex; justify-content:flex-start; align-items:center; gap:12px;" onclick="confirmAddToGarden('self-watering')">
+          <button class="btn-add pot-option-btn selected" onclick="confirmAddToGarden('self-watering')">
             <span style="font-size:1.5rem">💧</span> 
             <div style="text-align:left;">
               <div style="font-weight:600;">Self-Watering Pot</div>
-              <div style="font-size:0.75rem; color:rgba(255,255,255,0.8); font-weight:normal;">Watering interval is tripled (3x)</div>
+              <div class="pot-desc">Watering interval is tripled (3x)</div>
             </div>
           </button>
         </div>
-        <button style="background:none; border:none; color:var(--muted2); font-weight:600; width:100%; padding:12px; margin-top:12px; cursor:pointer;" onclick="document.getElementById('pot-modal').style.display='none'">Cancel</button>
+        <button class="btn-cancel" onclick="document.getElementById('pot-modal').style.display='none'">Cancel</button>
       </div>
     </div>
 
@@ -759,29 +811,29 @@
       list.innerHTML = garden.map((p, i) => {
         const daysLeft = Math.ceil((p.nextWater - Date.now()) / (1000 * 60 * 60 * 24));
         let status = `Needs water in ${daysLeft} days`;
-        if (daysLeft <= 0) status = `<span style="color:var(--red);font-weight:bold">Needs water today!</span>`;
+        if (daysLeft <= 0) status = `<span class="water-status-alert">Needs water today!</span>`;
         
         const potBadge = p.potType === 'self-watering' 
-          ? `<div style="font-size:0.75rem; color:var(--muted2); margin-top:2px;">💧 Self-Watering Pot (3x longer)</div>`
+          ? `<div class="water-status-info">💧 Self-Watering Pot (3x longer)</div>`
           : ``;
           
         return `<div class="garden-item">
           <div class="garden-header">
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div class="plant-list-header">
               <span style="font-size:1.5rem;">${getAvatar(p.name)}</span>
-              <div style="font-weight:600;font-size:1.05rem">${p.name}</div>
+              <div class="plant-list-name">${p.name}</div>
             </div>
             <div class="zone-badge ${zoneClasses[p.zone]}">${zoneLabels[p.zone]}</div>
           </div>
           ${potBadge}
-          <div style="font-size:0.85rem; color:var(--muted2); margin-top:6px">${status}</div>
-          <div style="display:flex; gap:8px; margin-top:12px;">
+          <div class="plant-status">${status}</div>
+          <div class="plant-actions">
             <button class="water-btn" style="flex:1; margin-top:0;" onclick="waterPlant(${i})">💧 Mark as Watered</button>
-            <select style="background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); border-radius:8px; padding:0 8px; font-size:0.85rem; font-weight:600; cursor:pointer; outline:none;" onchange="changePotType(${i}, this.value)" title="Change Pot Type">
+            <select class="select-pot-small" onchange="changePotType(${i}, this.value)" title="Change Pot Type">
               <option value="standard" ${p.potType !== 'self-watering' ? 'selected' : ''}>🪴 Standard</option>
               <option value="self-watering" ${p.potType === 'self-watering' ? 'selected' : ''}>💧 Self-Watering</option>
             </select>
-            <button style="background:var(--red-bg); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:0 12px; font-size:1rem; cursor:pointer;" onclick="removePlant(${i})" title="Remove Plant">❌</button>
+            <button class="btn-remove-small" onclick="removePlant(${i})" title="Remove Plant">❌</button>
           </div>
         </div>`;
       }).join('');
@@ -951,14 +1003,14 @@
       if (status.toLowerCase().includes("attention") || status.toLowerCase().includes("issue")) statusColor = "#f59e0b"; // orange
       if (status.toLowerCase().includes("critical") || status.toLowerCase().includes("dying") || status.toLowerCase().includes("bad")) statusColor = "var(--red)";
 
-      let html = `<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">`;
+      let html = `<div class="ai-report-card">`;
       
       // Top section: Plant Name
       html += `
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:16px;">
+        <div class="ai-report-header">
           <div>
-            <div style="font-weight:700; font-size:1.1rem; color:var(--text);">${primaryName}</div>
-            ${names.length > 1 ? `<div style="font-size:0.8rem; color:var(--muted2); margin-top:2px;">Also known as: ${names.slice(1).join(', ')}</div>` : ''}
+            <div class="ai-report-title">${primaryName}</div>
+            ${names.length > 1 ? `<div class="ai-report-aka">Also known as: ${names.slice(1).join(', ')}</div>` : ''}
           </div>
           <button class="water-btn" style="width:auto; padding:8px 16px; margin:0; font-size:0.85rem;" onclick="document.getElementById('search').value='${primaryName.split(' ')[0]}'; switchTab('search'); search('${primaryName.split(' ')[0]}')">Search Library</button>
         </div>
@@ -966,22 +1018,22 @@
       
       // Health Report section
       html += `
-        <div style="background:var(--bg); border-radius:8px; padding:12px;">
-          <div style="font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted2); margin-bottom:8px;">Health Report</div>
+        <div class="ai-health-box">
+          <div class="ai-health-title">Health Report</div>
           
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-            <div style="width:12px; height:12px; border-radius:50%; background:${statusColor};"></div>
-            <div style="font-weight:600; font-size:0.95rem;">${status}</div>
+          <div class="ai-health-status">
+            <div class="ai-health-dot" style="background:${statusColor};"></div>
+            <div class="ai-health-text">${status}</div>
           </div>
           
-          <div style="font-size:0.9rem; color:var(--text); margin-bottom:12px; line-height:1.4;">
+          <div class="ai-health-desc">
             <strong>Diagnosis:</strong> ${issues}
           </div>
       `;
       
       if (actionPlan.length > 0) {
-        html += `<div style="font-size:0.9rem; font-weight:600; margin-bottom:6px;">Action Plan:</div>
-                 <ul style="margin:0; padding-left:20px; font-size:0.85rem; color:var(--text); line-height:1.5;">`;
+        html += `<div class="ai-action-title">Action Plan:</div>
+                 <ul class="ai-action-list">`;
         actionPlan.forEach(step => {
           html += `<li style="margin-bottom:4px;">${step}</li>`;
         });

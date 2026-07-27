@@ -136,6 +136,46 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
     /* ----------------------------- */
 
 
+    
+    /* --- Semantic Classes (Replacing Inline Styles) --- */
+    .text-xs-muted { font-size: 12px; color: var(--text-muted); }
+    .text-sm-muted { font-size: 13px; color: var(--text-muted); }
+    .border-top-muted { border-top: 1px solid var(--card-border); }
+    .margin-top-8 { margin-top: 8px; }
+    .margin-top-10 { margin-top: 10px; }
+    .margin-bottom-10 { margin-bottom: 10px; }
+    
+    .status-badge { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid var(--card-border); }
+    body.light-mode .status-badge { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+    
+    .cal-nav-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 8px; width: 36px; height: 36px; font-size: 18px; cursor: pointer; color: var(--text-main); }
+    body.light-mode .cal-nav-btn { background: #f1f5f9; color: #0f172a; border-color: #e2e8f0; }
+    
+    .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+    .cal-legend { display: flex; gap: 12px; margin-top: 10px; font-size: 11px; color: var(--text-muted); justify-content: center; }
+    
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+    .dot-orange { background: #f97316; }
+    .dot-red { background: #ea580c; }
+    
+    .input-readonly { background: rgba(255,255,255,0.05) !important; color: var(--text-muted) !important; }
+    body.light-mode .input-readonly { background: #f8fafc !important; color: #64748b !important; }
+    
+    .success-box { background: rgba(34,197,94,0.1); border-radius: 10px; padding: 10px; margin-top: 8px; font-size: 13px; color: var(--text-main); border: 1px solid rgba(34,197,94,0.2); }
+    body.light-mode .success-box { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    
+    .modal-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 10px; }
+    .btn-close-modal { margin-top: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; color: var(--text-main); cursor: pointer; width: 100%; transition: all 0.2s; }
+    body.light-mode .btn-close-modal { background: #f1f5f9; color: #0f172a; border-color: #e2e8f0; }
+    
+    .empty-state { color: var(--text-muted); padding: 20px; text-align: center; font-style: italic; }
+    
+    .btn-delete-small { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; flex-shrink: 0; transition: all 0.2s; }
+    body.light-mode .btn-delete-small { background: #fef2f2; color: #ef4444; border-color: #fca5a5; }
+    
+    .btn-remove-log { background: none; border: none; color: #ef4444; font-size: 16px; padding: 0 6px; cursor: pointer; transition: all 0.2s; }
+    .btn-remove-log:hover { transform: scale(1.1); }
+
     /* Light Mode Contrast Fixes */
     body.light-mode .note { color: #854d0e !important; }
     body.light-mode { --accent-light: #7e22ce; --accent: #9333ea; }
@@ -180,7 +220,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
     <a href="#" data-sec="guide" onclick="showSec('guide')">💡 Guide & Tips</a>
     <a href="#" onclick="toggleTheme(); return false;">🌗 Toggle Theme</a>
   </nav>
-  <div style="padding:16px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0">All data stays private in your browser</div>
+  <div class="text-xs-muted border-top-muted" style="padding:16px;">All data stays private in your browser</div>
 </div>
 
 <!-- PROFILE -->
@@ -243,7 +283,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <input type="time" id="rem-di" value="20:00" onchange="saveReminders()">
       </div>
     </div>
-    <div style="font-size:12px;color:#64748b;margin-top:8px">We'll send a system notification to remind you.</div>
+    <div class="text-xs-muted margin-top-8">We'll send a system notification to remind you.</div>
   </div>
 </div>
 
@@ -251,7 +291,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 <div class="section" id="sec-recipes">
   <h2 id="t-recipes">Recipes Library</h2>
   <p class="sub" id="t-recipes-sub">Tap a recipe → view quantities → Add to Plan</p>
-  <div id="db-status" style="font-size:13px;color:#64748b;margin-bottom:10px;padding:8px 12px;background:#f1f5f9;border-radius:10px;">
+  <div id="db-status" class="status-badge">
     Your food database: <strong id="db-count">0</strong> custom items saved
   </div>
   <div class="filters">
@@ -358,17 +398,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
   <!-- CALENDAR -->
   <div class="card" style="padding:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <button type="button" onclick="calPrevMonth()" style="background:#f1f5f9;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer">‹</button>
+      <button type="button" onclick="calPrevMonth()" class="cal-nav-btn">‹</button>
       <div id="cal-month-label" style="font-weight:700;font-size:16px"></div>
-      <button type="button" onclick="calNextMonth()" style="background:#f1f5f9;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer">›</button>
+      <button type="button" onclick="calNextMonth()" class="cal-nav-btn">›</button>
     </div>
-    <div id="cal-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:4px">
+    <div id="cal-weekdays" class="cal-weekdays">
       <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
     </div>
     <div id="cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
-    <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:#64748b;justify-content:center">
-      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;margin-right:4px"></span> Has logs</span>
-      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ea580c;margin-right:4px"></span> Selected</span>
+    <div class="cal-legend">
+      <span><span class="dot dot-orange"></span> Has logs</span>
+      <span><span class="dot dot-red"></span> Selected</span>
     </div>
     <!-- hidden field so existing code still works -->
     <input type="hidden" id="trackDate">
@@ -388,7 +428,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
   <!-- LOG FROM MY DATABASE WITH QUANTITY -->
   <div class="card">
     <div style="font-weight:600;margin-bottom:8px" id="t-logdb">📋 Log from My Foods Database</div>
-    <p style="font-size:13px;color:#64748b;margin-bottom:10px" id="t-logdb-sub">Select a food you saved, enter how much you actually ate, and macros will scale automatically.</p>
+    <p class="text-sm-muted margin-bottom-10" id="t-logdb-sub">Select a food you saved, enter how much you actually ate, and macros will scale automatically.</p>
     
     <label id="l-dbfood">Select Food</label>
     <select id="db-food-select" onchange="onDbFoodSelect()">
@@ -403,12 +443,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <div>
           <label id="l-dbunit">Unit</label>
-          <input type="text" id="db-unit" readonly style="background:#f8fafc">
+          <input type="text" id="db-unit" readonly class="input-readonly">
         </div>
       </div>
-      <div style="background:#f0fdf4;border-radius:10px;padding:10px;margin-top:8px;font-size:13px">
-        <div id="db-base-info" style="color:#64748b;margin-bottom:4px"></div>
-        <div id="db-scaled-info" style="font-weight:600;color:#166534"></div>
+      <div class="success-box">
+        <div id="db-base-info" class="text-sm-muted margin-bottom-10"></div>
+        <div id="db-scaled-info" class="text-sm-muted font-bold"></div>
       </div>
       <button class="btn btn-block" style="margin-top:10px" onclick="logScaledFood()" id="btn-logscaled">Add Scaled Amount to Log</button>
     </div>
@@ -432,7 +472,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
     <p><strong>Why higher protein?</strong><br>At 55-60 years, the body needs more protein (1.2–1.5 g/kg) to maintain muscle and strength.</p>
     <p style="margin-top:10px"><strong>Best low-GI Indian choices:</strong><br>• Millets: jowar, bajra, ragi, foxtail<br>• Barley (jau), whole dals, moong, chana<br>• Lots of non-starchy sabzi (lauki, bhindi, palak, methi)<br>• Paneer, soya, hung curd, sprouts</p>
     <p style="margin-top:10px"><strong>Simple rules:</strong><br>1. Eat protein + veggies first, then carbs<br>2. Use minimal oil / non-stick<br>3. Add lemon & spices for taste without calories<br>4. Stay consistent – small daily wins matter most</p>
-    <p style="margin-top:10px;font-size:13px;color:#64748b">This is not medical advice. Please consult her doctor if she has diabetes, kidney issues or any health concerns.</p>
+    <p class="text-sm-muted margin-top-10">This is not medical advice. Please consult her doctor if she has diabetes, kidney issues or any health concerns.</p>
   </div>
 </div>
 
@@ -441,14 +481,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
   <div style="background:white;border-radius:16px;padding:20px;max-width:400px;margin:40px auto">
     <h3 id="m-title" style="font-size:18px;margin-bottom:8px"></h3>
     <div id="m-badge" style="margin-bottom:8px"></div>
-    <p id="m-desc" style="font-size:14px;color:#475569;margin-bottom:10px"></p>
+    <p id="m-desc" class="modal-desc"></p>
     <div class="qty" id="m-qty"></div>
     <div style="margin:12px 0;font-size:14px">
       <strong id="m-macros"></strong>
     </div>
     <button class="btn btn-block" onclick="addToPlanFromModal()" id="m-add">Add to Plan</button>
     <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="openYT()" id="m-yt">▶ Watch on YouTube</button>
-    <button class="btn-outline btn-block" style="margin-top:8px;background:#f1f5f9;border:none;padding:10px;border-radius:10px" onclick="closeModal()">Close</button>
+    <button class="btn-outline btn-block" class="btn-close-modal" onclick="closeModal()">Close</button>
   </div>
 </div>
 
@@ -777,7 +817,7 @@ function renderRecipes(){
   list.innerHTML = '';
   const filtered = getFilteredMeals(currentFilter);
   if (filtered.length === 0) {
-    list.innerHTML = '<p style="color:#94a3b8;padding:20px;text-align:center">No recipes match current filters.</p>';
+    list.innerHTML = '<p class="empty-state">No recipes match current filters.</p>';
     return;
   }
   filtered.forEach(m=>{
@@ -1097,7 +1137,7 @@ function renderMyFoodsList() {
   updateDbCount();
 
   if (customFoods.length === 0) {
-    list.innerHTML = '<p style="color:#94a3b8;padding:12px 0">No custom foods yet. Add your first item above.</p>';
+    list.innerHTML = '<p class="empty-state" style="padding:12px 0;">No custom foods yet. Add your first item above.</p>';
     return;
   }
 
@@ -1107,12 +1147,12 @@ function renderMyFoodsList() {
     return `<div style="padding:12px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <div>
         <div style="font-weight:600">${name}</div>
-        <div style="font-size:12px;color:#64748b;margin-top:2px">Serving: <strong>${serv}</strong></div>
-        <div style="font-size:12px;color:#64748b;margin-top:2px">
+        <div class="text-xs-muted margin-top-8">Serving: <strong>${serv}</strong></div>
+        <div class="text-xs-muted margin-top-8">
           P ${item.p}g &nbsp;•&nbsp; C ${item.c}g &nbsp;•&nbsp; F ${item.f}g &nbsp;•&nbsp; ${item.k} kcal
         </div>
       </div>
-      <button onclick="deleteMyFood(${idx})" style="background:#fef2f2;color:#ef4444;border:none;border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">Delete</button>
+      <button onclick="deleteMyFood(${idx})" class="btn-delete-small">Delete</button>
     </div>`;
   }).join('');
 }
@@ -1424,14 +1464,14 @@ function updateTrackerUI(){
   // Log list (only for selected date)
   const ll = document.getElementById('logList');
   if(dayLog.length===0) {
-    ll.innerHTML = '<em style="color:#94a3b8">No items logged for this date</em>';
+    ll.innerHTML = '<em class="empty-state">No items logged for this date</em>';
   } else {
     ll.innerHTML = dayLog.map((m)=>{
       const nm = (m.name && m.name[lang]) || m.name?.en || 'Item';
       const note = m.note ? ` (${m.note})` : '';
       return `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
         <span>${nm}${note} — ${m.p}p / ${m.k}kcal</span>
-        <button onclick="removeLogItem(${m.originalIdx})" style="background:none;border:none;color:#ef4444;font-size:16px;padding:0 6px;cursor:pointer">×</button>
+        <button onclick="removeLogItem(${m.originalIdx})" class="btn-remove-log">×</button>
       </div>`;
     }).join('');
   }
