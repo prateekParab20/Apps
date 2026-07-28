@@ -147,8 +147,17 @@
     
     /* Make toggle icon visible on light mode background */
     body.light-mode .theme-toggle-header { color: #52525b !important; }
-    .theme-toggle-header .dark-icon { display: none !important; }
+    body.light-mode .theme-toggle-header .dark-icon { display: none !important; }
     body.light-mode .theme-toggle-header .light-icon { display: block !important; }
+
+    /* Light mode: soften the indigo exercise-card header so text stays readable */
+    body.light-mode .exercise-header {
+        background: linear-gradient(to right, #e0e7ff, #ede9fe) !important;
+        border-bottom: 1px solid #c7d2fe;
+    }
+    body.light-mode .exercise-header .text-emerald-400 { color: #047857 !important; }
+    body.light-mode .exercise-header .text-emerald-300 { color: #047857 !important; }
+    body.light-mode .exercise-header .text-zinc-500 { color: #4338ca !important; }
     
 </style>
 </head>
@@ -2892,12 +2901,25 @@
                 container.appendChild(row);
             }
             
-            // + Add Set button
+            // + Add / − Remove set controls
+            const setControls = document.createElement('div');
+            setControls.className = 'flex items-center gap-x-2 mt-2';
+
             const addSetBtn = document.createElement('button');
-            addSetBtn.className = 'w-full mt-2 py-2.5 text-xs font-medium text-emerald-400 border border-dashed border-emerald-700/50 rounded-2xl hover:bg-emerald-950/30 transition-colors flex items-center justify-center gap-x-2';
-            addSetBtn.innerHTML = `<i class="fa-solid fa-plus"></i> <span>Add Extra Set</span>`;
+            addSetBtn.className = 'flex-1 py-2.5 text-xs font-medium text-emerald-400 border border-dashed border-emerald-700/50 rounded-2xl hover:bg-emerald-950/30 transition-colors flex items-center justify-center gap-x-2';
+            addSetBtn.innerHTML = `<i class="fa-solid fa-plus"></i> <span>Add Set</span>`;
             addSetBtn.onclick = () => addExtraSet(exerciseId);
-            container.appendChild(addSetBtn);
+            setControls.appendChild(addSetBtn);
+
+            if (totalSets > 1) {
+                const removeSetBtn = document.createElement('button');
+                removeSetBtn.className = 'flex-1 py-2.5 text-xs font-medium text-red-400 border border-dashed border-red-700/50 rounded-2xl hover:bg-red-950/30 transition-colors flex items-center justify-center gap-x-2';
+                removeSetBtn.innerHTML = `<i class="fa-solid fa-minus"></i> <span>Remove Set</span>`;
+                removeSetBtn.onclick = () => removeSet(exerciseId);
+                setControls.appendChild(removeSetBtn);
+            }
+
+            container.appendChild(setControls);
         }
 
         function toggleExerciseCard(exerciseId) {
@@ -2965,8 +2987,42 @@
                 workoutEx.customSets = currentTotal + 1;
             }
             
+            if (typeof saveGymState === 'function') saveGymState();
             renderSetsForExercise(exerciseId);
             showToast('Extra set added!');
+        }
+
+        function removeSet(exerciseId) {
+            if (!currentWorkout) return;
+
+            const exercises = getCurrentExercises();
+            const ex = exercises.find(e => e.id === exerciseId);
+            const defaultSets = ex ? ex.sets : 3;
+
+            let workoutEx = currentWorkout.exercises.find(e => e.id === exerciseId);
+            const currentTotal = (workoutEx && workoutEx.customSets) ? workoutEx.customSets : defaultSets;
+
+            if (currentTotal <= 1) {
+                showToast('At least one set is required');
+                return;
+            }
+
+            const newTotal = currentTotal - 1;
+            if (!workoutEx) {
+                workoutEx = { id: exerciseId, completedSets: [], customSets: newTotal };
+                currentWorkout.exercises.push(workoutEx);
+            } else {
+                workoutEx.customSets = newTotal;
+                // Drop any logged data for sets beyond the new total
+                if (workoutEx.completedSets.length > newTotal) {
+                    workoutEx.completedSets = workoutEx.completedSets.slice(0, newTotal);
+                }
+            }
+
+            if (typeof saveGymState === 'function') saveGymState();
+            renderSetsForExercise(exerciseId);
+            checkExerciseCompletion(exerciseId);
+            showToast('Set removed');
         }
 
         // ===== Add New Exercise to current workout =====

@@ -180,12 +180,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 
     /* Light Mode Contrast Fixes */
     body.light-mode .note { color: #854d0e !important; }
+    body.light-mode .filter-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); }
+    body.light-mode .filter-btn.active { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+    body.light-mode .lang-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); }
+    body.light-mode .menu-btn { background: rgba(0,0,0,0.05); }
+    body.light-mode .progress { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.05); }
     body.light-mode { --accent-light: #7e22ce; --accent: #9333ea; }
     body.light-mode .badge { color: #15803d; border-color: #15803d; }
     
 </style>
 </head>
 <body>
+
+<button onclick="toggleTheme()" class="theme-toggle" aria-label="Toggle Theme">
+  <i class="fas fa-moon dark-icon"></i>
+  <i class="fas fa-sun light-icon"></i>
+</button>
 
 <script>
   if (localStorage.getItem('theme') === 'light') {
@@ -220,7 +230,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
     <a href="#" data-sec="planner" onclick="showSec('planner')">📅 Daily Planner</a>
     <a href="#" data-sec="tracker" onclick="showSec('tracker')">📊 Macro Tracker</a>
     <a href="#" data-sec="guide" onclick="showSec('guide')">💡 Guide & Tips</a>
-    <a href="#" onclick="toggleTheme(); return false;">🌗 Toggle Theme</a>
   </nav>
   <div class="text-xs-muted border-top-muted" style="padding:16px;">All data stays private in your browser</div>
 </div>
