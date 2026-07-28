@@ -15,8 +15,10 @@
       --card-hover: rgba(30, 41, 59, 0.7); --border-hover: rgba(52, 211, 153, 0.4);
       --text: #f8fafc; --muted2: #94a3b8;
       --accent: #34d399; --accent-glow: rgba(52, 211, 153, 0.15);
+      --bg: rgba(15, 23, 42, 0.6);
       
       --red: #f87171; --red-bg: rgba(248, 113, 113, 0.15);
+      --green: #22c55e;
       --g45: #4ade80; --g45-bg: rgba(74, 222, 128, 0.15);
       --g56: #22c55e; --g56-bg: rgba(34, 197, 94, 0.15);
       --g67: #16a34a; --g67-bg: rgba(22, 163, 74, 0.15);
@@ -92,7 +94,7 @@
     @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
     
     .btn-add { background: var(--accent); color:#020617; border:none; border-radius:12px; padding:12px 20px; font-size:0.95rem; font-family:'Outfit'; font-weight:700; cursor:pointer; margin-top:12px; width:100%; transition:all 0.3s; box-shadow: 0 4px 15px var(--accent-glow); }
-    .btn-add:hover { transform:translateY(-2px); box-shadow: 0 8px 25px var(--accent-glow); background:#10b981; }
+    .btn-add:hover { transform:translateY(-2px); box-shadow: 0 8px 25px var(--accent-glow); filter: brightness(1.08); }
     
     .garden-item { margin-bottom:12px; }
     .garden-header { display:flex; justify-content:space-between; align-items:center; }
@@ -115,6 +117,7 @@
       --text: #0f172a; /* plant app */
       --text-muted: #475569;
       --muted2: #475569; /* plant app */
+      --bg: rgba(255, 255, 255, 0.85);
     }
     body.light-mode .header { background: rgba(255, 255, 255, 0.6); color: #0f172a; border-color: rgba(0,0,0,0.1); }
     body.light-mode .header h1 { -webkit-text-fill-color: #0f172a; background: none; }
@@ -127,6 +130,9 @@
     body.light-mode .theme-toggle { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #0f172a; }
     body.light-mode .theme-toggle:hover { background: rgba(0,0,0,0.1); }
     body.light-mode .cal-day { color: #0f172a; background: rgba(0,0,0,0.05); }
+    body.light-mode .tabs { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); }
+    body.light-mode .tab.active { background: #ffffff; color: #0f172a; border-color: rgba(0,0,0,0.08); }
+    body.light-mode .search-box input { background: rgba(255,255,255,0.8); }
     
     .theme-toggle {
       position: fixed; bottom: 100px; right: 20px;
@@ -198,6 +204,7 @@
     body.light-mode { --accent: #059669; }
     body.light-mode .water-btn { color: #047857; border-color: #047857; }
     body.light-mode .recog strong { color: #047857; }
+    body.light-mode { --green: #16a34a; }
     
 </style>
 </head>
@@ -295,7 +302,7 @@
         <div id="upload-section" style="display:none;">
           <p class="note" style="margin-top:8px; margin-bottom:16px">Upload a clear photo of the leaves or flower.</p>
           <input type="file" id="image-upload" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(event)">
-          <button class="btn-add" onclick="document.getElementById('image-upload').click()" class="btn-photo">
+          <button class="btn-add btn-photo" onclick="document.getElementById('image-upload').click()">
             <span style="font-size:1.2rem">📸</span> Take Photo or Upload
           </button>
         </div>
@@ -738,17 +745,18 @@
     let notificationsEnabled = false;
     const waterIntervals = { red:14, green45:10, green56:7, green67:4, blue:30 };
 
-    function switchTab(tabId, skipSave) { if(!skipSave) localStorage.setItem("plantAppActiveTab", tabId);
+    function switchTab(tabId, skipSave) {
+      if(!skipSave) localStorage.setItem("plantAppActiveTab", tabId);
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tabBtn-' + tabId).classList.add('active');
       document.getElementById('tab-' + tabId).classList.add('active');
       if (tabId === 'garden') renderGarden();
       if (tabId === 'identify') initClassifier();
+    }
+
     const savedTab = localStorage.getItem("plantAppActiveTab");
     if (savedTab) switchTab(savedTab, true);
-
-    }
 
     let pendingPlant = null;
 
@@ -760,11 +768,13 @@
 
     function confirmAddToGarden(potType) {
       if (!pendingPlant) return;
+      let days = waterIntervals[pendingPlant.zone] || 7;
+      if (potType === 'self-watering') days *= 3;
       garden.push({ 
         name: pendingPlant.name, 
         zone: pendingPlant.zone, 
         potType: potType,
-        nextWater: Date.now() 
+        nextWater: Date.now() + (days * 24 * 60 * 60 * 1000)
       });
       localStorage.setItem('myGarden', JSON.stringify(garden));
       document.getElementById('pot-modal').style.display = 'none';
@@ -940,7 +950,11 @@
       // Convert to Base64
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64String = reader.result.split(',')[1];
+        const base64String = (reader.result.split(',')[1]) || '';
+        if (!base64String) {
+          statusDiv.textContent = "Could not read the image file. Please try another photo.";
+          return;
+        }
         statusDiv.textContent = "Analyzing image with Gemini...";
         
         try {
