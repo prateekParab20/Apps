@@ -19,7 +19,11 @@
         }
         
         body {
-            font-family: 'Inter', system_ui, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
+            overflow-x: hidden;
+        }
+        html {
+            overflow-x: hidden;
         }
         
         .font-display {
@@ -497,12 +501,12 @@
         </div>
 
         <!-- Shown when user opened Library from Swap -->
-        <div id="library-swap-banner" class="hidden mb-4 p-4 rounded-2xl bg-sky-950/50 border border-sky-600/40 flex items-center justify-between gap-3">
+        <div id="library-swap-banner" class="hidden sticky top-16 z-30 mb-4 p-4 rounded-2xl bg-sky-950/80 backdrop-blur-md border border-sky-600/40 flex items-center justify-between gap-3">
             <div class="text-sm text-sky-200">
                 <strong>Swap mode</strong> — tap any exercise below to replace the current one
             </div>
-            <button onclick="cancelLibrarySwapMode()" class="text-xs px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white flex-shrink-0">
-                Cancel
+            <button onclick="cancelLibrarySwapMode()" class="text-xs px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-x-1.5 flex-shrink-0 font-semibold">
+                <i class="fa-solid fa-arrow-left"></i> Back to Workout
             </button>
         </div>
 
@@ -2386,6 +2390,12 @@
             window.open(url, '_blank');
         }
 
+        function watchFormVideoByName(name) {
+            if (!name) return;
+            const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(name)}+proper+form+athlean+x+jeff+nippard`;
+            window.open(url, '_blank');
+        }
+
         function swapFromLibrary(exerciseId) {
             if (!currentWorkout) {
                 alert("Start a workout first to swap exercises.");
@@ -3382,7 +3392,6 @@
             timerRemaining = seconds;
             window.timerTotal = seconds; // Track total for ring
             timerPaused = false;
-            timerPaused = false;
             
             updateTimerDisplay();
             
@@ -4038,13 +4047,21 @@
             if (alternatives.length === 0) {
                 recommendedHTML = `<div class="text-zinc-500 text-sm py-2">No specific recommendations — open the Library to pick any exercise.</div>`;
             } else {
-                recommendedHTML = alternatives.map(alt => `
-                    <button onclick="swapExerciseInWorkout(${exerciseId}, '${alt.replace(/'/g, "\\'")}'); document.getElementById('swap-picker-modal').remove();" 
-                            class="w-full flex items-center justify-between bg-zinc-950 border border-emerald-700/40 hover:border-emerald-500 active:bg-zinc-900 rounded-2xl px-4 py-3.5 text-sm transition-all">
-                        <span class="font-medium text-left">${alt}</span>
-                        <span class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-semibold flex-shrink-0 ml-3">Swap</span>
-                    </button>
-                `).join('');
+                recommendedHTML = alternatives.map(alt => {
+                    const altEsc = alt.replace(/'/g, "\\'");
+                    return `
+                    <div class="w-full flex items-center justify-between bg-zinc-950 border border-emerald-700/40 rounded-2xl px-4 py-3 text-sm">
+                        <span class="font-medium text-left flex-1 mr-3">${alt}</span>
+                        <div class="flex items-center gap-x-2 flex-shrink-0">
+                            <button onclick="watchFormVideoByName('${altEsc}')"
+                                    class="text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-red-400 rounded-xl font-semibold flex items-center gap-x-1.5 transition-all" title="Watch form video">
+                                <i class="fa-brands fa-youtube"></i><span>Video</span>
+                            </button>
+                            <button onclick="swapExerciseInWorkout(${exerciseId}, '${altEsc}'); document.getElementById('swap-picker-modal').remove();"
+                                    class="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl font-semibold transition-all">Swap</button>
+                        </div>
+                    </div>`;
+                }).join('');
             }
             
             const modalHTML = `
@@ -4251,6 +4268,9 @@
             const container = document.getElementById('exercises-container');
             container.innerHTML = '';
             initializeWorkoutUI(exercises);
+            
+            // Persist so the swap survives a reload
+            if (typeof saveGymState === 'function') saveGymState();
             
             showToast(`Swapped to ${newName}. Great choice!`);
         }
