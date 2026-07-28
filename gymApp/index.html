@@ -359,17 +359,44 @@
             </div>
             
             <div class="hidden md:block">
-                <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-5 w-64">
-                    <div class="text-xs text-zinc-400 mb-3">WHAT YOU'LL HIT TODAY</div>
-                    <div class="flex flex-wrap gap-2">
-                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Quads</div>
-                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Glutes</div>
-                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Back</div>
-                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Chest</div>
-                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Shoulders</div>
-                        <div class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-full">Core</div>
+                <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-5 w-64 flex flex-col items-center relative overflow-hidden">
+                    <div class="text-[10px] tracking-widest font-semibold text-zinc-500 mb-3 w-full text-center">MUSCLE HEATMAP</div>
+                    <div class="w-32 h-56 relative drop-shadow-2xl">
+                        <svg viewBox="0 0 100 200" class="w-full h-full">
+                            <!-- Head -->
+                            <circle cx="50" cy="25" r="10" class="fill-zinc-800 transition-colors duration-700" id="hm-head" />
+                            <!-- Shoulders -->
+                            <rect id="hm-shoulders" x="30" y="40" width="40" height="12" rx="6" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Chest/Back -->
+                            <rect id="hm-chest" x="35" y="55" width="30" height="20" rx="8" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Core / Abs -->
+                            <rect id="hm-core" x="38" y="78" width="24" height="25" rx="6" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Left Arm -->
+                            <rect id="hm-arms-l" x="18" y="45" width="10" height="40" rx="5" transform="rotate(15 23 65)" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Right Arm -->
+                            <rect id="hm-arms-r" x="72" y="45" width="10" height="40" rx="5" transform="rotate(-15 77 65)" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Left Leg -->
+                            <rect id="hm-legs-l" x="33" y="108" width="14" height="45" rx="7" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Right Leg -->
+                            <rect id="hm-legs-r" x="53" y="108" width="14" height="45" rx="7" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Left Calf -->
+                            <rect id="hm-calves-l" x="34" y="156" width="10" height="30" rx="4" class="fill-zinc-800 transition-colors duration-700" />
+                            <!-- Right Calf -->
+                            <rect id="hm-calves-r" x="56" y="156" width="10" height="30" rx="4" class="fill-zinc-800 transition-colors duration-700" />
+                        </svg>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Progression Chart -->
+        <div class="mt-8 bg-zinc-900 border border-zinc-800 rounded-3xl p-6 hidden md:block">
+            <div class="flex items-center justify-between mb-4">
+                <div class="font-semibold text-xs tracking-widest text-zinc-500">VOLUME PROGRESSION</div>
+                <div class="text-[10px] px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full font-medium">Last 7 Workouts</div>
+            </div>
+            <div class="w-full h-32 relative" id="volume-chart-container">
+                <div class="w-full h-full flex items-center justify-center text-xs text-zinc-600">Loading chart...</div>
             </div>
         </div>
 
@@ -386,6 +413,24 @@
             <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 text-sm">
                 <div class="font-medium flex items-center gap-x-2 mb-3"><i class="fa-solid fa-brain text-emerald-400"></i> <span>Progressive Overload</span></div>
                 <p class="text-zinc-400 text-xs leading-relaxed">When you hit the top of the rep range with perfect form, add 2.5–5 kg next session.</p>
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="mt-8 bg-zinc-900 border border-zinc-800 rounded-3xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="font-semibold text-xs tracking-widest text-zinc-500">DATA MANAGEMENT</div>
+                <div class="text-[10px] px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full font-medium">Backup & Sync</div>
+            </div>
+            <p class="text-zinc-400 text-xs mb-4">Export your workout history to transfer it to a different browser or device.</p>
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="exportData()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-medium flex items-center gap-2 transition-colors">
+                    <i class="fa-solid fa-download"></i> Export Data
+                </button>
+                <button onclick="document.getElementById('import-file').click()" class="px-4 py-2 border border-zinc-700 hover:bg-zinc-800 text-white rounded-xl text-xs font-medium flex items-center gap-2 transition-colors">
+                    <i class="fa-solid fa-upload"></i> Import Data
+                </button>
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
             </div>
         </div>
     </div>
@@ -461,6 +506,47 @@
             </button>
         </div>
 
+        <!-- 1RM Calculator Widget -->
+        <div class="mb-8 bg-zinc-900 border border-zinc-700 rounded-3xl p-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-[0.03]">
+                <i class="fa-solid fa-calculator text-8xl"></i>
+            </div>
+            
+            <div class="relative z-10">
+                <div class="flex items-center gap-x-2 mb-1">
+                    <i class="fa-solid fa-bolt text-emerald-400"></i>
+                    <h3 class="font-display text-xl">1RM Calculator</h3>
+                </div>
+                <p class="text-zinc-400 text-xs mb-5 max-w-sm">Calculate your theoretical 1 Rep Max to plan your working sets effectively.</p>
+                
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div>
+                        <label class="text-[10px] font-bold tracking-widest text-zinc-500 mb-1 block">WEIGHT LIFTED</label>
+                        <div class="relative">
+                            <input type="number" id="calc-weight" oninput="update1RM()" class="w-24 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white tabular-nums outline-none focus:border-emerald-500" value="100">
+                            <span class="absolute right-3 top-2.5 text-xs text-zinc-500 weight-unit-label">kg</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold tracking-widest text-zinc-500 mb-1 block">REPS</label>
+                        <input type="number" id="calc-reps" oninput="update1RM()" class="w-24 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white tabular-nums outline-none focus:border-emerald-500" value="5">
+                    </div>
+                    
+                    <div class="flex-1 min-w-[120px] bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 flex flex-col justify-center items-center">
+                        <div class="text-[10px] font-bold tracking-widest text-emerald-500/80 mb-1">ESTIMATED 1RM</div>
+                        <div class="text-2xl font-bold tabular-nums text-emerald-400" id="calc-result">116.7 <span class="text-sm font-normal text-emerald-500/60 weight-unit-label">kg</span></div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
+                    <div class="bg-zinc-950 rounded-lg p-2"><span class="text-zinc-500 block text-[10px] mb-0.5">90% (3-4 reps)</span><strong id="calc-90">105.0</strong></div>
+                    <div class="bg-zinc-950 rounded-lg p-2"><span class="text-zinc-500 block text-[10px] mb-0.5">80% (7-8 reps)</span><strong id="calc-80">93.3</strong></div>
+                    <div class="bg-zinc-950 rounded-lg p-2"><span class="text-zinc-500 block text-[10px] mb-0.5">70% (11-12 reps)</span><strong id="calc-70">81.7</strong></div>
+                    <div class="bg-zinc-950 rounded-lg p-2"><span class="text-zinc-500 block text-[10px] mb-0.5">60% (15+ reps)</span><strong id="calc-60">70.0</strong></div>
+                </div>
+            </div>
+        </div>
+
         <div class="mb-4">
             <input id="library-search" type="text" placeholder="Search by name, muscle, or category (Home, Gym, Pull-up Bar)..." 
                    onkeyup="filterLibrary()" 
@@ -530,6 +616,44 @@
         </div>
     </div>
 
+    <!-- Celebration Modal -->
+    <div id="celebration-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center overflow-y-auto p-4">
+        <div class="bg-zinc-900 border border-emerald-500/30 rounded-3xl p-8 max-w-sm w-full text-center shadow-[0_0_50px_rgba(52,211,153,0.15)] relative overflow-hidden transition-all duration-500" id="celebration-card">
+            <div id="confetti-container" class="absolute inset-0 pointer-events-none"></div>
+            
+            <div class="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fa-solid fa-trophy text-4xl"></i>
+            </div>
+            
+            <h2 class="font-display text-3xl font-bold mb-2">Workout Complete!</h2>
+            <p class="text-zinc-400 text-sm mb-8" id="celebration-date">Today</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+                    <div class="text-[10px] font-bold tracking-widest text-zinc-500 mb-1">VOLUME</div>
+                    <div class="text-2xl font-bold tabular-nums text-white" id="celeb-volume">0 <span class="text-sm font-normal text-zinc-500">kg</span></div>
+                </div>
+                <div class="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+                    <div class="text-[10px] font-bold tracking-widest text-zinc-500 mb-1">TIME</div>
+                    <div class="text-2xl font-bold tabular-nums text-white" id="celeb-time">0 <span class="text-sm font-normal text-zinc-500">min</span></div>
+                </div>
+            </div>
+            
+            <div class="bg-emerald-950/30 border border-emerald-900/50 rounded-2xl p-4 mb-8 text-left hidden" id="celeb-prs-container">
+                <div class="text-xs font-bold text-emerald-500 mb-2 tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-star"></i> NEW RECORDS
+                </div>
+                <ul id="celeb-prs-list" class="text-sm text-zinc-300 space-y-2"></ul>
+            </div>
+            
+            <textarea id="celeb-notes" placeholder="How did you feel? Any notes?" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white mb-6 resize-none h-20 focus:border-emerald-500 outline-none"></textarea>
+            
+            <button onclick="closeCelebration()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-emerald-900/50 active:scale-95 transition-all">
+                Save & Continue
+            </button>
+        </div>
+    </div>
+
     <!-- Set Logging Modal -->
     <div id="set-modal" onclick="if (event.target.id === 'set-modal') hideSetModal()" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end md:items-center justify-center">
         <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 w-full md:w-[420px] md:rounded-3xl md:m-4 rounded-t-3xl p-6 border border-zinc-700">
@@ -585,6 +709,35 @@
             </div>
         </div>
     </div>
+
+        <!-- Template Builder Modal -->
+        <div id="template-modal" class="hidden fixed inset-0 bg-black/80 z-[300] flex flex-col pt-10">
+            <div class="bg-zinc-950 flex-1 rounded-t-3xl border-t border-zinc-800 flex flex-col max-w-2xl mx-auto w-full shadow-2xl">
+                <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+                    <div class="flex-1 mr-4">
+                        <input type="text" id="template-name" placeholder="Workout Name..." class="bg-transparent text-xl font-bold outline-none w-full text-white placeholder:text-zinc-600">
+                    </div>
+                    <button onclick="closeTemplateModal()" class="text-zinc-400 p-2 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-2" id="template-exercises">
+                    <!-- selected exercises here -->
+                </div>
+                <div class="p-4 border-t border-zinc-800 bg-zinc-900 flex gap-3">
+                    <button onclick="openTemplateExercisePicker()" class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-semibold transition-colors">+ Add Exercise</button>
+                    <button onclick="saveTemplate()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors">Save Template</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Exercise Picker Modal for Templates -->
+        <div id="template-picker-modal" class="hidden fixed inset-0 bg-black/95 z-[310] flex flex-col">
+            <div class="p-4 border-b border-zinc-800 flex items-center gap-3 bg-zinc-950">
+                <button onclick="document.getElementById('template-picker-modal').classList.add('hidden')" class="text-zinc-400 hover:text-white px-2 py-1"><i class="fa-solid fa-arrow-left"></i></button>
+                <input type="text" id="template-picker-search" onkeyup="filterTemplatePicker()" placeholder="Search library..." class="bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 w-full text-sm outline-none focus:border-emerald-500">
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 grid gap-2" id="template-picker-list">
+            </div>
+        </div>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -1351,6 +1504,63 @@
         // ===== Weight Unit System (kg / lbs) =====
         let weightUnit = storage.get('stronglean_unit', 'kg');
 
+        // Data Management (Export/Import)
+        function exportData() {
+            const history = storage.get('stronglean_workouts', '[]');
+            const settings = {
+                unit: storage.get('stronglean_unit', 'kg'),
+                weight: storage.get('user_weight', '65')
+            };
+            
+            const exportObj = {
+                app: 'StrongLean',
+                version: '1.0',
+                date: new Date().toISOString(),
+                workouts: JSON.parse(history),
+                settings: settings
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "stronglean_backup_" + new Date().getTime() + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.app !== 'StrongLean' || !data.workouts) {
+                        alert("Invalid backup file. Please select a valid StrongLean backup.");
+                        return;
+                    }
+                    
+                    if (confirm(`Are you sure you want to import ${data.workouts.length} workouts? This will overwrite your current history.`)) {
+                        storage.set('stronglean_workouts', JSON.stringify(data.workouts));
+                        if (data.settings) {
+                            if (data.settings.unit) storage.set('stronglean_unit', data.settings.unit);
+                            if (data.settings.weight) storage.set('user_weight', data.settings.weight);
+                        }
+                        
+                        // Reload app to apply imported data
+                        location.reload();
+                    }
+                } catch (err) {
+                    alert("Error parsing backup file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            // Reset input
+            event.target.value = '';
+        }
+
         function setWeightUnit(unit) {
             weightUnit = unit;
             storage.set('stronglean_unit', unit);
@@ -1937,6 +2147,82 @@
                 const avg = workouts.reduce((sum, w) => sum + (w.durationMin || 55), 0) / workouts.length;
                 document.getElementById('avg-duration').textContent = Math.round(avg);
             }
+            
+            drawVolumeChart(workouts);
+        }
+
+        function drawVolumeChart(workouts) {
+            const container = document.getElementById('volume-chart-container');
+            if (!container) return;
+            
+            // Get last 7 workouts with volume
+            const chartData = [...workouts].filter(w => w.totalVolume).sort((a,b) => new Date(a.date) - new Date(b.date)).slice(-7);
+            
+            if (chartData.length < 2) {
+                container.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs text-zinc-500">Log more workouts to see progress</div>`;
+                return;
+            }
+            
+            const w = container.clientWidth || 300;
+            const h = container.clientHeight || 128;
+            const padding = 10;
+            
+            const maxVol = Math.max(...chartData.map(d => d.totalVolume));
+            const minVol = Math.min(...chartData.map(d => d.totalVolume)) * 0.8; 
+            const range = Math.max(maxVol - minVol, 1);
+            
+            const dx = (w - padding * 2) / (chartData.length - 1);
+            
+            let points = '';
+            chartData.forEach((d, i) => {
+                const x = padding + (i * dx);
+                const y = h - padding - ((d.totalVolume - minVol) / range * (h - padding * 2));
+                points += `${x},${y} `;
+            });
+            
+            const svg = `
+                <svg width="100%" height="100%" class="overflow-visible drop-shadow-[0_0_15px_rgba(52,211,153,0.15)]">
+                    <polyline fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="${points}"/>
+                    ${chartData.map((d, i) => {
+                        const x = padding + (i * dx);
+                        const y = h - padding - ((d.totalVolume - minVol) / range * (h - padding * 2));
+                        return `<circle cx="${x}" cy="${y}" r="4" fill="#18181b" stroke="#34d399" stroke-width="2" />
+                                <text x="${x}" y="${y - 12}" fill="#a1a1aa" font-size="10" text-anchor="middle" font-family="ui-sans-serif, system-ui">${d.totalVolume}</text>`;
+                    }).join('')}
+                </svg>
+            `;
+            
+            container.innerHTML = svg;
+        }
+
+        // 1RM Calculator Logic
+        function update1RM() {
+            const weightInput = document.getElementById('calc-weight');
+            const repsInput = document.getElementById('calc-reps');
+            
+            if (!weightInput || !repsInput) return;
+            
+            const w = parseFloat(weightInput.value);
+            const r = parseInt(repsInput.value);
+            
+            if (isNaN(w) || isNaN(r) || w <= 0 || r <= 0) {
+                document.getElementById('calc-result').innerHTML = `- <span class="text-sm font-normal text-emerald-500/60 weight-unit-label">${weightUnit}</span>`;
+                document.getElementById('calc-90').textContent = '-';
+                document.getElementById('calc-80').textContent = '-';
+                document.getElementById('calc-70').textContent = '-';
+                document.getElementById('calc-60').textContent = '-';
+                return;
+            }
+            
+            // Epley formula
+            const oneRM = r === 1 ? w : w * (1 + r / 30);
+            
+            document.getElementById('calc-result').innerHTML = `${oneRM.toFixed(1)} <span class="text-sm font-normal text-emerald-500/60 weight-unit-label">${weightUnit}</span>`;
+            
+            document.getElementById('calc-90').textContent = (oneRM * 0.9).toFixed(1);
+            document.getElementById('calc-80').textContent = (oneRM * 0.8).toFixed(1);
+            document.getElementById('calc-70').textContent = (oneRM * 0.7).toFixed(1);
+            document.getElementById('calc-60').textContent = (oneRM * 0.6).toFixed(1);
         }
 
         // Update weight
@@ -1959,6 +2245,13 @@
         function showLibrary() {
             const container = document.getElementById('library-list');
             if (!container) return;
+            
+            document.getElementById('library-count').textContent = `(${allLibraryExercises.length} exercises)`;
+            
+            // update 1rm units just in case
+            update1RM();
+            
+            // Render all initially
             container.innerHTML = '';
 
             // Combine all exercises including abs + expanded library
@@ -2189,6 +2482,32 @@
                 </div>
             `;
 
+            // Inject custom templates
+            const customTemplates = JSON.parse(storage.get('stronglean_templates', '[]'));
+            const customHtml = customTemplates.map(t => `
+                <button type="button" onclick="startNewWorkout('${t.id}')" 
+                        class="w-full text-left bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-emerald-700/50 hover:border-emerald-500 transition-all rounded-2xl p-5 flex items-center justify-between mb-3 relative group">
+                    <div class="flex-1 pr-10" onclick="event.stopPropagation(); startNewWorkout('${t.id}')">
+                        <div class="font-semibold text-lg text-emerald-400">${t.name.toUpperCase()}</div>
+                        <div class="text-xs text-zinc-400 mt-0.5">${t.exercises.length} exercises</div>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteTemplate('${t.id}')" class="absolute right-4 top-1/2 -translate-y-1/2 p-3 text-red-400/50 hover:text-red-400 transition-colors z-10"><i class="fa-solid fa-trash"></i></button>
+                </button>
+            `).join('');
+            
+            if (customHtml) {
+                const list = container.querySelector('.grid');
+                list.insertAdjacentHTML('afterbegin', customHtml);
+            }
+
+            // Inject create template button
+            const listContainer = container.querySelector('.grid');
+            listContainer.insertAdjacentHTML('afterbegin', `
+                <button type="button" onclick="openTemplateModal()" class="w-full mb-3 py-4 rounded-2xl border border-dashed border-zinc-600 text-zinc-400 hover:text-white hover:border-emerald-500 hover:bg-emerald-900/10 transition-all text-sm font-semibold flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Create Custom Template
+                </button>
+            `);
+
             // Bind immediately after inserting into DOM
             setTimeout(function() {
                 var dayBack = document.getElementById('day-selector-back');
@@ -2209,14 +2528,25 @@
             if (!dayType) dayType = 'push';
             currentDayType = dayType;
             
-            // Force the correct exercise list
             let exercises = [];
-            if (dayType === 'push') exercises = pushExercises;
-            else if (dayType === 'pull') exercises = pullExercises;
-            else if (dayType === 'upper') exercises = upperExercises;
-            else if (dayType === 'lower') exercises = lowerExercises;
-            else if (dayType === 'abs') exercises = absFinisherExercises;
-            else exercises = pushExercises;
+            
+            if (dayType.startsWith('custom_')) {
+                const customTemplates = JSON.parse(storage.get('stronglean_templates', '[]'));
+                const template = customTemplates.find(t => t.id === dayType);
+                if (template) {
+                    exercises = JSON.parse(JSON.stringify(template.exercises));
+                } else {
+                    alert("Template not found.");
+                    return;
+                }
+            } else {
+                if (dayType === 'push') exercises = pushExercises;
+                else if (dayType === 'pull') exercises = pullExercises;
+                else if (dayType === 'upper') exercises = upperExercises;
+                else if (dayType === 'lower') exercises = lowerExercises;
+                else if (dayType === 'abs') exercises = absFinisherExercises;
+                else exercises = pushExercises;
+            }
             
             console.log('[StrongLean] Starting', dayType, 'with', exercises.length, 'exercises. First exercise:', exercises[0]?.name);
             
@@ -2231,6 +2561,13 @@
                 extraExercises: []
             };
             
+            exercises.forEach(ex => {
+                currentWorkout.exercises.push({
+                    id: ex.id,
+                    completedSets: []
+                });
+            });
+            
             workoutStartTime = Date.now();
             
             // Show workout section
@@ -2239,18 +2576,30 @@
             // Update header
             const header = document.getElementById('workout-header');
             const subtitle = document.getElementById('workout-subtitle');
-            const titles = {
-                push: 'PUSH DAY',
-                pull: 'PULL DAY',
-                upper: 'UPPER BODY',
-                lower: 'LOWER BODY',
-                abs: 'ABS ONLY'
-            };
+            
+            let displayTitle = dayType.toUpperCase();
+            if (dayType.startsWith('custom_')) {
+                const customTemplates = JSON.parse(storage.get('stronglean_templates', '[]'));
+                const template = customTemplates.find(t => t.id === dayType);
+                if (template) displayTitle = template.name.toUpperCase();
+            } else {
+                const titles = {
+                    push: 'PUSH DAY',
+                    pull: 'PULL DAY',
+                    upper: 'UPPER BODY',
+                    lower: 'LOWER BODY',
+                    abs: 'ABS ONLY'
+                };
+                displayTitle = titles[dayType] || displayTitle;
+            }
+            
             if (header) {
-                header.innerHTML = `${titles[dayType] || dayType.toUpperCase()} <span class="text-xs align-super text-emerald-400 font-mono">STRENGTH</span>`;
+                header.innerHTML = `${displayTitle} <span class="text-xs align-super text-emerald-400 font-mono">STRENGTH</span>`;
             }
             if (subtitle) {
-                subtitle.textContent = `${exercises.length} exercises • ${dayType === 'lower' ? 'LEGS ONLY' : dayType.toUpperCase()} • Tap sets to log`;
+                let displaySub = dayType === 'lower' ? 'LEGS ONLY' : dayType.toUpperCase();
+                if (dayType.startsWith('custom_')) displaySub = 'CUSTOM TEMPLATE';
+                subtitle.textContent = `${exercises.length} exercises • ${displaySub} • Tap sets to log`;
             }
             
             // Initialize UI with the correct exercises
@@ -2267,7 +2616,7 @@
             const stickyActions = document.getElementById('sticky-actions');
             if (stickyActions) stickyActions.classList.remove('hidden');
             
-            showToast(`${titles[dayType]} loaded • ${exercises[0]?.name || ''}`);
+            showToast(`${displayTitle} loaded • ${exercises[0]?.name || ''}`);
         }
 
         function handleWorkoutBack() {
@@ -3031,6 +3380,8 @@
             }
             
             timerRemaining = seconds;
+            window.timerTotal = seconds; // Track total for ring
+            timerPaused = false;
             timerPaused = false;
             
             updateTimerDisplay();
@@ -3062,13 +3413,22 @@
             
             display.textContent = timerRemaining;
             
-            // Color change when low
+            const ring = document.getElementById('timer-progress-ring');
+            let color = '#34d399';
             if (timerRemaining <= 15) {
-                display.style.color = '#f87171';
+                color = '#f87171';
             } else if (timerRemaining <= 30) {
-                display.style.color = '#fbbf24';
-            } else {
-                display.style.color = '#34d399';
+                color = '#fbbf24';
+            }
+            display.style.color = color;
+            
+            if (ring) {
+                ring.setAttribute('stroke', color);
+                // Calculate dash offset (max 150.8)
+                let pct = (timerRemaining / window.timerTotal);
+                if (pct > 1) pct = 1;
+                const offset = 150.8 - (150.8 * pct);
+                ring.setAttribute('stroke-dashoffset', offset);
             }
         }
 
@@ -3290,23 +3650,17 @@
             currentWorkout.durationMin = durationMin;
             currentWorkout.completedSets = totalSets;
             
-            // Ask for notes
-            const notes = prompt("Quick notes about the session? (energy, how you felt, PRs, etc.)", "");
-            currentWorkout.notes = notes || '';
-            
-            // Save to history
-            saveWorkoutToHistory(currentWorkout);
-            
             // Clean up timers
             if (timerInterval) clearInterval(timerInterval);
             if (elapsedInterval) clearInterval(elapsedInterval);
             
-            // Success screen
-            showCompletionScreen(currentWorkout);
+            // Hide timer UI
+            const sticky = document.getElementById('sticky-rest-timer');
+            if (sticky) sticky.classList.add('hidden');
+            const wTimer = document.getElementById('workout-timer');
+            if (wTimer) wTimer.classList.add('hidden');
             
-            // Reset
-            currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
-            workoutStartTime = null;
+            showCompletionScreen(currentWorkout);
         }
 
         function saveWorkoutToHistory(workout) {
@@ -3319,77 +3673,108 @@
         }
 
         function showCompletionScreen(workout) {
-            const container = document.getElementById('exercises-container');
-            const dayLabel = workout.type === 'push' ? 'PUSH DAY' : 
-                             workout.type === 'pull' ? 'PULL DAY' : 
-                             workout.type === 'upper' ? 'UPPER BODY' : 
-                             workout.type === 'lower' ? 'LOWER BODY' : 
-                             workout.type === 'abs' ? 'ABS ONLY' : 'WORKOUT';
+            const modal = document.getElementById('celebration-modal');
+            const card = document.getElementById('celebration-card');
             
-            // Simple progression note
-            let progressionNote = '';
-            if (workout.totalVolume > 8000) {
-                progressionNote = `<div class="text-emerald-400 text-xs mt-1">Strong volume today — keep progressing!</div>`;
+            document.getElementById('celeb-volume').innerHTML = `${workout.totalVolume} <span class="text-sm font-normal text-zinc-500">kg</span>`;
+            document.getElementById('celeb-time').innerHTML = `${workout.durationMin} <span class="text-sm font-normal text-zinc-500">min</span>`;
+            
+            const now = new Date();
+            document.getElementById('celebration-date').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Check for PRs
+            const history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            const prs = [];
+            
+            workout.exercises.forEach(ex => {
+                let currentMax = 0;
+                ex.completedSets.forEach(set => {
+                    if (set.weight > currentMax) currentMax = parseFloat(set.weight);
+                });
+                
+                let historicalMax = 0;
+                history.forEach(h => {
+                    h.exercises.forEach(hx => {
+                        if (hx.id === ex.id) {
+                            hx.completedSets.forEach(set => {
+                                if (set.weight > historicalMax) historicalMax = parseFloat(set.weight);
+                            });
+                        }
+                    });
+                });
+                
+                if (currentMax > 0 && historicalMax > 0 && currentMax > historicalMax) {
+                    prs.push({ name: ex.name, weight: currentMax });
+                }
+            });
+            
+            const prsContainer = document.getElementById('celeb-prs-container');
+            const prsList = document.getElementById('celeb-prs-list');
+            
+            if (prs.length > 0) {
+                prsContainer.classList.remove('hidden');
+                prsList.innerHTML = prs.map(pr => `<li><span class="font-semibold text-emerald-400">${pr.name}:</span> ${pr.weight}kg</li>`).join('');
+            } else {
+                prsContainer.classList.add('hidden');
             }
             
-            container.innerHTML = `
-                <div class="text-center py-10 px-6 bg-zinc-900 border border-emerald-600/40 rounded-3xl">
-                    <div class="mx-auto w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6">
-                        <i class="fa-solid fa-tachometer-alt text-5xl"></i>
-                    </div>
-                    
-                    <div class="text-emerald-400 text-xs tracking-[2px] font-medium">${dayLabel} COMPLETE</div>
-                    <h3 class="font-display text-4xl tracking-tighter mt-1">Amazing work!</h3>
-                    <p class="text-emerald-300 mt-1">You got stronger today 💪</p>
-                    ${progressionNote}
-                    
-                    <div class="grid grid-cols-3 gap-4 my-8 max-w-md mx-auto">
-                        <div class="bg-zinc-950 border border-zinc-700 rounded-2xl p-4">
-                            <div class="text-xs text-zinc-400">DURATION</div>
-                            <div class="text-3xl font-semibold tabular-nums mt-1">${workout.durationMin}</div>
-                            <div class="text-xs">minutes</div>
-                        </div>
-                        <div class="bg-zinc-950 border border-zinc-700 rounded-2xl p-4">
-                            <div class="text-xs text-zinc-400">VOLUME</div>
-                            <div class="text-3xl font-semibold tabular-nums mt-1">${workout.totalVolume}</div>
-                            <div class="text-xs">kg lifted</div>
-                        </div>
-                        <div class="bg-zinc-950 border border-zinc-700 rounded-2xl p-4">
-                            <div class="text-xs text-zinc-400">SETS</div>
-                            <div class="text-3xl font-semibold tabular-nums mt-1">${workout.completedSets || 0}</div>
-                            <div class="text-xs">completed</div>
-                        </div>
-                    </div>
-                    
-                    ${workout.notes ? `
-                        <div class="max-w-sm mx-auto mb-8 text-left bg-zinc-950 border border-zinc-700 p-4 rounded-2xl text-sm">
-                            <div class="text-xs text-zinc-400 mb-1">YOUR NOTES</div>
-                            <div>"${workout.notes}"</div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                        <button onclick="showSection('history'); document.getElementById('exercises-container').innerHTML = '';" 
-                                class="px-8 py-3.5 border border-white/20 hover:bg-white/5 rounded-3xl text-sm font-medium flex items-center justify-center gap-x-2">
-                            <i class="fa-solid fa-history"></i>
-                            <span>VIEW HISTORY</span>
-                        </button>
-                        
-                        <button onclick="location.reload()" 
-                                class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-sm font-semibold flex items-center justify-center gap-x-2">
-                            <i class="fa-solid fa-redo"></i>
-                            <span>START NEW SESSION</span>
-                        </button>
-                    </div>
-                    
-                    <div class="mt-6 text-[10px] text-zinc-500">Next time: Check the progressive overload suggestions in the log modal</div>
-                </div>
-            `;
+            document.getElementById('celeb-notes').value = '';
             
-            // Hide timer UI
-            const sticky = document.getElementById('sticky-rest-timer');
-            if (sticky) sticky.classList.add('hidden');
-            document.getElementById('workout-timer').classList.add('hidden');
+            modal.classList.remove('hidden');
+            // Animate in
+            setTimeout(() => {
+                card.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+            
+            createConfetti();
+        }
+        
+        function closeCelebration() {
+            if (!currentWorkout) return;
+            const notes = document.getElementById('celeb-notes').value;
+            currentWorkout.notes = notes || '';
+            
+            saveWorkoutToHistory(currentWorkout);
+            
+            currentWorkout = null; if(typeof clearGymState === 'function') clearGymState();
+            workoutStartTime = null;
+            
+            const modal = document.getElementById('celebration-modal');
+            const card = document.getElementById('celebration-card');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('confetti-container').innerHTML = '';
+                showSection('dashboard');
+            }, 500);
+        }
+        
+        function createConfetti() {
+            const container = document.getElementById('confetti-container');
+            container.innerHTML = '';
+            for (let i=0; i<50; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'absolute';
+                confetti.style.width = Math.random() * 8 + 4 + 'px';
+                confetti.style.height = Math.random() * 8 + 4 + 'px';
+                confetti.style.backgroundColor = ['#34d399', '#60a5fa', '#f472b6', '#fbbf24'][Math.floor(Math.random() * 4)];
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-10px';
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                confetti.style.opacity = Math.random() + 0.5;
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                
+                const animDuration = Math.random() * 3 + 2;
+                confetti.style.transition = `top ${animDuration}s cubic-bezier(.37,0,.63,1), left ${animDuration}s ease-in-out`;
+                
+                container.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.style.top = '100%';
+                    confetti.style.left = (Math.random() * 100) + '%';
+                    confetti.style.transform = `rotate(${Math.random() * 360 + 360}deg)`;
+                }, 50);
+            }
         }
 
         // Load history
@@ -3535,6 +3920,101 @@
             });
         }
 
+        // ===== Custom Workout Templates Logic =====
+        let draftTemplate = [];
+
+        function openTemplateModal() {
+            draftTemplate = [];
+            document.getElementById('template-name').value = 'Custom Workout';
+            renderDraftTemplate();
+            document.getElementById('template-modal').classList.remove('hidden');
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.add('hidden');
+        }
+
+        function renderDraftTemplate() {
+            const container = document.getElementById('template-exercises');
+            if (draftTemplate.length === 0) {
+                container.innerHTML = '<div class="text-zinc-500 text-center mt-10 text-sm">No exercises added yet.</div>';
+                return;
+            }
+            container.innerHTML = draftTemplate.map((ex, i) => `
+                <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 p-4 rounded-2xl shadow-sm">
+                    <div>
+                        <div class="font-semibold">${ex.name}</div>
+                        <div class="text-xs text-zinc-500 mt-0.5">${ex.muscle || ex.category} • ${ex.sets} sets</div>
+                    </div>
+                    <button onclick="draftTemplate.splice(${i}, 1); renderDraftTemplate();" class="text-red-400/80 hover:text-red-400 p-2 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function openTemplateExercisePicker() {
+            document.getElementById('template-picker-modal').classList.remove('hidden');
+            const container = document.getElementById('template-picker-list');
+            const allEx = getFullLibrary();
+            container.innerHTML = allEx.map(ex => `
+                <button onclick="addExerciseToTemplate(${ex.id})" class="text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 p-4 rounded-2xl flex items-center justify-between template-picker-item transition-colors">
+                    <div>
+                        <div class="font-medium item-name">${ex.name}</div>
+                        <div class="text-xs text-zinc-500 mt-0.5">${ex.muscle || ex.category}</div>
+                    </div>
+                    <div class="bg-zinc-800 w-8 h-8 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-plus text-emerald-400 text-xs"></i>
+                    </div>
+                </button>
+            `).join('');
+            document.getElementById('template-picker-search').value = '';
+        }
+
+        function filterTemplatePicker() {
+            const q = document.getElementById('template-picker-search').value.toLowerCase();
+            document.querySelectorAll('.template-picker-item').forEach(el => {
+                const name = el.querySelector('.item-name').textContent.toLowerCase();
+                el.style.display = name.includes(q) ? 'flex' : 'none';
+            });
+        }
+
+        function addExerciseToTemplate(id) {
+            const allEx = getFullLibrary();
+            const ex = allEx.find(e => e.id === id);
+            if (ex) {
+                // deeply clone the exercise object to avoid reference issues
+                draftTemplate.push(JSON.parse(JSON.stringify(ex)));
+                renderDraftTemplate();
+                document.getElementById('template-picker-modal').classList.add('hidden');
+            }
+        }
+
+        function saveTemplate() {
+            const name = document.getElementById('template-name').value.trim() || 'Custom Workout';
+            if (draftTemplate.length === 0) {
+                alert("Add at least one exercise to save the template.");
+                return;
+            }
+            
+            const customTemplates = JSON.parse(storage.get('stronglean_templates', '[]'));
+            customTemplates.push({
+                id: 'custom_' + Date.now(),
+                name: name,
+                exercises: draftTemplate
+            });
+            storage.set('stronglean_templates', JSON.stringify(customTemplates));
+            
+            closeTemplateModal();
+            showDaySelector(); // Refresh list
+        }
+        
+        function deleteTemplate(id) {
+            if (!confirm("Delete this custom template?")) return;
+            const customTemplates = JSON.parse(storage.get('stronglean_templates', '[]'));
+            const filtered = customTemplates.filter(t => t.id !== id);
+            storage.set('stronglean_templates', JSON.stringify(filtered));
+            showDaySelector(); // Refresh list
+        }
+
         // Dedicated Swap picker: recommended alternatives + browse full library
         // When set, Library is in "pick to swap" mode
         let pendingSwapExerciseId = null;
@@ -3662,6 +4142,8 @@
                                 <p class="text-sky-200 font-medium">"${ex.cue}"</p>
                             </div>
                             
+                            <div id="rm-chart-container-${exerciseId}"></div>
+                            
                             <div class="pt-3 border-t border-zinc-700">
                                 <button onclick="watchFormVideo(${exerciseId}); event.target.closest('.fixed').remove();"
                                         class="w-full flex items-center justify-center gap-x-2 py-3.5 bg-red-600 hover:bg-red-500 transition-colors text-white rounded-3xl text-sm font-semibold">
@@ -3680,6 +4162,72 @@
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHTML);
+            render1RMChart(exerciseId, override ? override.name : ex.name);
+        }
+
+        function render1RMChart(exerciseId, exerciseName) {
+            const container = document.getElementById(`rm-chart-container-${exerciseId}`);
+            if (!container) return;
+            
+            const history = JSON.parse(storage.get('stronglean_workouts', '[]'));
+            const dataPoints = [];
+            
+            history.forEach(w => {
+                if (!w.exercises) return;
+                const match = w.exercises.find(e => e.id === exerciseId || (w.overrides && w.overrides[e.id] && w.overrides[e.id].name === exerciseName));
+                if (match && match.completedSets && match.completedSets.length > 0) {
+                    let best1RM = 0;
+                    match.completedSets.forEach(s => {
+                        const rm = s.weight * (1 + s.reps / 30);
+                        if (rm > best1RM) best1RM = rm;
+                    });
+                    if (best1RM > 0) {
+                        dataPoints.push({ date: new Date(w.date), rm: best1RM });
+                    }
+                }
+            });
+            
+            if (dataPoints.length < 2) {
+                container.innerHTML = `<div class="text-xs text-zinc-500 italic mt-3">Log this exercise at least twice to see your 1RM progression chart.</div>`;
+                return;
+            }
+            
+            dataPoints.sort((a,b) => a.date - b.date);
+            const chartData = dataPoints.slice(-10);
+            
+            const w = 350; 
+            const h = 100;
+            const padding = 15;
+            
+            const maxRM = Math.max(...chartData.map(d => d.rm));
+            const minRM = Math.min(...chartData.map(d => d.rm)) * 0.9;
+            const range = Math.max(maxRM - minRM, 1);
+            
+            const dx = (w - padding * 2) / Math.max(chartData.length - 1, 1);
+            
+            let points = '';
+            chartData.forEach((d, i) => {
+                const x = padding + (i * dx);
+                const y = h - padding - ((d.rm - minRM) / range * (h - padding * 2));
+                points += `${x},${y} `;
+            });
+            
+            container.innerHTML = `
+                <div class="mt-4 bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                    <div class="text-[10px] font-bold tracking-widest text-emerald-500/80 mb-2 uppercase">Est. 1RM Progression</div>
+                    <div class="w-full relative h-[100px]">
+                        <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="w-full h-full overflow-visible drop-shadow-[0_0_8px_rgba(52,211,153,0.15)]">
+                            <polyline fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${points}"/>
+                            ${chartData.map((d, i) => {
+                                const x = padding + (i * dx);
+                                const y = h - padding - ((d.rm - minRM) / range * (h - padding * 2));
+                                return `<circle cx="${x}" cy="${y}" r="3" fill="#18181b" stroke="#34d399" stroke-width="2" />
+                                        <text x="${x}" y="${y - 8}" fill="#a1a1aa" font-size="10" text-anchor="middle" font-family="ui-sans-serif, system-ui">${Math.round(d.rm * 10)/10}</text>`;
+                            }).join('')}
+                        </svg>
+                    </div>
+                </div>
+            `;
         }
 
         // Swap exercise in current active workout (for flexibility)
@@ -3738,6 +4286,7 @@
         // Initialize everything
         function initializeApp() {
             initializeTailwind();
+            startHeatmapAnimation();
             
             // Show dashboard by default
             document.getElementById('dashboard').classList.add('active');
@@ -3878,6 +4427,48 @@
             }
         };
         
+        // Heatmap Animation
+        function startHeatmapAnimation() {
+            const muscles = ['hm-shoulders', 'hm-chest', 'hm-core', 'hm-arms-l', 'hm-arms-r', 'hm-legs-l', 'hm-legs-r', 'hm-calves-l', 'hm-calves-r'];
+            const routines = [
+                ['hm-chest', 'hm-arms-l', 'hm-arms-r', 'hm-shoulders'], // Push
+                ['hm-chest', 'hm-arms-l', 'hm-arms-r', 'hm-core'], // Pull
+                ['hm-legs-l', 'hm-legs-r', 'hm-calves-l', 'hm-calves-r', 'hm-core'] // Legs
+            ];
+            
+            let routineIndex = 0;
+            
+            // Initial light up
+            routines[0].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('fill-zinc-800');
+                    el.classList.add('fill-emerald-400');
+                }
+            });
+            
+            setInterval(() => {
+                muscles.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.remove('fill-emerald-400');
+                        el.classList.add('fill-zinc-800');
+                    }
+                });
+                
+                routineIndex = (routineIndex + 1) % routines.length;
+                const active = routines[routineIndex];
+                
+                active.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.remove('fill-zinc-800');
+                        el.classList.add('fill-emerald-400');
+                    }
+                });
+            }, 3000);
+        }
+
         // Expose some functions for debugging if needed
         window.StrongLean = { startNewWorkout, showSection };
     </script>
@@ -3912,9 +4503,12 @@
     <div id="sticky-rest-timer" class="hidden fixed bottom-[68px] left-0 right-0 z-50 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 px-4 py-3 safe-area-bottom">
         <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
             <div class="flex items-center gap-x-3">
-                <div class="relative">
-                    <div id="sticky-timer-display" class="text-3xl font-semibold tabular-nums text-emerald-400 min-w-[70px] text-center">90</div>
-                    <div class="text-[10px] text-zinc-500 text-center -mt-1">REST</div>
+                <div class="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
+                    <svg class="absolute inset-0 w-full h-full transform -rotate-90">
+                        <circle cx="28" cy="28" r="24" stroke="#27272a" stroke-width="4" fill="none" />
+                        <circle id="timer-progress-ring" cx="28" cy="28" r="24" stroke="#34d399" stroke-width="4" fill="none" stroke-dasharray="150.8" stroke-dashoffset="0" class="transition-all duration-1000 ease-linear" stroke-linecap="round" />
+                    </svg>
+                    <div id="sticky-timer-display" class="relative z-10 text-lg font-semibold tabular-nums text-emerald-400">90</div>
                 </div>
                 <div class="hidden sm:block">
                     <div class="text-sm font-medium" id="sticky-exercise-name">Resting...</div>
