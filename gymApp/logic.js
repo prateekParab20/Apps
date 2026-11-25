@@ -154,20 +154,36 @@
     if (!last || !(Number(last.weight) > 0)) return null;
     const display = toDisplayWeight(last.weight, unit);
     const top = topRep(repsTarget);
-    if (Number(last.reps) >= top - 1) {
+    const low = lowRep(repsTarget);
+    const reps = Number(last.reps) || low;
+    if (reps >= top - 1) {
       const inc = unit === 'lbs' ? 5 : 2.5;
       const suggested = Math.round((Number(display) + inc) * 10) / 10;
       return {
         kind: 'weight',
         display: suggested,
-        text: 'Last time ' + display + ' × ' + last.reps + '. You were at the top of the range. Try ' + suggested + ' ' + unit + '.'
+        reps: low,
+        weightKg: toKg(suggested, unit),
+        label: suggested + ' × ' + low,
+        text: 'Add ' + inc + ' ' + unit + '. Last time was ' + display + ' × ' + reps + ', so the next set starts back at ' + low + ' reps.'
       };
     }
+    const nextReps = Math.min(top, reps + 1);
     return {
       kind: 'reps',
       display: display,
-      text: 'Last time ' + display + ' × ' + last.reps + '. Try more reps, or the same weight with cleaner form.'
+      reps: nextReps,
+      weightKg: Number(last.weight),
+      label: display + ' × ' + nextReps,
+      text: 'Add a rep at the same weight. Last time was ' + display + ' × ' + reps + '.'
     };
+  }
+
+  function formatRest(seconds) {
+    const total = Math.max(0, Math.ceil(Number(seconds) || 0));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    return mins + ':' + (secs < 10 ? '0' : '') + secs;
   }
 
   function personalRecords(workout, history, nameOf) {
@@ -876,6 +892,7 @@
     bestSet: bestSet,
     lastPerformance: lastPerformance,
     suggestOverload: suggestOverload,
+    formatRest: formatRest,
     personalRecords: personalRecords,
     progressSeries: progressSeries,
     exerciseSummaries: exerciseSummaries,

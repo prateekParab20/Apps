@@ -122,8 +122,16 @@ test('overload suggestion adds weight only at the top of the rep range', functio
   const up = L.suggestOverload({ weight: 40, reps: 12 }, '8-12', 'kg');
   assert.equal(up.kind, 'weight');
   assert.equal(up.display, 42.5);
+  assert.equal(up.reps, 8);
+  assert.equal(up.label, '42.5 × 8');
   const reps = L.suggestOverload({ weight: 40, reps: 8 }, '8-12', 'kg');
   assert.equal(reps.kind, 'reps');
+  assert.equal(reps.reps, 9);
+  assert.equal(reps.display, 40);
+  const pounds = L.suggestOverload({ weight: 40, reps: 12 }, '8-12', 'lbs');
+  assert.equal(pounds.display, L.toDisplayWeight(40, 'lbs') + 5);
+  assert.equal(L.formatRest(90), '1:30');
+  assert.equal(L.formatRest(5), '0:05');
 });
 
 test('backup reader accepts the old export and rejects anything else', function () {

@@ -734,9 +734,9 @@
     const done = loggedSetCount(log);
     const complete = done >= total && total > 0;
     const open = sameId(state.openId, ex.id) || (state.openId == null && index === 0 && !complete);
-    const last = L.lastPerformance(state.workouts, ex.id, state.dayType);
-    const lastLine = last && Number(last.weight) > 0
-      ? '<small>Last ' + esc(displayWeight(last.weight)) + ' ' + esc(state.unit) + ' × ' + esc(last.reps) + '</small>'
+    const nextTarget = targetForSet(ex, 0);
+    const lastLine = nextTarget
+      ? '<small>Next ' + esc(nextTarget.label) + '</small>'
       : '<small>' + esc((ex.muscles || []).slice(0, 3).join(' · ')) + '</small>';
     const badge = complete ? '✓' : String(index + 1);
     let nextMarked = false;
@@ -750,10 +750,11 @@
         const weightText = Number(set.weight) > 0 ? esc(displayWeight(set.weight)) + ' ' + esc(state.unit) + ' × ' + esc(set.reps) : esc(set.reps) + ' reps';
         rows.push('<div class="set-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
       } else {
-        const same = previousNumbers(ex, i);
-        rows.push('<div class="set-row"><span class="set-num' + (isNext ? ' next' : '') + '">' + (i + 1) + '</span><span class="set-copy"><strong>Set ' + (i + 1) + '</strong><small>' + esc(ex.reps) + '</small></span>' +
-          (same ? '<button class="set-go quiet" data-action="log-same" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Same</button>' : '') +
-          '<button class="set-go" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Log</button></div>');
+        const target = targetForSet(ex, i);
+        const hint = target && target.kind === 'weight' ? 'Heavier than last time' : (target && target.kind === 'reps' ? 'One more rep' : (target ? 'Match the last set' : ex.reps));
+        rows.push('<div class="set-row"><span class="set-num' + (isNext ? ' next' : '') + '">' + (i + 1) + '</span><span class="set-copy"><strong>' + (target ? esc(target.label) : 'Set ' + (i + 1)) + '</strong><small>' + esc(hint) + '</small></span>' +
+          (target ? '<button class="set-go" data-action="log-target" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Log</button>' : '') +
+          '<button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">' + (target ? 'Adjust' : 'Log') + '</button></div>');
       }
     }
     return '<article class="card ex" id="ex-' + esc(ex.id) + '"><button class="ex-head" data-action="toggle-ex" data-id="' + esc(ex.id) + '"><span class="set-num' + (complete ? ' done' : '') + '">' + badge + '</span><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong>' + lastLine + '</span><span class="chevron">' + (open ? '˅' : '›') + '</span></button>' +
@@ -765,6 +766,26 @@
         (state.sessionExercises.length > 1 ? '<button class="btn btn-quiet danger-text" data-action="remove-ex" data-id="' + esc(ex.id) + '">Remove exercise</button>' : '') +
         '</div>' : '') +
       '</article>';
+  }
+
+  function targetForSet(ex, setIndex) {
+    const log = findLog(ex.id);
+    if (log && setIndex > 0 && log.completedSets) {
+      const prior = L.prefillFromSet(log.completedSets[setIndex - 1], ex.id);
+      if (prior && Number(prior.weight) > 0) {
+        const reps = Number(prior.reps) || L.lowRep(ex.reps);
+        return {
+          kind: 'match',
+          display: displayWeight(prior.weight),
+          reps: reps,
+          weightKg: Number(prior.weight),
+          label: displayWeight(prior.weight) + ' × ' + reps,
+          text: 'Same weight as the set you just logged.'
+        };
+      }
+    }
+    const last = L.lastPerformance(state.workouts, ex.id, state.dayType);
+    return L.suggestOverload(last, ex.reps, state.unit);
   }
 
   function previousNumbers(ex, setIndex) {
@@ -963,10 +984,10 @@
     if (!sameId(state.sheet.id, ex.id) || state.sheet.name !== ex.name) {
       applyLogExercise(ex, state.sheet.index, state.sheet.slot, false);
     }
-    const suggestion = state.sheet.suggestion
-      ? '<div class="banner banner-ok">' + esc(state.sheet.suggestion) + '</div>'
-      : '';
     const editing = !!state.sheet.editing;
+    const suggestion = !editing && state.sheet.target
+      ? '<button class="target-chip" type="button" data-action="save-target">' + esc(state.sheet.target.label) + '<small>' + esc(state.sheet.target.text) + '</small></button>'
+      : '';
     return '<div class="grabber"></div><div class="sheet-head"><button class="text-btn" data-action="close-sheet">Cancel</button><h2 class="clip" id="log-title">' + esc(ex.name) + '</h2><span class="sheet-trail"></span></div>' +
       '<div class="sheet-body"><p class="eyebrow" style="text-align:center">Set ' + (state.sheet.index + 1) + ' · ' + esc(ex.reps) + (ex.muscles && ex.muscles.length ? ' · ' + esc(ex.muscles.slice(0, 2).join(', ')) : '') + '</p>' + suggestion +
       '<p class="section-label" style="text-align:center;margin-top:8px">Weight · ' + esc(state.unit) + '</p>' +
@@ -1127,16 +1148,16 @@
       reps = state.sheet.reps;
       editing = true;
     } else {
-      const prev = previousNumbers(ex, index);
-      if (prev) {
-        weight = displayWeight(prev.weight);
-        reps = String(prev.reps || L.lowRep(ex.reps));
+      const target = targetForSet(ex, index);
+      if (target) {
+        weight = String(target.display);
+        reps = String(target.reps);
       } else {
         reps = String(L.lowRep(ex.reps));
       }
+      state.sheet.target = target;
     }
-    const last = L.lastPerformance(state.workouts, ex.id, state.dayType);
-    const suggestion = L.suggestOverload(last, ex.reps, state.unit);
+    const target = state.sheet.target || targetForSet(ex, index);
     state.sheet.type = 'log';
     state.sheet.id = ex.id;
     state.sheet.name = ex.name;
@@ -1146,7 +1167,8 @@
     state.sheet.weight = weight;
     state.sheet.reps = reps;
     state.sheet.editing = editing;
-    state.sheet.suggestion = suggestion ? suggestion.text : '';
+    state.sheet.target = editing ? null : (state.sheet.target || target);
+    state.sheet.suggestion = state.sheet.target ? state.sheet.target.text : '';
   }
 
   function readLogFields() {
@@ -1183,12 +1205,35 @@
       toast('Set updated');
       return;
     }
-    startRest((ex && ex.rest) || 90, ex ? ex.name : 'Rest');
+    const restFor = ex && ex.rest != null ? Number(ex.rest) : 90;
+    const cue = upcomingCue(exerciseId);
+    if (restFor > 0) startRest(Math.max(10, restFor), ex ? ex.name : 'Rest', cue);
+    else if (cue) {
+      state.openId = cue.id;
+      state.scrollToId = cue.id;
+    }
     render({ keepScroll: true });
+  }
+
+  function upcomingCue(currentId) {
+    const list = state.sessionExercises;
+    if (!list.length) return null;
+    const start = Math.max(0, list.findIndex(function (ex) { return sameId(ex.id, currentId); }));
+    for (let step = 0; step < list.length; step += 1) {
+      const ex = list[(start + step) % list.length];
+      const log = findLog(ex.id);
+      const total = L.setCount(log, ex);
+      const sets = (log && log.completedSets) || [];
+      for (let i = 0; i < total; i += 1) {
+        if (!L.isLoggedSet(sets[i])) return { id: ex.id, label: ex.name + ' · Set ' + (i + 1) };
+      }
+    }
+    return null;
   }
 
   function beginSession(type, exercises, extra) {
     const meta = extra || {};
+    if (state.rest) stopRest();
     state.dayType = type;
     state.sessionExercises = exercises;
     state.startTime = Date.now();
@@ -1388,13 +1433,14 @@
     toast('Routine saved');
   }
 
-  function startRest(seconds, name) {
+  function startRest(seconds, name, cue) {
     const total = Math.max(10, seconds || 90);
     state.rest = {
       total: total,
       remaining: total,
       paused: false,
       name: name || 'Rest',
+      next: cue || null,
       endsAt: Date.now() + total * 1000
     };
     ensureRestTicker();
@@ -1425,8 +1471,8 @@
     bar.hidden = false;
     document.body.classList.add('resting');
     if (rebuild || !document.getElementById('rest-count')) {
-      bar.innerHTML = '<div class="rest-ring"><svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="18"></circle><circle id="rest-ring" class="val" cx="22" cy="22" r="18" stroke-dasharray="' + CIRC + '"></circle></svg><div class="rest-count" id="rest-count"></div></div>' +
-        '<div class="rest-copy"><strong id="rest-label"></strong><small>Rest</small></div>' +
+      bar.innerHTML = '<div class="rest-main"><div class="rest-ring"><svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="18"></circle><circle id="rest-ring" class="val" cx="22" cy="22" r="18" stroke-dasharray="' + CIRC + '"></circle></svg></div>' +
+        '<div class="rest-copy"><strong id="rest-count" class="rest-time"></strong><small id="rest-next">Rest</small></div></div>' +
         '<div class="rest-actions"><button type="button" data-action="adjust-rest" data-dir="-15">−15</button><button type="button" data-action="pause-rest" id="rest-pause">Pause</button><button type="button" data-action="adjust-rest" data-dir="15">+15</button><button type="button" class="go" data-action="skip-rest">Skip</button></div>';
     }
     paintRest();
@@ -1435,11 +1481,12 @@
   function paintRest() {
     const count = document.getElementById('rest-count');
     const ring = document.getElementById('rest-ring');
-    const label = document.getElementById('rest-label');
+    const label = document.getElementById('rest-next');
     const pause = document.getElementById('rest-pause');
     if (!count || !state.rest) return;
-    count.textContent = state.rest.remaining;
-    if (label) label.textContent = state.rest.name || 'Rest';
+    count.textContent = L.formatRest(state.rest.remaining);
+    count.classList.toggle('soon', state.rest.remaining <= 10);
+    if (label) label.textContent = state.rest.next ? 'Next · ' + state.rest.next.label : (state.rest.name || 'Rest');
     if (pause) pause.textContent = state.rest.paused ? 'Resume' : 'Pause';
     if (ring) {
       const pct = state.rest.total ? state.rest.remaining / state.rest.total : 0;
@@ -1449,17 +1496,22 @@
   }
 
   function completeRest() {
+    const next = state.rest && state.rest.next;
     stopRest();
     playBeep();
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     if (notificationsActive()) {
       try {
-        const note = new Notification('Rest complete', { body: 'Time for the next set.', icon: 'icon-192.png' });
+        const note = new Notification('Rest complete', { body: next ? next.label : 'Time for the next set.', icon: 'icon-192.png' });
         note.onclick = function () { window.focus(); };
       } catch (e) {}
     }
-    toast('Rest complete');
-    renderChrome();
+    if (next) {
+      state.openId = next.id;
+      state.scrollToId = next.id;
+    }
+    toast(next ? next.label : 'Rest complete');
+    render();
   }
 
   function stopRest() {
@@ -1788,6 +1840,27 @@
       }
       const weight = state.sheet.weight === '' ? 0 : L.toKg(state.sheet.weight, state.unit);
       commitSet(state.sheet.id, state.sheet.index, weight, reps);
+    },
+    'log-target': function (el) {
+      const id = idFrom(el);
+      const index = Number(el.dataset.index);
+      const slot = el.dataset.slot == null ? null : Number(el.dataset.slot);
+      const ex = slot != null && state.sessionExercises[slot] ? state.sessionExercises[slot] : sessionExercise(id);
+      const target = ex && targetForSet(ex, index);
+      if (!ex || !target) {
+        openLog(id, index, slot);
+        return;
+      }
+      state.sheet = { type: 'log', id: ex.id, slot: slot, index: index };
+      commitSet(ex.id, index, Number(target.weightKg) || 0, Number(target.reps) || 0);
+    },
+    'save-target': function () {
+      const target = state.sheet && state.sheet.target;
+      if (!target) {
+        actions['save-log']();
+        return;
+      }
+      commitSet(state.sheet.id, state.sheet.index, Number(target.weightKg) || 0, Number(target.reps) || 0);
     },
     'log-same': function (el) {
       const id = idFrom(el);
