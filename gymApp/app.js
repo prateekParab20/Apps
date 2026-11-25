@@ -52,6 +52,7 @@
     draft: null,
     dialog: null,
     notes: '',
+    plan: null,
     calcW: '100',
     calcR: '5',
     canInstall: false,
@@ -113,6 +114,7 @@
   }
 
   function routineTitle(type) {
+    if (type === 'plan' && state.session && state.session.typeName) return state.session.typeName;
     if (Lib.programs[type]) return Lib.programs[type].name;
     const template = state.templates.find(function (item) { return item.id === type; });
     if (template) return template.name;
@@ -299,6 +301,31 @@
     localStorage.setItem('stronglean_templates', JSON.stringify(state.templates));
   }
 
+  function savePlan() {
+    localStorage.setItem('stronglean_plan', JSON.stringify(state.plan));
+  }
+
+  function syncPlan() {
+    const result = L.advancePlan(state.plan, state.workouts, new Date(), Lib.library);
+    state.plan = result.plan;
+    if (result.changed) savePlan();
+  }
+
+  function currentBuilt() {
+    const slot = L.nextSlot(state.workouts, state.plan, new Date());
+    const week = Math.min(4, L.blockWeek(state.plan, new Date()));
+    return {
+      slot: slot,
+      built: L.buildSession({
+        library: Lib.library,
+        plan: state.plan,
+        week: week,
+        slot: slot.slot,
+        avoidIds: L.weekIds(state.workouts, state.plan, new Date())
+      })
+    };
+  }
+
   function saveActive() {
     if (!state.session) {
       localStorage.removeItem('gymActiveState');
@@ -329,6 +356,9 @@
     state.workouts = Array.isArray(workouts) ? workouts : [];
     const templates = readJSON('stronglean_templates', []);
     state.templates = Array.isArray(templates) ? templates : [];
+    const storedPlan = readJSON('stronglean_plan', null);
+    state.plan = L.normalizePlan(storedPlan, new Date());
+    if (!storedPlan) savePlan();
     const saved = readJSON('gymActiveState', null);
     if (saved && saved.currentWorkout) {
       state.session = saved.currentWorkout;
@@ -441,6 +471,7 @@
   }
 
   function render(options) {
+    syncPlan();
     const opts = options || {};
     const keep = !!opts.keepScroll;
     const y = keep ? window.scrollY : 0;
@@ -495,6 +526,49 @@
     you: renderYou
   };
 
+  function weekTrack(week) {
+    return '<div class="week-track">' + [1, 2, 3, 4].map(function (n) {
+      const cls = n === week ? ' on' : (n < week ? ' done' : '');
+      return '<div class="' + cls + '"><strong>' + n + '</strong><small>' + esc(L.WEEK_COPY[n].name) + '</small></div>';
+    }).join('') + '</div>';
+  }
+
+  function planHome() {
+    const view = currentBuilt();
+    const built = view.built;
+    const plan = state.plan;
+    const goals = [
+      ['strength', 'Strength'],
+      ['muscle', 'Muscle'],
+      ['mobility', 'Mobility'],
+      ['mixed', 'Mixed']
+    ];
+    const goalRow = '<div class="segmented wide">' + goals.map(function (goal) {
+      return seg('set-goal', goal[0], goal[1], plan.goal === goal[0]);
+    }).join('') + '</div>';
+    const dayRow = '<div class="segmented">' + seg('set-days', '3', '3 days', plan.days === 3) + seg('set-days', '4', '4 days', plan.days === 4) + '</div>';
+    const focus = plan.emphasis.map(function (group) { return L.GROUP_LABEL[group]; }).join(' · ');
+    const rows = built.exercises.map(function (ex) {
+      return '<div class="log-row static"><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong><small>' + ex.sets + ' × ' + esc(ex.reps) + '</small></span></div>';
+    }).join('');
+    const start = state.session
+      ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume ' + esc(routineTitle(state.dayType)) + '</button>'
+      : '<button class="btn btn-primary" data-action="start" data-type="plan">Start ' + esc(built.title) + '</button>';
+    const note = plan.lastNote && plan.lastNoteBlock === plan.blockIndex
+      ? '<div class="banner banner-ok">' + esc(plan.lastNote) + '</div>'
+      : '';
+    const again = view.slot.doneToday ? '<p class="footnote tight">You already trained today. This is the next session whenever you want it.</p>' : '';
+    return '<div class="card plan-card"><p class="eyebrow">Week ' + built.week + ' of 4 · ' + esc(built.weekName) + '</p>' +
+      weekTrack(built.week) +
+      '<p class="plan-focus">Focus · ' + esc(focus) + '</p>' +
+      '<div class="plan-controls">' + goalRow + dayRow + '</div>' +
+      '<h2 class="plan-title">' + esc(built.title) + '</h2>' +
+      '<p class="plan-summary">' + esc(built.summary) + '</p>' +
+      note +
+      '<div class="group plan-list">' + rows + '</div>' +
+      start + again + '</div>';
+  }
+
   function renderToday() {
     const week = L.weekCount(state.workouts);
     const streak = L.streak(state.workouts);
@@ -505,19 +579,16 @@
     const series = L.recentVolume(state.workouts, 7);
     const muscles = recentMuscles();
     const recent = state.workouts.slice(0, 3);
-    const resume = state.session
-      ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume ' + esc(routineTitle(state.dayType)) + '</button>'
-      : '<button class="btn btn-primary" data-action="nav" data-section="train">Start a workout</button>';
     const install = state.canInstall
       ? '<button class="add-row" data-action="install">Install StrongLean</button>'
       : '';
     return '<section class="page">' +
-      '<header class="page-head"><div><h1>Today</h1><p class="lede">A calm place for routines, sets, and the progress that follows.</p></div></header>' +
+      '<header class="page-head"><div><h1>Today</h1><p class="lede">Four-week blocks. The muscles shift when the work is moving.</p></div></header>' +
+      planHome() +
       '<div class="today-grid"><div class="stack">' +
       '<div class="card hero-card"><p class="eyebrow">This week</p><p class="hero-number">' + week + '</p><p class="hero-unit">' + (week === 1 ? 'workout' : 'workouts') + '</p>' +
       '<div class="macro-pills"><span>' + streak + ' day streak</span><span>' + esc(shownVolume(volume)) + ' ' + esc(state.unit) + '</span>' +
       (avg ? '<span>' + avg + ' min avg</span>' : '') + '</div></div>' +
-      resume +
       (install ? '<div class="group">' + install + '</div>' : '') +
       '</div><div>' +
       (series.length >= 2
@@ -546,8 +617,9 @@
       return '<div class="food-row"><button class="food-main" data-action="start" data-type="' + esc(template.id) + '"><span class="choice-copy"><strong>' + esc(template.name) + '</strong><small>' + template.exercises.length + ' exercises</small></span></button>' +
         '<button class="icon-btn" data-action="edit-template" data-id="' + esc(template.id) + '" aria-label="Edit ' + esc(template.name) + '">Edit</button></div>';
     }).join('');
-    return '<section class="page"><header class="page-head"><div><h1>Train</h1><p class="lede">Built-in days, or a routine of your own.</p></div></header>' +
-      '<div class="group"><button class="add-row" data-action="open-template">Create a routine</button></div>' +
+    const planned = currentBuilt();
+    return '<section class="page"><header class="page-head"><div><h1>Train</h1><p class="lede">Today’s block, or a routine you wrote yourself.</p></div></header>' +
+      '<div class="group"><button class="log-row" data-action="start" data-type="plan"><span class="choice-copy"><strong>' + esc(planned.built.title) + '</strong><small>Week ' + planned.built.week + ' · ' + planned.built.exercises.length + ' exercises</small></span><span class="chevron">›</span></button><button class="add-row" data-action="open-template">Create a routine</button></div>' +
       '<div class="section-label">Routines</div><div class="group">' + custom + builtin + '</div></section>';
   }
 
@@ -1008,6 +1080,32 @@
     render({ keepScroll: true });
   }
 
+  function beginSession(type, exercises, extra) {
+    const meta = extra || {};
+    state.dayType = type;
+    state.sessionExercises = exercises;
+    state.startTime = Date.now();
+    state.openId = exercises[0].id;
+    state.session = {
+      date: new Date().toISOString(),
+      type: type,
+      typeName: meta.typeName || routineTitle(type),
+      exercises: exercises.map(function (ex) {
+        return { id: ex.id, name: ex.name, muscles: ex.muscles || [], completedSets: [] };
+      }),
+      startTime: state.startTime,
+      durationMin: 0,
+      totalVolume: 0,
+      notes: '',
+      extraExercises: []
+    };
+    if (meta.plan) state.session.plan = meta.plan;
+    state.section = 'train';
+    saveActive();
+    render();
+    toast(state.session.typeName + ' started');
+  }
+
   function startWorkout(type) {
     const exercises = L.resolveSessionExercises({
       dayType: type,
@@ -1019,27 +1117,26 @@
       toast('That routine has no exercises.');
       return;
     }
-    state.dayType = type;
-    state.sessionExercises = exercises;
-    state.startTime = Date.now();
-    state.openId = exercises[0].id;
-    state.session = {
-      date: new Date().toISOString(),
-      type: type,
-      typeName: routineTitle(type),
-      exercises: exercises.map(function (ex) {
-        return { id: ex.id, name: ex.name, completedSets: [] };
-      }),
-      startTime: state.startTime,
-      durationMin: 0,
-      totalVolume: 0,
-      notes: '',
-      extraExercises: []
-    };
-    state.section = 'train';
-    saveActive();
-    render();
-    toast(routineTitle(type) + ' started');
+    beginSession(type, exercises);
+  }
+
+  function startPlan() {
+    syncPlan();
+    const view = currentBuilt();
+    if (!view.built.exercises.length) {
+      toast('That plan has no exercises yet.');
+      return;
+    }
+    beginSession('plan', view.built.exercises, {
+      typeName: view.built.title,
+      plan: {
+        blockIndex: state.plan.blockIndex,
+        week: view.built.week,
+        slot: view.built.slot,
+        goal: state.plan.goal,
+        emphasis: state.plan.emphasis.slice()
+      }
+    });
   }
 
   function addExerciseToSession(ex) {
@@ -1309,7 +1406,8 @@
       workouts: state.workouts,
       templates: state.templates,
       unit: state.unit,
-      weight: state.weight
+      weight: state.weight,
+      plan: state.plan
     });
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1351,6 +1449,10 @@
                 localStorage.setItem('user_weight', String(weight));
               }
             }
+            if (parsed.settings.plan && typeof parsed.settings.plan === 'object') {
+              state.plan = L.normalizePlan(parsed.settings.plan, new Date());
+              savePlan();
+            }
             render();
             toast('Backup imported');
           }
@@ -1377,7 +1479,21 @@
         render();
         return;
       }
-      startWorkout(el.dataset.type);
+      if (el.dataset.type === 'plan') startPlan();
+      else startWorkout(el.dataset.type);
+    },
+    'set-goal': function (el) {
+      const goal = el.dataset.value;
+      if (['strength', 'muscle', 'mobility', 'mixed'].indexOf(goal) < 0 || !state.plan) return;
+      state.plan.goal = goal;
+      savePlan();
+      render({ keepScroll: true });
+    },
+    'set-days': function (el) {
+      if (!state.plan) return;
+      state.plan.days = el.dataset.value === '3' ? 3 : 4;
+      savePlan();
+      render({ keepScroll: true });
     },
     'open-template': function () { openTemplate(null); },
     'edit-template': function (el) {
