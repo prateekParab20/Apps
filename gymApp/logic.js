@@ -415,7 +415,7 @@
 
   function normalizePlan(plan, now) {
     const source = plan || {};
-    const goal = PLAN_GOALS.indexOf(source.goal) >= 0 ? source.goal : 'mixed';
+    const goal = PLAN_GOALS.indexOf(source.goal) >= 0 ? source.goal : 'strength';
     const days = source.days === 3 ? 3 : 4;
     let emphasis = ['push', 'pull'];
     if (Array.isArray(source.emphasis) && source.emphasis.length === 2 &&
@@ -424,9 +424,14 @@
       emphasis = source.emphasis.slice();
     }
     const blockStart = /^\d{4}-\d{2}-\d{2}$/.test(source.blockStart) ? source.blockStart : isoDay(now || new Date());
+    const split = source.split === 'push-pull' || source.split === 'full' || source.split === 'upper-lower'
+      ? source.split : 'upper-lower';
     return {
       goal: goal,
       days: days,
+      split: split,
+      name: String(source.name || '').trim(),
+      onboarded: source.onboarded === true,
       emphasis: emphasis,
       blockStart: blockStart,
       blockIndex: Number.isFinite(Number(source.blockIndex)) ? Number(source.blockIndex) : 0,
@@ -444,10 +449,16 @@
   }
 
   function goalLabel(goal) {
-    if (goal === 'strength') return 'Strength';
-    if (goal === 'muscle') return 'Muscle';
+    if (goal === 'strength') return 'Get stronger';
+    if (goal === 'muscle') return 'Build muscle';
     if (goal === 'mobility') return 'Mobility';
-    return 'Mixed';
+    return 'Stay athletic';
+  }
+
+  function splitLabel(split) {
+    if (split === 'push-pull') return 'Push / Pull';
+    if (split === 'full') return 'Full body';
+    return 'Upper / Lower';
   }
 
   function isCardio(ex) {
@@ -461,6 +472,7 @@
   function inGroup(ex, group) {
     const keys = GROUP_KEYS[group] || [];
     const muscles = (ex && ex.muscles ? ex.muscles : []).join(' ').toLowerCase();
+    if (group === 'push' && /rear/.test(muscles) && !/chest|pec|tricep/.test(muscles)) return false;
     return keys.some(function (key) { return muscles.indexOf(key) !== -1; });
   }
 
@@ -566,11 +578,8 @@
     next.blockStart = today;
     next.blockIndex = ready.blockIndex + 1;
     if (progressed) {
-      next.emphasis = nextEmphasis(ready.emphasis);
       next.variation = ready.variation + 1;
-      next.lastNote = 'The last four weeks moved. This block switches to ' +
-        GROUP_LABEL[next.emphasis[0]].toLowerCase() + ' and ' +
-        GROUP_LABEL[next.emphasis[1]].toLowerCase() + ', with different exercises.';
+      next.lastNote = 'You got stronger. The routine stays ' + splitLabel(ready.split) + ', with different exercises this block.';
     } else if ((stats.current[ready.emphasis[0]] || {}).sessions || (stats.current[ready.emphasis[1]] || {}).sessions) {
       next.variation = ready.variation + 1;
       next.lastNote = 'Those lifts stayed about the same, so the muscles stay. The exercise list changes so the sessions are not copies.';
@@ -581,32 +590,41 @@
     return { plan: next, changed: true, message: next.lastNote };
   }
 
-  function nextSlot(workouts, plan, now) {
+  function modeCount(plan, mode) {
+    return mode === 'mobility' || mode === 'cardio' ? 3 : plan.days;
+  }
+
+  function nextSlot(workouts, plan, now, mode) {
     const ready = normalizePlan(plan, now);
+    const area = mode || 'strength';
+    const count = modeCount(ready, area);
     const weekStart = startOfWeek(now || new Date());
     const today = isoDay(now || new Date());
     const done = (workouts || []).filter(function (workout) {
+      const workoutMode = workout && workout.plan && workout.plan.mode ? workout.plan.mode : 'strength';
       return workout && workout.plan && workout.date && new Date(workout.date) >= weekStart &&
-        workout.plan.blockIndex === ready.blockIndex;
+        workout.plan.blockIndex === ready.blockIndex && workoutMode === area;
     });
     const doneToday = done.some(function (workout) { return isoDay(workout.date) === today; });
     const used = {};
     done.forEach(function (workout) {
       if (workout.plan.slot != null) used[workout.plan.slot] = true;
     });
-    for (let i = 0; i < ready.days; i += 1) {
+    for (let i = 0; i < count; i += 1) {
       if (!used[i]) return { slot: i, doneToday: doneToday };
     }
-    return { slot: done.length % ready.days, doneToday: doneToday };
+    return { slot: done.length % count, doneToday: doneToday };
   }
 
-  function weekIds(workouts, plan, now) {
+  function weekIds(workouts, plan, now, mode) {
     const ready = normalizePlan(plan, now);
+    const area = mode || 'strength';
     const weekStart = startOfWeek(now || new Date());
     const ids = [];
     (workouts || []).forEach(function (workout) {
+      const workoutMode = workout && workout.plan && workout.plan.mode ? workout.plan.mode : 'strength';
       if (!workout || !workout.plan || !workout.date || new Date(workout.date) < weekStart) return;
-      if (workout.plan.blockIndex !== ready.blockIndex) return;
+      if (workout.plan.blockIndex !== ready.blockIndex || workoutMode !== area) return;
       (workout.exercises || []).forEach(function (ex) {
         if (ex && ex.id != null) ids.push(ex.id);
       });
@@ -618,48 +636,51 @@
     return PLAN_GROUPS.filter(function (group) { return emphasis.indexOf(group) === -1; });
   }
 
+  const SPLIT_DAYS = {
+    'upper-lower': { 3: ['upper', 'lower', 'full'], 4: ['upper', 'lower', 'upper', 'lower'] },
+    'push-pull': { 3: ['push', 'pull', 'legs'], 4: ['push', 'pull', 'legs', 'upper'] },
+    full: { 3: ['full', 'full', 'full'], 4: ['full', 'full', 'full', 'full'] }
+  };
+  const DAY_LABEL = {
+    upper: 'Upper body',
+    lower: 'Lower body',
+    push: 'Push',
+    pull: 'Pull',
+    legs: 'Legs',
+    full: 'Full body'
+  };
+
+  function dayParts(day, goal) {
+    const count = goal === 'strength' ? 4 : 5;
+    if (day === 'upper') return [
+      { group: 'push', count: 3, kind: 'main' },
+      { group: 'pull', count: 2, kind: 'main' }
+    ];
+    if (day === 'lower') return [
+      { group: 'legs', count: count, kind: 'main' },
+      { group: 'core', count: 1, kind: 'accessory' }
+    ];
+    if (day === 'full') return [
+      { group: 'push', count: 2, kind: 'main' },
+      { group: 'pull', count: 2, kind: 'main' },
+      { group: 'legs', count: 2, kind: 'main' }
+    ];
+    return [{ group: day, count: count, kind: 'main' }];
+  }
+
   function sessionParts(plan, slot) {
-    const emphasis = plan.emphasis;
-    const others = otherGroups(emphasis);
-    const days = plan.days;
-    const index = ((slot % days) + days) % days;
-    const mainCount = plan.goal === 'strength' ? 4 : 5;
-    if (plan.goal === 'mobility') {
-      const group = [emphasis[0], emphasis[1], others[0], others[1]][index % 4];
-      return { titleGroup: 'mobility', parts: [
-        { group: group, count: 3, kind: 'light' },
-        { group: 'core', count: 3, kind: 'mobility' }
-      ] };
-    }
-    if (days === 3) {
-      if (index === 0) return { titleGroup: emphasis[0], parts: [
-        { group: emphasis[0], count: mainCount, kind: 'main' },
-        { group: 'core', count: 1, kind: 'mobility' }
-      ] };
-      if (index === 1) return { titleGroup: emphasis[1], parts: [
-        { group: emphasis[1], count: mainCount, kind: 'main' }
-      ] };
-      return { titleGroup: 'balance', groups: [others[0], others[1]], parts: [
-        { group: others[0], count: 2, kind: 'main' },
-        { group: others[1], count: 2, kind: 'accessory' },
-        { group: 'core', count: 2, kind: 'mobility' }
-      ] };
-    }
-    if (index === 0) return { titleGroup: emphasis[0], parts: [{ group: emphasis[0], count: mainCount, kind: 'main' }] };
-    if (index === 1) return { titleGroup: emphasis[1], parts: [{ group: emphasis[1], count: mainCount, kind: 'main' }] };
-    if (index === 2) return { titleGroup: 'balance', groups: [others[0], others[1]], parts: [
-      { group: others[0], count: 3, kind: 'main' },
-      { group: others[1], count: 2, kind: 'accessory' }
-    ] };
-    return { titleGroup: 'mobility', parts: [
-      { group: emphasis[0], count: 2, kind: 'accessory' },
-      { group: 'core', count: 3, kind: 'mobility' }
-    ] };
+    const pattern = SPLIT_DAYS[plan.split] || SPLIT_DAYS['upper-lower'];
+    const days = pattern[plan.days] || pattern[4];
+    const index = ((slot % days.length) + days.length) % days.length;
+    const day = days[index];
+    return { day: day, title: DAY_LABEL[day], parts: dayParts(day, plan.goal) };
   }
 
   function poolFor(library, group, kind) {
     return (library || []).filter(function (ex) {
-      if (!ex || ex.id == null || isCardio(ex)) return false;
+      if (!ex || ex.id == null) return false;
+      if (kind === 'cardio') return isCardio(ex);
+      if (isCardio(ex)) return false;
       if (kind === 'mobility') return isMobility(ex);
       if (isMobility(ex)) return false;
       return inGroup(ex, group);
@@ -697,10 +718,8 @@
       if (score) return score;
       return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
-    const top = ranked.length ? scoreExercise(ranked[0], group, kind) : 0;
-    const band = ranked.filter(function (ex) { return scoreExercise(ex, group, kind) >= Math.max(0, top - 1); });
-    const preferred = band.length >= count ? band : ranked;
-    const fresh = preferred.filter(function (ex) { return !avoidSet[String(ex.id)]; });
+    const window = ranked.slice(0, Math.min(ranked.length, Math.max(count + 3, count)));
+    const fresh = window.filter(function (ex) { return !avoidSet[String(ex.id)]; });
     const freshAll = ranked.filter(function (ex) { return !avoidSet[String(ex.id)]; });
     const spare = ranked.filter(function (ex) { return avoidSet[String(ex.id)]; });
     const out = [];
@@ -719,6 +738,11 @@
       copy.sets = 2;
       copy.rest = 30;
       if (!/sec|min/i.test(String(copy.reps))) copy.reps = '30-45 sec';
+      return copy;
+    }
+    if (kind === 'cardio') {
+      copy.sets = 1;
+      copy.rest = 0;
       return copy;
     }
     let sets = 3;
@@ -741,10 +765,57 @@
     return copy;
   }
 
+  const MOBILITY_FLOWS = [
+    { title: 'Hips', test: /hip|pigeon|couch|90\/90|figure-4|quad stretch/i },
+    { title: 'Spine', test: /cat-cow|thoracic|open book|child|spine|neck/i },
+    { title: 'Full flow', test: /stretch|pose|mobility/i }
+  ];
+  const CARDIO_NAMES = ['Easy', 'Steady', 'Long'];
+
+  function fillSection(library, predicate, count, seed, kind, goal, week) {
+    const pool = (library || []).filter(predicate);
+    return pickExercises(pool, count, seed, [], 'core', kind).map(function (ex) {
+      return schemeFor(ex, goal, week, kind);
+    });
+  }
+
   function buildSession(options) {
     const plan = normalizePlan(options.plan, options.now);
+    const mode = options.mode === 'mobility' || options.mode === 'cardio' ? options.mode : 'strength';
     const week = Math.min(4, Math.max(1, options.week || blockWeek(plan, options.now)));
     const slot = Number.isFinite(Number(options.slot)) ? Number(options.slot) : 0;
+    const phase = WEEK_COPY[week];
+    if (mode === 'mobility') {
+      const flow = MOBILITY_FLOWS[((slot % 3) + 3) % 3];
+      let exercises = fillSection(options.library, function (ex) {
+        return ex && isMobility(ex) && flow.test.test(ex.name || '');
+      }, 5, plan.variation * 40 + week * 5 + slot, 'mobility', plan.goal, week);
+      if (exercises.length < 3) {
+        exercises = fillSection(options.library, function (ex) { return ex && isMobility(ex); }, 5, slot + week, 'mobility', plan.goal, week);
+      }
+      return {
+        title: flow.title,
+        summary: 'Slow ranges and holds. Strength stays in its own section.',
+        week: week,
+        weekName: phase.name,
+        slot: ((slot % 3) + 3) % 3,
+        mode: 'mobility',
+        exercises: exercises
+      };
+    }
+    if (mode === 'cardio') {
+      const index = ((slot % 3) + 3) % 3;
+      const exercises = fillSection(options.library, function (ex) { return ex && isCardio(ex); }, 1, plan.variation + week + index, 'cardio', plan.goal, week);
+      return {
+        title: CARDIO_NAMES[index],
+        summary: 'A separate cardio session. It does not replace the lifting.',
+        week: week,
+        weekName: phase.name,
+        slot: index,
+        mode: 'cardio',
+        exercises: exercises
+      };
+    }
     const layout = sessionParts(plan, slot);
     const avoid = (options.avoidIds || []).slice();
     const chosen = [];
@@ -755,19 +826,14 @@
         chosen.push(schemeFor(ex, plan.goal, week, part.kind));
       });
     });
-    const phase = WEEK_COPY[week];
-    const title = layout.titleGroup === 'mobility'
-      ? (plan.goal === 'mobility' ? 'Mobility' : goalLabel(plan.goal) + ' · Mobility')
-      : layout.titleGroup === 'balance'
-        ? goalLabel(plan.goal) + ' · ' + layout.groups.map(function (group) { return GROUP_LABEL[group]; }).join(' and ')
-        : goalLabel(plan.goal) + ' · ' + GROUP_LABEL[layout.titleGroup];
     return {
-      title: title,
+      title: layout.title,
       summary: phase.text,
       week: week,
       weekName: phase.name,
       slot: ((slot % plan.days) + plan.days) % plan.days,
-      emphasis: plan.emphasis.slice(),
+      mode: 'strength',
+      split: plan.split,
       exercises: chosen
     };
   }
@@ -830,6 +896,7 @@
     weekIds: weekIds,
     buildSession: buildSession,
     goalLabel: goalLabel,
+    splitLabel: splitLabel,
     GROUP_LABEL: GROUP_LABEL,
     WEEK_COPY: WEEK_COPY
   };

@@ -171,12 +171,18 @@ const catalog = [
   { id: 11, name: 'Romanian Deadlift', muscles: ['Hamstrings', 'Glutes'], reps: '8-10', sets: 3, rest: 90 },
   { id: 12, name: 'Calf Raise', muscles: ['Calves'], reps: '12-15', sets: 3, rest: 45 },
   { id: 13, name: 'Leg Press', muscles: ['Quads'], reps: '8-12', sets: 3, rest: 90 },
+  { id: 22, name: 'Goblet Squat', muscles: ['Quads', 'Glutes'], reps: '8-12', sets: 3, rest: 90 },
+  { id: 23, name: 'Hip Thrust', muscles: ['Glutes'], reps: '8-12', sets: 3, rest: 90 },
+  { id: 24, name: 'Step-Up', muscles: ['Quads', 'Glutes'], reps: '8-10', sets: 3, rest: 60 },
+  { id: 25, name: 'Leg Curl', muscles: ['Hamstrings'], reps: '10-12', sets: 3, rest: 60 },
   { id: 14, name: 'Plank', muscles: ['Core'], reps: '30-45 sec', sets: 2, rest: 30 },
   { id: 15, name: 'Dead Bug', muscles: ['Abs'], reps: '8-12', sets: 3, rest: 45 },
   { id: 16, name: 'World\'s Greatest Stretch', muscles: ['Hips'], reps: '5 / side', sets: 2, rest: 30 },
   { id: 17, name: 'Cat-Cow', muscles: ['Spine Mobility'], reps: '8', sets: 2, rest: 20 },
   { id: 18, name: 'Couch Stretch', muscles: ['Hip Flexors'], reps: '30 sec', sets: 2, rest: 20 },
-  { id: 19, name: 'Brisk Walk', muscles: ['Cardio', 'Legs'], reps: '10-20 min', sets: 1, rest: 0 }
+  { id: 19, name: 'Brisk Walk', muscles: ['Cardio', 'Legs'], reps: '10-20 min', sets: 1, rest: 0 },
+  { id: 20, name: 'Machine Chest Press', muscles: ['Chest', 'Triceps'], reps: '8-12', sets: 3, rest: 90 },
+  { id: 21, name: 'Dip', muscles: ['Chest', 'Triceps'], reps: '6-10', sets: 3, rest: 90 }
 ];
 
 test('a block is four weeks, then it is ready to change', function () {
@@ -200,12 +206,17 @@ test('strength weeks add a set, then ease off, and days do not repeat the same l
   assert.ok(ease.exercises.every(function (ex) { return ex.sets < build.exercises[0].sets; }));
   assert.notDeepEqual(base.exercises.map(function (ex) { return ex.id; }), other.exercises.map(function (ex) { return ex.id; }));
   assert.equal(catalog[0].sets, 3);
-  assert.equal(base.title.indexOf('Chest and shoulders') >= 0, true);
-  assert.equal(other.title.indexOf('Back and arms') >= 0, true);
+  assert.equal(base.title, 'Upper body');
+  assert.equal(other.title, 'Lower body');
+  const push = L.buildSession({ library: catalog, plan: Object.assign({}, plan, { split: 'push-pull' }), week: 1, slot: 0 });
+  const pull = L.buildSession({ library: catalog, plan: Object.assign({}, plan, { split: 'push-pull' }), week: 1, slot: 1 });
+  assert.equal(push.title, 'Push');
+  assert.equal(pull.title, 'Pull');
+  assert.ok(push.exercises.every(function (ex) { return /bench|press|raise|pushdown|dip/i.test(ex.name); }));
 });
 
 test('later weeks and a finished session change which exercises are chosen', function () {
-  const plan = L.normalizePlan({ goal: 'muscle', days: 3, blockStart: '2026-11-01', emphasis: ['push', 'pull'], variation: 0 }, new Date(2026, 10, 1));
+  const plan = L.normalizePlan({ goal: 'muscle', days: 3, split: 'push-pull', blockStart: '2026-11-01', variation: 0 }, new Date(2026, 10, 1));
   const first = L.buildSession({ library: catalog, plan: plan, week: 1, slot: 0 });
   const later = L.buildSession({ library: catalog, plan: plan, week: 3, slot: 0 });
   const varied = L.buildSession({ library: catalog, plan: Object.assign({}, plan, { variation: 1 }), week: 1, slot: 0 });
@@ -216,13 +227,19 @@ test('later weeks and a finished session change which exercises are chosen', fun
   assert.ok(avoided.exercises.every(function (ex) { return [10, 11].indexOf(ex.id) === -1; }));
 });
 
-test('a mobility day keeps joint work and leaves cardio out', function () {
-  const plan = L.normalizePlan({ goal: 'mobility', days: 3, blockStart: '2026-11-01', emphasis: ['legs', 'core'] }, new Date(2026, 10, 1));
-  const session = L.buildSession({ library: catalog, plan: plan, week: 1, slot: 0 });
-  assert.equal(session.title, 'Mobility');
-  assert.ok(session.exercises.some(function (ex) { return /stretch|cat-cow|couch/i.test(ex.name); }));
-  assert.ok(session.exercises.every(function (ex) { return ex.name !== 'Brisk Walk'; }));
-  assert.ok(session.exercises.filter(function (ex) { return /sec/i.test(ex.reps); }).every(function (ex) { return ex.sets === 2 && ex.rest === 30; }));
+test('mobility and cardio are separate sessions from the lifting split', function () {
+  const plan = L.normalizePlan({ goal: 'strength', split: 'push-pull', days: 3, blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  const mobility = L.buildSession({ library: catalog, plan: plan, mode: 'mobility', week: 1, slot: 0 });
+  const cardio = L.buildSession({ library: catalog, plan: plan, mode: 'cardio', week: 1, slot: 0 });
+  const lift = L.buildSession({ library: catalog, plan: plan, mode: 'strength', week: 1, slot: 0 });
+  assert.equal(mobility.title, 'Hips');
+  assert.ok(mobility.exercises.every(function (ex) { return /stretch|hip|couch|cat-cow|pose|pigeon|figure-4|90/i.test(ex.name); }));
+  assert.ok(mobility.exercises.every(function (ex) { return ex.name !== 'Brisk Walk' && ex.name !== 'Bench Press'; }));
+  assert.equal(cardio.title, 'Easy');
+  assert.equal(cardio.exercises[0].name, 'Brisk Walk');
+  assert.equal(cardio.exercises[0].sets, 1);
+  assert.equal(lift.title, 'Push');
+  assert.ok(lift.exercises.every(function (ex) { return ex.name !== 'Brisk Walk' && !/stretch/i.test(ex.name); }));
 });
 
 test('progress after four weeks moves the target muscles', function () {
@@ -245,13 +262,13 @@ test('progress after four weeks moves the target muscles', function () {
   assert.equal(stayed.changed, false);
   const moved = L.advancePlan(plan, workouts, new Date(2026, 9, 29), catalog);
   assert.equal(moved.changed, true);
-  assert.deepEqual(moved.plan.emphasis, ['legs', 'core']);
+  assert.equal(moved.plan.split, 'upper-lower');
   assert.equal(moved.plan.blockStart, '2026-10-29');
   assert.equal(moved.plan.variation, 1);
-  assert.match(moved.message, /legs/i);
+  assert.match(moved.message, /Upper \/ Lower/);
   const quiet = L.advancePlan(plan, [], new Date(2026, 9, 29), catalog);
   assert.equal(quiet.changed, true);
-  assert.deepEqual(quiet.plan.emphasis, ['push', 'pull']);
+  assert.equal(quiet.plan.split, 'upper-lower');
   assert.match(quiet.message, /No sessions/);
 });
 

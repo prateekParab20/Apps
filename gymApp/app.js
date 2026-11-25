@@ -53,6 +53,9 @@
     dialog: null,
     notes: '',
     plan: null,
+    area: 'strength',
+    menu: false,
+    setup: null,
     calcW: '100',
     calcR: '5',
     canInstall: false,
@@ -311,21 +314,27 @@
     if (result.changed) savePlan();
   }
 
-  function sessionAt(week, slot) {
+  function sessionAt(week, slot, area) {
+    const mode = area || state.area || 'strength';
     const current = Math.min(4, L.blockWeek(state.plan, new Date()));
     return L.buildSession({
       library: Lib.library,
       plan: state.plan,
+      mode: mode,
       week: week,
       slot: slot,
-      avoidIds: week === current ? L.weekIds(state.workouts, state.plan, new Date()) : []
+      avoidIds: week === current ? L.weekIds(state.workouts, state.plan, new Date(), mode) : []
     });
   }
 
   function currentBuilt() {
-    const slot = L.nextSlot(state.workouts, state.plan, new Date());
+    const slot = L.nextSlot(state.workouts, state.plan, new Date(), state.area);
     const week = Math.min(4, L.blockWeek(state.plan, new Date()));
-    return { slot: slot, week: week, built: sessionAt(week, slot.slot) };
+    return { slot: slot, week: week, built: sessionAt(week, slot.slot, state.area) };
+  }
+
+  function areaCount() {
+    return state.area === 'strength' ? state.plan.days : 3;
   }
 
   function saveActive() {
@@ -477,7 +486,8 @@
     const opts = options || {};
     const keep = !!opts.keepScroll;
     const y = keep ? window.scrollY : 0;
-    view.innerHTML = pages[state.section] ? pages[state.section]() : pages.today();
+    const setup = state.section === 'setup' || (!state.plan.onboarded && !state.session);
+    view.innerHTML = setup ? renderSetup() : (pages[state.section] ? pages[state.section]() : pages.today());
     view.classList.remove('view-enter');
     if (!keep) {
       void view.offsetWidth;
@@ -495,16 +505,46 @@
     ensureElapsed();
   }
 
+  function renderDrawer() {
+    const root = document.getElementById('drawer');
+    if (!state.menu) {
+      root.innerHTML = '';
+      return;
+    }
+    const item = function (area, label, detail) {
+      const on = state.area === area ? ' aria-current="true"' : '';
+      return '<button class="menu-row" data-action="set-area" data-area="' + area + '"' + on + '><strong>' + label + '</strong><small>' + detail + '</small></button>';
+    };
+    root.innerHTML = '<div class="drawer-backdrop" data-action="close-menu"></div><aside class="drawer" role="dialog" aria-label="Menu">' +
+      '<p class="eyebrow">Sections</p>' +
+      item('strength', 'Strength', L.splitLabel(state.plan.split)) +
+      item('mobility', 'Mobility', 'Hips, spine, and holds') +
+      item('cardio', 'Cardio', 'Walks, bike, row') +
+      '<p class="eyebrow">App</p>' +
+      '<button class="menu-row" data-action="nav" data-section="history"><strong>History</strong><small>Sessions and charts</small></button>' +
+      '<button class="menu-row" data-action="nav" data-section="library"><strong>Library</strong><small>Every exercise</small></button>' +
+      '<button class="menu-row" data-action="edit-setup"><strong>Your details</strong><small>Goal and routine</small></button>' +
+      '</aside>';
+  }
+
   function renderChrome() {
     renderTabs();
     renderRest(false);
     renderOverlay();
+    renderDrawer();
     renderDialog();
     document.body.classList.toggle('resting', !!(state.rest && state.rest.remaining > 0));
     if (state.rest && state.rest.remaining > 0) ensureRestTicker();
   }
 
   function renderTabs() {
+    const bar = document.getElementById('tabbar');
+    if (state.section === 'setup' || (!state.plan.onboarded && !state.session)) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      return;
+    }
+    bar.hidden = false;
     const tabs = [
       ['today', 'Today', 'today'],
       ['train', 'Train', 'train'],
@@ -532,39 +572,83 @@
     you: renderYou
   };
 
+  function menuButton() {
+    return '<button class="menu-btn" data-action="open-menu" aria-label="Open menu">☰</button>';
+  }
+
   function backBar() {
-    return '<div class="nav-bar"><button class="text-btn" data-action="back">Back</button></div>';
+    return '<div class="nav-bar">' + menuButton() + '<button class="text-btn" data-action="back">Back</button></div>';
+  }
+
+  function areaTitle() {
+    if (state.area === 'mobility') return 'Mobility';
+    if (state.area === 'cardio') return 'Cardio';
+    return 'Strength';
+  }
+
+  function renderSetup() {
+    const draft = state.setup || {
+      name: state.plan.name || '',
+      goal: state.plan.goal || 'strength',
+      split: state.plan.split || 'upper-lower',
+      days: state.plan.days || 4
+    };
+    state.setup = draft;
+    const goalBtn = function (value, label, detail) {
+      return '<button class="choice" data-action="set-setup" data-field="goal" data-value="' + value + '" aria-pressed="' + (draft.goal === value ? 'true' : 'false') + '"><strong>' + label + '</strong><small>' + detail + '</small></button>';
+    };
+    const splitBtn = function (value, label, detail) {
+      return '<button class="choice" data-action="set-setup" data-field="split" data-value="' + value + '" aria-pressed="' + (draft.split === value ? 'true' : 'false') + '"><strong>' + label + '</strong><small>' + detail + '</small></button>';
+    };
+    return '<section class="page setup-page"><p class="eyebrow">Start</p><h1>' + (state.plan.onboarded ? 'Your training' : 'What do you want?') + '</h1>' +
+      '<p class="lede">This stays on the device. Strength, mobility, and cardio stay in their own sections.</p>' +
+      '<label class="field" style="margin-top:18px;border-radius:12px"><span class="label">Name</span><input id="setup-name" value="' + esc(draft.name) + '" placeholder="Optional"></label>' +
+      '<div class="section-label">Goal</div><div class="choice-list">' +
+      goalBtn('strength', 'Get stronger', 'Heavier sets, longer rest') +
+      goalBtn('muscle', 'Build muscle', 'More work in the 8–12 range') +
+      goalBtn('mixed', 'Stay athletic', 'A bit of both') +
+      '</div>' +
+      '<div class="section-label">Strength routine</div><div class="choice-list">' +
+      splitBtn('upper-lower', 'Upper / Lower', 'Upper body days and lower body days') +
+      splitBtn('push-pull', 'Push / Pull', 'Push, pull, and a leg day') +
+      splitBtn('full', 'Full body', 'A bit of everything each day') +
+      '</div>' +
+      '<div class="section-label">Days each week</div><div class="segmented" style="max-width:220px">' +
+      seg('set-setup', '3', '3 days', draft.days === 3) + seg('set-setup', '4', '4 days', draft.days === 4) +
+      '</div>' +
+      '<button class="btn btn-primary" style="margin-top:22px" data-action="save-setup">' + (state.plan.onboarded ? 'Save' : 'Continue') + '</button></section>';
   }
 
   function renderToday() {
     const view = currentBuilt();
     const built = view.built;
     const streak = L.streak(state.workouts);
-    const focus = state.plan.emphasis.map(function (group) { return L.GROUP_LABEL[group]; }).join(' · ');
-    const last = state.workouts[0];
+    const hello = state.plan.name ? esc(state.plan.name) + ', ' : '';
     const start = state.session
       ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume</button>'
       : '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
-    const note = state.plan.lastNote && state.plan.lastNoteBlock === state.plan.blockIndex
-      ? '<div class="banner banner-ok">' + esc(state.plan.lastNote) + '</div>'
+    const extra = state.area === 'strength'
+      ? '<button class="log-row" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</small></span><span class="chevron">›</span></button>'
       : '';
+    const list = [];
+    for (let slot = 0; slot < areaCount(); slot += 1) {
+      if (slot === view.built.slot) continue;
+      const other = sessionAt(view.week, slot, state.area);
+      list.push('<button class="log-row" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + other.exercises.length + ' exercises</small></span><span class="chevron">›</span></button>');
+    }
     return '<section class="page">' +
-      '<header class="page-head"><div><h1>Today</h1><p class="lede">' + (streak ? streak + ' day streak' : 'Your session is ready') + '</p></div></header>' +
-      note +
-      '<div class="card session-hero"><p class="eyebrow">Week ' + built.week + ' of 4 · ' + esc(built.weekName) + '</p>' +
+      '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
+      '<header class="page-head"><div><h1>Today</h1><p class="lede">' + hello + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
+      '<div class="card session-hero"><p class="eyebrow">' + (state.area === 'strength' ? 'Week ' + built.week + ' of 4 · ' + esc(built.weekName) : areaTitle()) + '</p>' +
       '<h2>' + esc(built.title) + '</h2>' +
-      '<p class="session-meta">' + built.exercises.length + ' exercises · ' + esc(focus) + '</p>' +
-      (view.slot.doneToday ? '<p class="session-meta">You already trained today. This is the next one.</p>' : '') +
+      '<p class="session-meta">' + built.exercises.length + ' ' + (built.exercises.length === 1 ? 'piece' : 'exercises') + '</p>' +
+      (view.slot.doneToday ? '<p class="session-meta">You already did one today. This is the next.</p>' : '') +
       start + '</div>' +
-      '<div class="group" style="margin-top:16px">' +
-      '<button class="log-row" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + state.plan.days + ' days a week</small></span><span class="chevron">›</span></button>' +
-      (last ? '<button class="log-row" data-action="open-history" data-index="0"><span class="choice-copy"><strong>Last session</strong><small>' + esc(workoutTitle(last)) + ' · ' + esc(formatWhen(last.date)) + '</small></span><span class="chevron">›</span></button>' : '') +
-      '</div></section>';
+      '<div class="group" style="margin-top:16px">' + extra + list.join('') + '</div></section>';
   }
 
   function renderPlan() {
     const week = Math.min(4, L.blockWeek(state.plan, new Date()));
-    const focus = state.plan.emphasis.map(function (group) { return L.GROUP_LABEL[group]; }).join(' · ');
     const note = state.plan.lastNote && state.plan.lastNoteBlock === state.plan.blockIndex
       ? '<div class="banner banner-ok">' + esc(state.plan.lastNote) + '</div>'
       : '';
@@ -575,7 +659,7 @@
       return '<button class="log-row" data-action="open-week" data-week="' + n + '"><span class="set-num' + badge + '">' + n + '</span><span class="choice-copy"><strong>Week ' + n + ' · ' + esc(copy.name) + '</strong><small>' + esc(copy.text) + '</small></span><span class="chevron">' + trail + '</span></button>';
     }).join('');
     return '<section class="page">' + backBar() +
-      '<header class="page-head"><div><h1>This block</h1><p class="lede">' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(focus) + '</p></div></header>' +
+      '<header class="page-head"><div><h1>This block</h1><p class="lede">' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</p></div></header>' +
       note +
       '<div class="group">' + rows + '</div>' +
       '<button class="btn btn-quiet" data-action="nav" data-section="you">Change goal</button></section>';
@@ -622,13 +706,16 @@
     }).join('');
     const weekNow = Math.min(4, L.blockWeek(state.plan, new Date()));
     const weekRows = [];
-    for (let slot = 0; slot < state.plan.days; slot += 1) {
-      const built = sessionAt(weekNow, slot);
+    for (let slot = 0; slot < areaCount(); slot += 1) {
+      const built = sessionAt(weekNow, slot, state.area);
       weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + built.exercises.length + ' exercises</small></span><span class="chevron">›</span></button>');
     }
-    return '<section class="page"><header class="page-head"><div><h1>Train</h1><p class="lede">Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) + '</p></div></header>' +
-      '<div class="section-label">This week</div><div class="group">' + weekRows.join('') + '</div>' +
-      '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div></section>';
+    const routines = state.area === 'strength'
+      ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
+      : '';
+    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
+      '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>' +
+      routines + '</section>';
   }
 
   function renderSession() {
@@ -765,16 +852,8 @@
     const theme = stored === 'light' || stored === 'dark' ? stored : 'system';
     const one = calculatorValue();
     const notify = notificationsActive();
-    const goals = [['strength', 'Strength'], ['muscle', 'Muscle'], ['mobility', 'Mobility'], ['mixed', 'Mixed']];
-    return '<section class="page"><header class="page-head"><div><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
-      '<div class="section-head"><h2>Training</h2></div><div class="card train-prefs">' +
-      '<p class="label">Goal</p><div class="segmented">' + goals.map(function (goal) {
-        return seg('set-goal', goal[0], goal[1], state.plan.goal === goal[0]);
-      }).join('') + '</div>' +
-      '<p class="label">Days a week</p><div class="segmented">' +
-      seg('set-days', '3', '3', state.plan.days === 3) + seg('set-days', '4', '4', state.plan.days === 4) +
-      '</div></div>' +
-      '<p class="footnote">The next session follows this. After four weeks, the muscles move if the lifts did.</p>' +
+    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
+      '<div class="group"><button class="log-row" data-action="edit-setup"><span class="choice-copy"><strong>' + esc(state.plan.name || 'Your details') + '</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(L.splitLabel(state.plan.split)) + ' · ' + state.plan.days + ' days</small></span><span class="chevron">›</span></button></div>' +
       '<div class="group"><label class="field"><span class="label">Body weight</span><input id="body-weight" inputmode="decimal" value="' + esc(displayWeight(state.weight)) + '"><span class="suffix">' + esc(state.unit) + '</span></label>' +
       '<div class="field"><span class="label">Units</span><div class="segmented wide">' +
       seg('set-unit', 'kg', 'kg', state.unit === 'kg') + seg('set-unit', 'lbs', 'lbs', state.unit === 'lbs') + '</div></div>' +
@@ -1151,7 +1230,7 @@
   function startPlan() {
     syncPlan();
     const chosen = state.section === 'preview' ? state.preview : null;
-    const view = chosen ? { built: sessionAt(chosen.week, chosen.slot) } : currentBuilt();
+    const view = chosen ? { built: sessionAt(chosen.week, chosen.slot, state.area) } : currentBuilt();
     if (!view.built.exercises.length) {
       toast('That plan has no exercises yet.');
       return;
@@ -1164,6 +1243,8 @@
         week: view.built.week,
         slot: view.built.slot,
         goal: state.plan.goal,
+        split: state.plan.split,
+        mode: state.area,
         emphasis: state.plan.emphasis.slice()
       }
     });
@@ -1499,6 +1580,7 @@
     nav: function (el) {
       state.section = el.dataset.section;
       state.sheet = null;
+      state.menu = false;
       render();
       saveActive();
     },
@@ -1511,6 +1593,56 @@
       }
       if (el.dataset.type === 'plan') startPlan();
       else startWorkout(el.dataset.type);
+    },
+    'open-menu': function () { state.menu = true; renderDrawer(); },
+    'close-menu': function () { state.menu = false; renderDrawer(); },
+    'set-area': function (el) {
+      const area = el.dataset.area;
+      if (area !== 'strength' && area !== 'mobility' && area !== 'cardio') return;
+      state.area = area;
+      state.menu = false;
+      state.section = 'today';
+      state.preview = null;
+      render();
+    },
+    'edit-setup': function () {
+      state.setup = {
+        name: state.plan.name || '',
+        goal: state.plan.goal,
+        split: state.plan.split,
+        days: state.plan.days
+      };
+      state.menu = false;
+      state.section = 'setup';
+      render();
+    },
+    'set-setup': function (el) {
+      if (!state.setup) state.setup = { name: '', goal: 'strength', split: 'upper-lower', days: 4 };
+      const field = el.dataset.field;
+      if (field === 'goal' || field === 'split') state.setup[field] = el.dataset.value;
+      else if (el.dataset.value === '3' || el.dataset.value === '4') state.setup.days = Number(el.dataset.value);
+      const name = document.getElementById('setup-name');
+      if (name) state.setup.name = name.value;
+      render({ keepScroll: true });
+    },
+    'save-setup': function () {
+      const name = document.getElementById('setup-name');
+      const draft = state.setup || { name: '', goal: 'strength', split: 'upper-lower', days: 4 };
+      if (name) draft.name = name.value;
+      state.plan.name = String(draft.name || '').trim();
+      state.plan.goal = draft.goal || 'strength';
+      state.plan.split = draft.split || 'upper-lower';
+      state.plan.days = draft.days === 3 ? 3 : 4;
+      state.plan.onboarded = true;
+      state.plan = L.normalizePlan(state.plan, new Date());
+      state.plan.onboarded = true;
+      state.plan.name = String(draft.name || '').trim();
+      savePlan();
+      state.section = 'today';
+      state.area = 'strength';
+      state.setup = null;
+      render();
+      toast('Saved');
     },
     'open-plan': function () {
       state.section = 'plan';
