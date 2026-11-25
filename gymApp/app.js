@@ -700,7 +700,7 @@
       list.push('<button class="log-row' + (slot === built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
     }
     const kicker = state.area === 'strength'
-      ? 'Week ' + built.week + ' of 4 · ' + built.weekName
+      ? 'Week ' + built.week + ' of 4 · ' + built.weekName + (built.dayIndex ? ' · Day ' + built.dayIndex + '/' + built.dayCount : '')
       : areaTitle();
     return '<section class="page">' +
       '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
