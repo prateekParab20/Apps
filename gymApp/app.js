@@ -503,6 +503,8 @@
     }
     renderChrome();
     ensureElapsed();
+    document.body.classList.remove('area-strength', 'area-mobility', 'area-cardio');
+    document.body.classList.add('area-' + (state.area || 'strength'));
   }
 
   function renderDrawer() {
@@ -513,7 +515,7 @@
     }
     const item = function (area, label, detail) {
       const on = state.area === area ? ' aria-current="true"' : '';
-      return '<button class="menu-row" data-action="set-area" data-area="' + area + '"' + on + '><strong>' + label + '</strong><small>' + detail + '</small></button>';
+      return '<button class="menu-row" data-action="set-area" data-area="' + area + '"' + on + '><i class="swatch ' + area + '"></i><span class="choice-copy"><strong>' + label + '</strong><small>' + detail + '</small></span></button>';
     };
     root.innerHTML = '<div class="drawer-backdrop" data-action="close-menu"></div><aside class="drawer" role="dialog" aria-label="Menu">' +
       '<p class="eyebrow">Sections</p>' +
@@ -619,11 +621,35 @@
       '<button class="btn btn-primary" style="margin-top:22px" data-action="save-setup">' + (state.plan.onboarded ? 'Save' : 'Continue') + '</button></section>';
   }
 
+  function greeting() {
+    const hour = new Date().getHours();
+    const part = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
+    return state.plan.name ? part + ', ' + state.plan.name : part;
+  }
+
+  function cheerLine(view) {
+    if (view.slot.doneToday) return 'Nice work today. Keep it up.';
+    if (state.area === 'mobility') return 'Slow is the point. Keep it easy.';
+    if (state.area === 'cardio') return 'Easy pace. You should still be able to talk.';
+    const streak = L.streak(state.workouts);
+    if (streak >= 3) return 'Keep it up. ' + streak + ' days in a row.';
+    if (view.built.week === 3) return 'Heavy week. You have got this.';
+    if (view.built.week === 4) return 'Lighter sets this week. You earned them.';
+    if (!state.workouts.length) return 'One session is a real start.';
+    return 'Show up. The numbers can follow.';
+  }
+
+  function weekDots(week) {
+    return '<div class="week-dots" aria-hidden="true">' + [1, 2, 3, 4].map(function (n) {
+      const cls = n < week ? ' done' : (n === week ? ' on' : '');
+      return '<i class="' + cls + '"></i>';
+    }).join('') + '</div>';
+  }
+
   function renderToday() {
     const view = currentBuilt();
     const built = view.built;
     const streak = L.streak(state.workouts);
-    const hello = state.plan.name ? esc(state.plan.name) + ', ' : '';
     const start = state.session
       ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume</button>'
       : '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
@@ -636,13 +662,17 @@
       const other = sessionAt(view.week, slot, state.area);
       list.push('<button class="log-row" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + other.exercises.length + ' exercises</small></span><span class="chevron">›</span></button>');
     }
+    const kicker = state.area === 'strength'
+      ? 'Week ' + built.week + ' of 4 · ' + built.weekName
+      : areaTitle();
     return '<section class="page">' +
       '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
-      '<header class="page-head"><div><h1>Today</h1><p class="lede">' + hello + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
-      '<div class="card session-hero"><p class="eyebrow">' + (state.area === 'strength' ? 'Week ' + built.week + ' of 4 · ' + esc(built.weekName) : areaTitle()) + '</p>' +
+      '<header class="page-head"><div><h1>' + esc(greeting()) + '</h1><p class="lede">' + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
+      '<div class="card session-hero">' + (state.area === 'strength' ? weekDots(built.week) : '') +
+      '<p class="eyebrow">' + esc(kicker) + '</p>' +
       '<h2>' + esc(built.title) + '</h2>' +
+      '<p class="cheer">' + esc(cheerLine(view)) + '</p>' +
       '<p class="session-meta">' + built.exercises.length + ' ' + (built.exercises.length === 1 ? 'piece' : 'exercises') + '</p>' +
-      (view.slot.doneToday ? '<p class="session-meta">You already did one today. This is the next.</p>' : '') +
       start + '</div>' +
       '<div class="group" style="margin-top:16px">' + extra + list.join('') + '</div></section>';
   }
@@ -748,11 +778,11 @@
       if (isNext) nextMarked = true;
       if (logged) {
         const weightText = Number(set.weight) > 0 ? esc(displayWeight(set.weight)) + ' ' + esc(state.unit) + ' × ' + esc(set.reps) : esc(set.reps) + ' reps';
-        rows.push('<div class="set-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
+        rows.push('<div class="set-row done-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
       } else {
         const target = targetForSet(ex, i);
         const hint = target && target.kind === 'weight' ? 'Heavier than last time' : (target && target.kind === 'reps' ? 'One more rep' : (target ? 'Match the last set' : ex.reps));
-        rows.push('<div class="set-row"><span class="set-num' + (isNext ? ' next' : '') + '">' + (i + 1) + '</span><span class="set-copy"><strong>' + (target ? esc(target.label) : 'Set ' + (i + 1)) + '</strong><small>' + esc(hint) + '</small></span>' +
+        rows.push('<div class="set-row' + (isNext ? ' next-set' : '') + '"><span class="set-num' + (isNext ? ' next' : '') + '">' + (i + 1) + '</span><span class="set-copy"><strong>' + (target ? esc(target.label) : 'Set ' + (i + 1)) + '</strong><small>' + esc(hint) + '</small></span>' +
           (target ? '<button class="set-go" data-action="log-target" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Log</button>' : '') +
           '<button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">' + (target ? 'Adjust' : 'Log') + '</button></div>');
       }
