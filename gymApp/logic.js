@@ -186,6 +186,87 @@
     return mins + ':' + (secs < 10 ? '0' : '') + secs;
   }
 
+  const MILESTONES = [
+    { id: 'first', title: 'First session', line: 'You showed up. That is the habit.', need: 'Finish 1 workout' },
+    { id: 'five', title: '5 sessions', line: 'Keep it up. Five times you chose this.', need: 'Finish 5 workouts' },
+    { id: 'ten', title: '10 sessions', line: 'Double digits. This is part of the week now.', need: 'Finish 10 workouts' },
+    { id: 'twentyfive', title: '25 sessions', line: 'A real body of work. Be proud of the count.', need: 'Finish 25 workouts' },
+    { id: 'streak3', title: '3-day streak', line: 'Three days in a row. Keep it up.', need: 'Train 3 days running' },
+    { id: 'streak7', title: '7-day streak', line: 'A full week of showing up.', need: 'Train 7 days running' },
+    { id: 'week', title: 'Full week', line: 'Three sessions in one week. That is a trophy.', need: '3 sessions in one week' },
+    { id: 'pr', title: 'New best', line: 'You lifted more than you ever have on that movement.', need: 'Beat an old weight' },
+    { id: 'strength', title: 'Strength', line: 'The heavy work has a first day.', need: 'Finish a strength session' },
+    { id: 'mobility', title: 'Mobility', line: 'You gave the slow work its own session.', need: 'Finish a mobility session' },
+    { id: 'cardio', title: 'Cardio', line: 'Heart and lungs got a turn of their own.', need: 'Finish a cardio session' },
+    { id: 'back', title: 'You came back', line: 'A quiet week, then you returned. That counts.', need: 'Train again after 7 days off' }
+  ];
+
+  function modeOfWorkout(workout) {
+    if (workout && workout.plan && workout.plan.mode) return workout.plan.mode;
+    return 'strength';
+  }
+
+  function earnedMilestoneIds(workouts, now) {
+    const list = (workouts || []).filter(function (workout) { return workout && workout.date; });
+    const ids = [];
+    if (list.length >= 1) ids.push('first');
+    if (list.length >= 5) ids.push('five');
+    if (list.length >= 10) ids.push('ten');
+    if (list.length >= 25) ids.push('twentyfive');
+    const run = streak(list, now);
+    if (run >= 3) ids.push('streak3');
+    if (run >= 7) ids.push('streak7');
+    const modes = {};
+    list.forEach(function (workout) { modes[modeOfWorkout(workout)] = true; });
+    if (modes.strength) ids.push('strength');
+    if (modes.mobility) ids.push('mobility');
+    if (modes.cardio) ids.push('cardio');
+    const weeks = {};
+    list.forEach(function (workout) {
+      const key = startOfWeek(workout.date).getTime();
+      weeks[key] = (weeks[key] || 0) + 1;
+    });
+    const busiest = Object.keys(weeks).reduce(function (max, key) { return Math.max(max, weeks[key]); }, 0);
+    if (busiest >= 3) ids.push('week');
+    const times = list.map(function (workout) { return new Date(workout.date).getTime(); }).filter(function (t) { return t; }).sort(function (a, b) { return a - b; });
+    for (let i = 1; i < times.length; i += 1) {
+      if (times[i] - times[i - 1] >= 7 * 86400000) {
+        ids.push('back');
+        break;
+      }
+    }
+    const chrono = list.slice().sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+    for (let i = 1; i < chrono.length; i += 1) {
+      if (personalRecords(chrono[i], chrono.slice(0, i)).length) {
+        ids.push('pr');
+        break;
+      }
+    }
+    return ids;
+  }
+
+  function freshMilestones(workouts, seen, now) {
+    const have = {};
+    (seen || []).forEach(function (id) { have[id] = true; });
+    const earned = {};
+    earnedMilestoneIds(workouts, now).forEach(function (id) { earned[id] = true; });
+    return MILESTONES.filter(function (item) { return earned[item.id] && !have[item.id]; });
+  }
+
+  function milestoneBoard(workouts, now) {
+    const earned = {};
+    earnedMilestoneIds(workouts, now).forEach(function (id) { earned[id] = true; });
+    return MILESTONES.map(function (item) {
+      return {
+        id: item.id,
+        title: item.title,
+        line: item.line,
+        need: item.need,
+        earned: !!earned[item.id]
+      };
+    });
+  }
+
   function personalRecords(workout, history, nameOf) {
     const records = [];
     (workout.exercises || []).forEach(function (ex) {
@@ -893,6 +974,8 @@
     lastPerformance: lastPerformance,
     suggestOverload: suggestOverload,
     formatRest: formatRest,
+    freshMilestones: freshMilestones,
+    milestoneBoard: milestoneBoard,
     personalRecords: personalRecords,
     progressSeries: progressSeries,
     exerciseSummaries: exerciseSummaries,

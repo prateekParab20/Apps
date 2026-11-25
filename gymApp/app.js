@@ -2,6 +2,7 @@
 (function () {
   const Lib = window.GymLibrary;
   const L = window.GymLogic;
+  const Media = window.GymMedia;
   const view = document.getElementById('view');
   const CIRC = 2 * Math.PI * 18;
 
@@ -53,6 +54,7 @@
     dialog: null,
     notes: '',
     plan: null,
+    seen: [],
     area: 'strength',
     menu: false,
     setup: null,
@@ -308,6 +310,10 @@
     localStorage.setItem('stronglean_plan', JSON.stringify(state.plan));
   }
 
+  function saveSeen() {
+    localStorage.setItem('stronglean_milestones', JSON.stringify(state.seen));
+  }
+
   function syncPlan() {
     const result = L.advancePlan(state.plan, state.workouts, new Date(), Lib.library);
     state.plan = result.plan;
@@ -370,6 +376,13 @@
     const storedPlan = readJSON('stronglean_plan', null);
     state.plan = L.normalizePlan(storedPlan, new Date());
     if (!storedPlan) savePlan();
+    const storedSeen = readJSON('stronglean_milestones', null);
+    if (storedSeen == null) {
+      state.seen = L.milestoneBoard(state.workouts, new Date()).filter(function (item) { return item.earned; }).map(function (item) { return item.id; });
+      localStorage.setItem('stronglean_milestones', JSON.stringify(state.seen));
+    } else {
+      state.seen = Array.isArray(storedSeen) ? storedSeen : [];
+    }
     const saved = readJSON('gymActiveState', null);
     if (saved && saved.currentWorkout) {
       state.session = saved.currentWorkout;
@@ -778,7 +791,8 @@
       if (isNext) nextMarked = true;
       if (logged) {
         const weightText = Number(set.weight) > 0 ? esc(displayWeight(set.weight)) + ' ' + esc(state.unit) + ' × ' + esc(set.reps) : esc(set.reps) + ' reps';
-        rows.push('<div class="set-row done-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
+        const record = isRecord(ex, set) ? '<span class="pr-badge">New best</span>' : '';
+        rows.push('<div class="set-row done-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + record + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
       } else {
         const target = targetForSet(ex, i);
         const hint = target && target.kind === 'weight' ? 'Heavier than last time' : (target && target.kind === 'reps' ? 'One more rep' : (target ? 'Match the last set' : ex.reps));
@@ -788,7 +802,8 @@
       }
     }
     return '<article class="card ex" id="ex-' + esc(ex.id) + '"><button class="ex-head" data-action="toggle-ex" data-id="' + esc(ex.id) + '"><span class="set-num' + (complete ? ' done' : '') + '">' + badge + '</span><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong>' + lastLine + '</span><span class="chevron">' + (open ? '˅' : '›') + '</span></button>' +
-      (open ? '<div class="ex-body"><div class="ex-tools"><button data-action="open-howto" data-id="' + esc(ex.id) + '" data-slot="' + index + '">How to</button><button data-action="open-swap" data-id="' + esc(ex.id) + '" data-slot="' + index + '">Swap</button><button data-action="open-video" data-id="' + esc(ex.id) + '">Video</button></div>' +
+      (open ? '<div class="ex-body">' + exerciseVisual(ex, 'md') +
+        '<div class="ex-tools"><button data-action="open-howto" data-id="' + esc(ex.id) + '" data-slot="' + index + '">How to</button><button data-action="open-swap" data-id="' + esc(ex.id) + '" data-slot="' + index + '">Swap</button><button data-action="open-video" data-id="' + esc(ex.id) + '">Video</button></div>' +
         rows.join('') +
         '<div class="ex-tools" style="margin-top:8px"><button data-action="add-set" data-id="' + esc(ex.id) + '">Add a set</button>' +
         (total > 1 ? '<button data-action="remove-set" data-id="' + esc(ex.id) + '">Remove set</button>' : '') +
@@ -796,6 +811,25 @@
         (state.sessionExercises.length > 1 ? '<button class="btn btn-quiet danger-text" data-action="remove-ex" data-id="' + esc(ex.id) + '">Remove exercise</button>' : '') +
         '</div>' : '') +
       '</article>';
+  }
+
+  function exerciseVisual(ex, size) {
+    if (!Media || !ex) return '';
+    return Media.visualHTML(ex.id, { name: ex.name, muscles: ex.muscles, size: size || 'md' });
+  }
+
+  function isRecord(ex, set) {
+    if (!set || !(Number(set.weight) > 0)) return false;
+    let best = 0;
+    state.workouts.forEach(function (workout) {
+      (workout.exercises || []).forEach(function (item) {
+        if (!sameId(item.id, ex.id)) return;
+        (item.completedSets || []).forEach(function (logged) {
+          if (logged && Number(logged.weight) > best) best = Number(logged.weight);
+        });
+      });
+    });
+    return best > 0 && Number(set.weight) > best;
   }
 
   function targetForSet(ex, setIndex) {
@@ -893,9 +927,29 @@
     return '<div class="lib-grid">' + groups.map(function (group) {
       return '<section><div class="section-label">' + esc(group.letter) + '</div><div class="group">' + group.items.map(function (ex) {
         const meta = [ex.category || '', (ex.muscles || []).slice(0, 2).join(', ')].filter(Boolean).join(' · ');
-        return '<button class="log-row" data-action="open-howto" data-id="' + esc(ex.id) + '"><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong><small>' + esc(meta) + '</small></span><span class="chevron">›</span></button>';
+        return '<button class="log-row lib-row" data-action="open-howto" data-id="' + esc(ex.id) + '">' + exerciseVisual(ex, 'sm') + '<span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong><small>' + esc(meta) + '</small></span><span class="chevron">›</span></button>';
       }).join('') + '</div></section>';
     }).join('') + '</div>';
+  }
+
+  function trophyCase() {
+    const board = L.milestoneBoard(state.workouts, new Date());
+    const next = board.find(function (item) { return !item.earned; });
+    const cards = board.map(function (item) {
+      return '<article class="award' + (item.earned ? ' earned' : ' locked') + '"><strong>' + esc(item.title) + '</strong><span>' + esc(item.earned ? item.line : item.need) + '</span></article>';
+    }).join('');
+    return '<div class="section-head"><h2>Milestones</h2></div>' +
+      (next ? '<p class="footnote tight">Next up · ' + esc(next.title) + '. ' + esc(next.need) + '.</p>' : '<p class="footnote tight">You have every milestone on this device.</p>') +
+      '<div class="award-grid">' + cards + '</div>';
+  }
+
+  function cheersSheet() {
+    const items = (state.sheet && state.sheet.items) || [];
+    return '<div class="cheer-hero"><p class="eyebrow">A new one</p><p>Keep it up. You earned this.</p></div>' +
+      items.map(function (item) {
+        return '<article class="award earned"><strong>' + esc(item.title) + '</strong><span>' + esc(item.line) + '</span></article>';
+      }).join('') +
+      '<button class="btn btn-primary" style="margin-top:16px" data-action="close-cheers">Continue</button>';
   }
 
   function renderYou() {
@@ -905,6 +959,7 @@
     const notify = notificationsActive();
     return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
       '<div class="group"><button class="log-row" data-action="edit-setup"><span class="choice-copy"><strong>' + esc(state.plan.name || 'Your details') + '</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(L.splitLabel(state.plan.split)) + ' · ' + state.plan.days + ' days</small></span><span class="chevron">›</span></button></div>' +
+      trophyCase() +
       '<div class="group"><label class="field"><span class="label">Body weight</span><input id="body-weight" inputmode="decimal" value="' + esc(displayWeight(state.weight)) + '"><span class="suffix">' + esc(state.unit) + '</span></label>' +
       '<div class="field"><span class="label">Units</span><div class="segmented wide">' +
       seg('set-unit', 'kg', 'kg', state.unit === 'kg') + seg('set-unit', 'lbs', 'lbs', state.unit === 'lbs') + '</div></div>' +
@@ -994,6 +1049,7 @@
     let body = '';
     let title = '';
     if (sheet.type === 'log') body = logSheet();
+    else if (sheet.type === 'cheers') { title = 'Keep it up'; body = cheersSheet(); }
     else if (sheet.type === 'finish') { title = 'Complete'; body = finishSheet(); }
     else if (sheet.type === 'howto') { title = 'How to'; body = howtoSheet(); }
     else if (sheet.type === 'add' || sheet.type === 'swap') { title = sheet.type === 'swap' ? 'Swap' : 'Add'; body = pickSheet(); }
@@ -1053,7 +1109,9 @@
     const alts = (ex.alternatives || []).map(function (name) {
       return '<button class="log-row" data-action="swap-name" data-name="' + esc(name) + '"><span class="choice-copy"><strong>' + esc(name) + '</strong><small>Alternative</small></span></button>';
     }).join('');
-    return '<h1 style="font-size:28px">' + esc(ex.name) + '</h1><div class="muscle-pills" style="margin:12px 0">' + (ex.muscles || []).map(function (muscle) {
+    return '<h1 style="font-size:28px">' + esc(ex.name) + '</h1>' +
+      exerciseVisual(ex, 'lg') +
+      '<div class="muscle-pills" style="margin:12px 0">' + (ex.muscles || []).map(function (muscle) {
       return '<span class="pill">' + esc(muscle) + '</span>';
     }).join('') + (ex.category ? '<span class="pill">' + esc(ex.category) + '</span>' : '') + '</div>' +
       muscleSVG(ex.muscles) +
@@ -1088,7 +1146,7 @@
     }).slice(0, 30);
     html += '<div class="section-label">Library</div><div class="group">' + list.map(function (ex) {
       const action = state.sheet.type === 'swap' ? 'do-swap' : 'do-add';
-      return '<button class="log-row" data-action="' + action + '" data-id="' + esc(ex.id) + '"><span class="choice-copy"><strong>' + esc(ex.name) + '</strong><small>' + esc((ex.muscles || []).slice(0, 3).join(', ')) + '</small></span></button>';
+      return '<button class="log-row lib-row" data-action="' + action + '" data-id="' + esc(ex.id) + '">' + exerciseVisual(ex, 'sm') + '<span class="choice-copy"><strong>' + esc(ex.name) + '</strong><small>' + esc((ex.muscles || []).slice(0, 3).join(', ')) + '</small></span></button>';
     }).join('') + '</div>';
     return html;
   }
@@ -2062,20 +2120,30 @@
       workout.typeName = workout.typeName || routineTitle(state.dayType);
       state.workouts.unshift(workout);
       saveWorkouts();
-      stopRest();
       state.session = null;
       state.sessionExercises = [];
       state.dayType = null;
       state.startTime = null;
       state.sheet = null;
+      stopRest();
       localStorage.removeItem('gymActiveState');
       if (elapsedTimer) {
         clearInterval(elapsedTimer);
         elapsedTimer = null;
       }
-      state.section = 'history';
+      const fresh = L.freshMilestones(state.workouts, state.seen, new Date());
+      state.seen = state.seen.concat(fresh.map(function (item) { return item.id; }));
+      saveSeen();
+      state.section = 'today';
+      state.sheet = fresh.length ? { type: 'cheers', items: fresh } : null;
+      const toastEl = document.getElementById('toast');
+      if (toastEl) toastEl.classList.remove('show');
       render();
-      toast('Workout saved');
+      if (!fresh.length) toast('Workout saved');
+    },
+    'close-cheers': function () {
+      state.sheet = null;
+      render();
     },
     discard: function () {
       ask({

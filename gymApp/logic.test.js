@@ -288,3 +288,28 @@ test('the next session slot skips days already trained this week', function () {
   assert.equal(next.doneToday, true);
   assert.equal(next.slot, 1);
 });
+
+test('milestones celebrate firsts, streaks, records, and a return', function () {
+  const now = new Date(2026, 10, 18, 12);
+  assert.equal(L.freshMilestones([], [], now).length, 0);
+  const first = [{ date: '2026-11-18T08:00:00', plan: { mode: 'strength' }, exercises: [] }];
+  const opened = L.freshMilestones(first, [], now).map(function (item) { return item.id; });
+  assert.deepEqual(opened, ['first', 'strength']);
+  assert.equal(L.freshMilestones(first, ['first', 'strength'], now).length, 0);
+  const streak = [
+    { date: '2026-11-18T08:00:00', exercises: [] },
+    { date: '2026-11-17T08:00:00', exercises: [] },
+    { date: '2026-11-16T08:00:00', exercises: [] }
+  ];
+  assert.ok(L.freshMilestones(streak, [], now).some(function (item) { return item.id === 'streak3'; }));
+  assert.ok(L.freshMilestones(streak, [], now).some(function (item) { return item.id === 'week'; }));
+  const prs = L.freshMilestones([
+    { date: '2026-11-10T08:00:00', exercises: [{ id: 1, completedSets: [{ weight: 40, reps: 5 }] }] },
+    { date: '2026-11-18T08:00:00', exercises: [{ id: 1, completedSets: [{ weight: 50, reps: 5 }] }] }
+  ], [], now);
+  assert.ok(prs.some(function (item) { return item.id === 'pr'; }));
+  assert.ok(prs.some(function (item) { return item.id === 'back'; }));
+  const board = L.milestoneBoard(first, now);
+  assert.equal(board.find(function (item) { return item.id === 'ten'; }).earned, false);
+  assert.equal(board.find(function (item) { return item.id === 'first'; }).earned, true);
+});
