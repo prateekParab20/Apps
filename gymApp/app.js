@@ -642,7 +642,7 @@
 
   function cheerLine(view) {
     if (state.session) return 'Pick up where you left off.';
-    if (view.slot.doneToday) return 'You already trained today. This is next when you come back.';
+    if (view.slot.doneToday) return 'Done for today. Next session is ready when you are.';
     if (state.area === 'mobility') return 'Slow is the point. Keep it easy.';
     if (state.area === 'cardio') return 'Easy pace. You should still be able to talk.';
     const streak = L.streak(state.workouts);
@@ -689,7 +689,7 @@
       start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
     }
     const planRow = state.area === 'strength'
-      ? '<button class="log-row" data-action="open-plan"><span class="choice-copy"><strong>Block plan</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</small></span><span class="chevron">›</span></button>'
+      ? '<button class="log-row" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</small></span><span class="chevron">›</span></button>'
       : '';
     const list = [];
     for (let slot = 0; slot < areaCount(); slot += 1) {
@@ -700,7 +700,7 @@
       list.push('<button class="log-row' + (slot === built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
     }
     const kicker = state.area === 'strength'
-      ? 'Week ' + built.week + ' of 4 · ' + built.weekName + (built.dayIndex ? ' · Day ' + built.dayIndex + '/' + built.dayCount : '')
+      ? 'Week ' + built.week + ' of 4 · ' + built.weekName
       : areaTitle();
     return '<section class="page">' +
       '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +

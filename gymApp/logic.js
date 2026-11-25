@@ -738,6 +738,8 @@
     'push-pull': { 3: ['push', 'pull', 'legs'], 4: ['push', 'pull', 'legs', 'upper'] },
     full: { 3: ['full', 'full', 'full'], 4: ['full', 'full', 'full', 'full'] }
   };
+  /* Titles stay plain only: Upper body / Lower body / Push / Pull / Full body (plus mobility/cardio).
+   * Never A/B, Day 1/3, or "chest focus" marketing names. User hard rule. */
   const DAY_LABEL = {
     upper: 'Upper body',
     lower: 'Lower body',
@@ -755,7 +757,7 @@
     full: 'Push, pull, and legs'
   };
 
-  /* Same day type twice in a week (Upper A / Upper B) needs a different lift bias. */
+  /* Same day type twice in a week keeps a plain title, but picks a different lift bias. */
   function dayParts(day, goal, variant) {
     const count = goal === 'strength' ? 4 : 5;
     const v = variant || 0;
@@ -808,46 +810,16 @@
     return [{ group: day, count: count, kind: 'main' }];
   }
 
-  function sessionFocus(day, variant, repeats) {
-    const v = variant || 0;
-    if (day === 'upper' && repeats > 1) {
-      return v % 2 === 1 ? 'Pull focus · back & biceps' : 'Press focus · chest & shoulders';
-    }
-    if (day === 'lower' && repeats > 1) {
-      return v % 2 === 1 ? 'Hinge focus · hamstrings & glutes' : 'Squat focus · quads & glutes';
-    }
-    if (day === 'full' && repeats > 1) {
-      if (v % 4 === 1) return 'Pull bias · back first';
-      if (v % 4 === 2) return 'Leg bias · squat first';
-      if (v % 4 === 3) return 'Balanced · hinge finish';
-      return 'Press bias · chest first';
-    }
-    return DAY_FOCUS[day] || '';
-  }
-
-  function sessionTitle(day, variant, repeats) {
-    const base = DAY_LABEL[day] || 'Session';
-    if (repeats <= 1) return base;
-    const letter = String.fromCharCode(65 + (variant % 26));
-    if (day === 'upper') return 'Upper ' + letter;
-    if (day === 'lower') return 'Lower ' + letter;
-    if (day === 'full') return 'Full body ' + letter;
-    return base + ' ' + letter;
-  }
-
   function sessionParts(plan, slot) {
     const pattern = SPLIT_DAYS[plan.split] || SPLIT_DAYS['upper-lower'];
     const days = pattern[plan.days] || pattern[4];
     const index = ((slot % days.length) + days.length) % days.length;
     const day = days[index];
-    const repeats = days.filter(function (item) { return item === day; }).length;
     const variant = days.slice(0, index + 1).filter(function (item) { return item === day; }).length - 1;
     return {
       day: day,
-      title: sessionTitle(day, variant, repeats),
-      focus: sessionFocus(day, variant, repeats),
-      dayIndex: index + 1,
-      dayCount: days.length,
+      title: DAY_LABEL[day] || 'Session',
+      focus: DAY_FOCUS[day] || '',
       variant: variant,
       parts: dayParts(day, plan.goal, variant)
     };
@@ -1020,8 +992,6 @@
     return {
       title: layout.title,
       focus: layout.focus,
-      dayIndex: layout.dayIndex,
-      dayCount: layout.dayCount,
       summary: phase.text,
       week: week,
       weekName: phase.name,
