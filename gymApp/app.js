@@ -641,7 +641,8 @@
   }
 
   function cheerLine(view) {
-    if (view.slot.doneToday) return 'Nice work today. Keep it up.';
+    if (state.session) return 'Pick up where you left off.';
+    if (view.slot.doneToday) return 'Done for today. Next session is ready when you are.';
     if (state.area === 'mobility') return 'Slow is the point. Keep it easy.';
     if (state.area === 'cardio') return 'Easy pace. You should still be able to talk.';
     const streak = L.streak(state.workouts);
@@ -659,24 +660,47 @@
     }).join('') + '</div>';
   }
 
+  function sessionMeta(built) {
+    const bits = [];
+    if (built.focus) bits.push(built.focus);
+    bits.push(built.exercises.length + ' ' + (built.exercises.length === 1 ? 'piece' : 'exercises'));
+    return bits.join(' · ');
+  }
+
+  function sessionRowDetail(built, status) {
+    const bits = [];
+    if (status) bits.push(status);
+    if (built.focus) bits.push(built.focus);
+    else bits.push(built.exercises.length + ' exercises');
+    return bits.join(' · ');
+  }
+
   function renderToday() {
     const view = currentBuilt();
     const built = view.built;
     const streak = L.streak(state.workouts);
-    const start = state.session
-      ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume</button>'
-      : '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
-    const extra = state.area === 'strength'
+    const used = view.slot.used || {};
+    let start;
+    if (state.session) {
+      start = '<button class="btn btn-primary" data-action="nav" data-section="train">Resume</button>';
+    } else if (view.slot.doneToday) {
+      start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start next</button>';
+    } else {
+      start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
+    }
+    const planRow = state.area === 'strength'
       ? '<button class="log-row" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</small></span><span class="chevron">›</span></button>'
       : '';
     const list = [];
     for (let slot = 0; slot < areaCount(); slot += 1) {
-      if (slot === view.built.slot) continue;
       const other = sessionAt(view.week, slot, state.area);
-      list.push('<button class="log-row" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + other.exercises.length + ' exercises</small></span><span class="chevron">›</span></button>');
+      let status = '';
+      if (used[slot]) status = 'Done';
+      else if (slot === built.slot) status = view.slot.doneToday ? 'Next' : 'Up next';
+      list.push('<button class="log-row' + (slot === built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
     }
     const kicker = state.area === 'strength'
-      ? 'Week ' + built.week + ' of 4 · ' + built.weekName
+      ? 'Week ' + built.week + ' of 4 · ' + built.weekName + (built.dayIndex ? ' · Day ' + built.dayIndex + '/' + built.dayCount : '')
       : areaTitle();
     return '<section class="page">' +
       '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
@@ -685,9 +709,10 @@
       '<p class="eyebrow">' + esc(kicker) + '</p>' +
       '<h2>' + esc(built.title) + '</h2>' +
       '<p class="cheer">' + esc(cheerLine(view)) + '</p>' +
-      '<p class="session-meta">' + built.exercises.length + ' ' + (built.exercises.length === 1 ? 'piece' : 'exercises') + '</p>' +
+      '<p class="session-meta">' + esc(sessionMeta(built)) + '</p>' +
       start + '</div>' +
-      '<div class="group" style="margin-top:16px">' + extra + list.join('') + '</div></section>';
+      '<div class="section-label" style="margin-top:18px">This week</div>' +
+      '<div class="group">' + planRow + list.join('') + '</div></section>';
   }
 
   function renderPlan() {
@@ -714,8 +739,10 @@
     const rows = [];
     for (let slot = 0; slot < state.plan.days; slot += 1) {
       const built = sessionAt(n, slot);
-      const lead = built.exercises[0] ? built.exercises[0].sets + ' × ' + built.exercises[0].reps : '';
-      rows.push('<button class="log-row" data-action="open-preview" data-week="' + n + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + built.exercises.length + ' exercises' + (lead ? ' · ' + esc(lead) : '') + '</small></span><span class="chevron">›</span></button>');
+      const detail = built.focus
+        ? built.focus + ' · ' + built.exercises.length + ' exercises'
+        : built.exercises.length + ' exercises' + (built.exercises[0] ? ' · ' + built.exercises[0].sets + ' × ' + built.exercises[0].reps : '');
+      rows.push('<button class="log-row" data-action="open-preview" data-week="' + n + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(detail) + '</small></span><span class="chevron">›</span></button>');
     }
     return '<section class="page">' + backBar() +
       '<header class="page-head"><div><h1>Week ' + n + '</h1><p class="lede">' + esc(copy.name) + '. ' + esc(copy.text) + '</p></div></header>' +
@@ -731,8 +758,9 @@
     const start = state.session
       ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume workout</button>'
       : '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
+    const lede = 'Week ' + built.week + ' · ' + built.weekName + (built.focus ? ' · ' + built.focus : '');
     return '<section class="page">' + backBar() +
-      '<header class="page-head"><div><h1>' + esc(built.title) + '</h1><p class="lede">Week ' + built.week + ' · ' + esc(built.weekName) + '</p></div></header>' +
+      '<header class="page-head"><div><h1>' + esc(built.title) + '</h1><p class="lede">' + esc(lede) + '</p></div></header>' +
       '<div class="group">' + rows + '</div>' +
       start + '</section>';
   }
@@ -751,7 +779,7 @@
     const weekRows = [];
     for (let slot = 0; slot < areaCount(); slot += 1) {
       const built = sessionAt(weekNow, slot, state.area);
-      weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + built.exercises.length + ' exercises</small></span><span class="chevron">›</span></button>');
+      weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(sessionRowDetail(built)) + '</small></span><span class="chevron">›</span></button>');
     }
     const routines = state.area === 'strength'
       ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'

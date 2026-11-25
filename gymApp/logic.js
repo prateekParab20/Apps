@@ -708,9 +708,9 @@
       if (workout.plan.slot != null) used[workout.plan.slot] = true;
     });
     for (let i = 0; i < count; i += 1) {
-      if (!used[i]) return { slot: i, doneToday: doneToday };
+      if (!used[i]) return { slot: i, doneToday: doneToday, used: used, count: count };
     }
-    return { slot: done.length % count, doneToday: doneToday };
+    return { slot: done.length % count, doneToday: doneToday, used: used, count: count };
   }
 
   function weekIds(workouts, plan, now, mode) {
@@ -746,23 +746,93 @@
     legs: 'Legs',
     full: 'Full body'
   };
+  const DAY_FOCUS = {
+    upper: 'Chest, back, arms',
+    lower: 'Quads, hamstrings, glutes',
+    push: 'Chest, shoulders, triceps',
+    pull: 'Back, rear delts, biceps',
+    legs: 'Quads, hamstrings, glutes',
+    full: 'Push, pull, and legs'
+  };
 
-  function dayParts(day, goal) {
+  /* Same day type twice in a week (Upper A / Upper B) needs a different lift bias. */
+  function dayParts(day, goal, variant) {
     const count = goal === 'strength' ? 4 : 5;
-    if (day === 'upper') return [
-      { group: 'push', count: 3, kind: 'main' },
-      { group: 'pull', count: 2, kind: 'main' }
-    ];
-    if (day === 'lower') return [
-      { group: 'legs', count: count, kind: 'main' },
-      { group: 'core', count: 1, kind: 'accessory' }
-    ];
-    if (day === 'full') return [
-      { group: 'push', count: 2, kind: 'main' },
-      { group: 'pull', count: 2, kind: 'main' },
-      { group: 'legs', count: 2, kind: 'main' }
-    ];
+    const v = variant || 0;
+    if (day === 'upper') {
+      if (v % 2 === 1) {
+        return [
+          { group: 'pull', count: 3, kind: 'main', bias: 'pull' },
+          { group: 'push', count: 2, kind: 'main', bias: 'press' }
+        ];
+      }
+      return [
+        { group: 'push', count: 3, kind: 'main', bias: 'press' },
+        { group: 'pull', count: 2, kind: 'main', bias: 'pull' }
+      ];
+    }
+    if (day === 'lower') {
+      return [
+        { group: 'legs', count: count, kind: 'main', bias: v % 2 === 1 ? 'hinge' : 'squat' },
+        { group: 'core', count: 1, kind: 'accessory' }
+      ];
+    }
+    if (day === 'full') {
+      if (v % 4 === 1) {
+        return [
+          { group: 'pull', count: 3, kind: 'main', bias: 'pull' },
+          { group: 'push', count: 2, kind: 'main', bias: 'press' },
+          { group: 'legs', count: 2, kind: 'main', bias: 'hinge' }
+        ];
+      }
+      if (v % 4 === 2) {
+        return [
+          { group: 'legs', count: 3, kind: 'main', bias: 'squat' },
+          { group: 'push', count: 2, kind: 'main', bias: 'press' },
+          { group: 'pull', count: 2, kind: 'main', bias: 'pull' }
+        ];
+      }
+      if (v % 4 === 3) {
+        return [
+          { group: 'push', count: 2, kind: 'main', bias: 'press' },
+          { group: 'pull', count: 2, kind: 'main', bias: 'pull' },
+          { group: 'legs', count: 2, kind: 'main', bias: 'hinge' }
+        ];
+      }
+      return [
+        { group: 'push', count: 3, kind: 'main', bias: 'press' },
+        { group: 'pull', count: 2, kind: 'main', bias: 'pull' },
+        { group: 'legs', count: 2, kind: 'main', bias: 'squat' }
+      ];
+    }
     return [{ group: day, count: count, kind: 'main' }];
+  }
+
+  function sessionFocus(day, variant, repeats) {
+    const v = variant || 0;
+    if (day === 'upper' && repeats > 1) {
+      return v % 2 === 1 ? 'Pull focus · back & biceps' : 'Press focus · chest & shoulders';
+    }
+    if (day === 'lower' && repeats > 1) {
+      return v % 2 === 1 ? 'Hinge focus · hamstrings & glutes' : 'Squat focus · quads & glutes';
+    }
+    if (day === 'full' && repeats > 1) {
+      if (v % 4 === 1) return 'Pull bias · back first';
+      if (v % 4 === 2) return 'Leg bias · squat first';
+      if (v % 4 === 3) return 'Balanced · hinge finish';
+      return 'Press bias · chest first';
+    }
+    return DAY_FOCUS[day] || '';
+  }
+
+  function sessionTitle(day, variant, repeats) {
+    const base = DAY_LABEL[day] || 'Session';
+    if (repeats <= 1) return base;
+    const letter = String.fromCharCode(65 + (variant % 26));
+    if (day === 'upper') return 'Upper ' + letter;
+    if (day === 'lower') return 'Lower ' + letter;
+    if (day === 'full') return 'Full body ' + letter;
+    return base + ' ' + letter;
   }
 
   function sessionParts(plan, slot) {
@@ -770,7 +840,17 @@
     const days = pattern[plan.days] || pattern[4];
     const index = ((slot % days.length) + days.length) % days.length;
     const day = days[index];
-    return { day: day, title: DAY_LABEL[day], parts: dayParts(day, plan.goal) };
+    const repeats = days.filter(function (item) { return item === day; }).length;
+    const variant = days.slice(0, index + 1).filter(function (item) { return item === day; }).length - 1;
+    return {
+      day: day,
+      title: sessionTitle(day, variant, repeats),
+      focus: sessionFocus(day, variant, repeats),
+      dayIndex: index + 1,
+      dayCount: days.length,
+      variant: variant,
+      parts: dayParts(day, plan.goal, variant)
+    };
   }
 
   function poolFor(library, group, kind) {
@@ -784,8 +864,9 @@
     });
   }
 
-  function scoreExercise(ex, group, kind) {
+  function scoreExercise(ex, group, kind, bias) {
     const first = String((ex.muscles && ex.muscles[0]) || '').toLowerCase();
+    const muscles = (ex.muscles || []).join(' ').toLowerCase();
     const keys = GROUP_KEYS[group] || [];
     let score = keys.some(function (key) { return first.indexOf(key) !== -1; }) ? 4 : 0;
     const name = String(ex.name || '').toLowerCase();
@@ -793,6 +874,19 @@
     if (/press|squat|deadlift|row|pull-up|pulldown|lunge|thrust|dip/.test(name)) score += kind === 'main' ? 3 : 1;
     if (Number(ex.id) > 0 && Number(ex.id) < 700) score += 2;
     if (ex.category === 'Gym' && kind === 'main') score += 1;
+    if (bias === 'press') {
+      if (/bench|chest press|incline|dip|overhead|shoulder press|fly/.test(name) || /chest|pec|tricep/.test(muscles)) score += 3;
+      if (/row|pulldown|pull-up|face pull|curl/.test(name)) score -= 1;
+    } else if (bias === 'pull') {
+      if (/row|pulldown|pull-up|chin|face pull|lat /.test(name) || /lat|back|bicep/.test(muscles)) score += 3;
+      if (/bench|chest press|incline|lateral raise/.test(name)) score -= 1;
+    } else if (bias === 'squat') {
+      if (/squat|leg press|lunge|leg extension|step-up|hack/.test(name) || /quad/.test(muscles)) score += 3;
+      if (/rdl|deadlift|leg curl|hip thrust|good morning|pull-through/.test(name) || /hamstring/.test(muscles)) score -= 1;
+    } else if (bias === 'hinge') {
+      if (/rdl|deadlift|leg curl|hip thrust|good morning|pull-through/.test(name) || /hamstring|glute/.test(muscles)) score += 3;
+      if (/leg extension|hack squat/.test(name) || (/quad/.test(muscles) && !/glute|hamstring/.test(muscles))) score -= 1;
+    }
     return score;
   }
 
@@ -807,11 +901,11 @@
     }
   }
 
-  function pickExercises(pool, count, seed, avoid, group, kind) {
+  function pickExercises(pool, count, seed, avoid, group, kind, bias) {
     const avoidSet = {};
     (avoid || []).forEach(function (id) { avoidSet[String(id)] = true; });
     const ranked = pool.slice().sort(function (a, b) {
-      const score = scoreExercise(b, group, kind) - scoreExercise(a, group, kind);
+      const score = scoreExercise(b, group, kind, bias) - scoreExercise(a, group, kind, bias);
       if (score) return score;
       return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
@@ -824,7 +918,7 @@
     takeFrom(fresh, count, seed, out, seen);
     takeFrom(freshAll, count, seed + 1, out, seen);
     takeFrom(spare, count, seed, out, seen);
-    out.sort(function (a, b) { return scoreExercise(b, group, kind) - scoreExercise(a, group, kind); });
+    out.sort(function (a, b) { return scoreExercise(b, group, kind, bias) - scoreExercise(a, group, kind, bias); });
     return out;
   }
 
@@ -918,13 +1012,16 @@
     const chosen = [];
     layout.parts.forEach(function (part, partIndex) {
       const pool = poolFor(options.library, part.group, part.kind);
-      const seed = plan.variation * 100 + week * 17 + slot * 5 + partIndex * 3 + plan.blockIndex;
-      pickExercises(pool, part.count, seed, avoid.concat(chosen.map(function (ex) { return ex.id; })), part.group, part.kind).forEach(function (ex) {
+      const seed = plan.variation * 100 + week * 17 + slot * 5 + partIndex * 3 + plan.blockIndex + (layout.variant || 0) * 11;
+      pickExercises(pool, part.count, seed, avoid.concat(chosen.map(function (ex) { return ex.id; })), part.group, part.kind, part.bias).forEach(function (ex) {
         chosen.push(schemeFor(ex, plan.goal, week, part.kind));
       });
     });
     return {
       title: layout.title,
+      focus: layout.focus,
+      dayIndex: layout.dayIndex,
+      dayCount: layout.dayCount,
       summary: phase.text,
       week: week,
       weekName: phase.name,

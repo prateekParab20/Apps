@@ -237,6 +237,7 @@ body.area-cardio { --accent: #ff9f0a; --accent-soft: rgba(255, 159, 10, 0.2); }
   text-align: left;
   color: inherit;
 }
+.log-row.is-next .choice-copy strong { color: var(--blue); }
 .group > :last-child, .food-row:last-child { border-bottom: 0; }
 .food-row { display: flex; align-items: stretch; background: var(--card); border-bottom: 0.5px solid var(--separator); }
 .food-row:last-child { border-bottom: 0; }
