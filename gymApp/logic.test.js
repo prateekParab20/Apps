@@ -214,8 +214,8 @@ test('strength weeks add a set, then ease off, and days do not repeat the same l
   assert.ok(ease.exercises.every(function (ex) { return ex.sets < build.exercises[0].sets; }));
   assert.notDeepEqual(base.exercises.map(function (ex) { return ex.id; }), other.exercises.map(function (ex) { return ex.id; }));
   assert.equal(catalog[0].sets, 3);
-  assert.equal(base.title, 'Upper A');
-  assert.equal(other.title, 'Lower A');
+  assert.equal(base.title, 'Upper body');
+  assert.equal(other.title, 'Lower body');
   const push = L.buildSession({ library: catalog, plan: Object.assign({}, plan, { split: 'push-pull' }), week: 1, slot: 0 });
   const pull = L.buildSession({ library: catalog, plan: Object.assign({}, plan, { split: 'push-pull' }), week: 1, slot: 1 });
   assert.equal(push.title, 'Push');
@@ -223,28 +223,29 @@ test('strength weeks add a set, then ease off, and days do not repeat the same l
   assert.ok(push.exercises.every(function (ex) { return /bench|press|raise|pushdown|dip/i.test(ex.name); }));
 });
 
-test('repeated days in a week get A/B labels and different lift bias', function () {
+test('upper-lower weeks stay Upper → Lower → Upper → Lower with plain titles', function () {
   const plan = L.normalizePlan({ goal: 'strength', days: 4, split: 'upper-lower', blockStart: '2026-11-01', variation: 0, blockIndex: 0 }, new Date(2026, 10, 1));
-  const upperA = L.buildSession({ library: catalog, plan: plan, week: 1, slot: 0 });
-  const lowerA = L.buildSession({ library: catalog, plan: plan, week: 1, slot: 1 });
-  const upperB = L.buildSession({ library: catalog, plan: plan, week: 1, slot: 2 });
-  const lowerB = L.buildSession({ library: catalog, plan: plan, week: 1, slot: 3 });
-  assert.equal(upperA.title, 'Upper A');
-  assert.equal(upperB.title, 'Upper B');
-  assert.equal(lowerA.title, 'Lower A');
-  assert.equal(lowerB.title, 'Lower B');
-  assert.match(upperA.focus, /Press/);
-  assert.match(upperB.focus, /Pull/);
-  assert.match(lowerA.focus, /Squat/);
-  assert.match(lowerB.focus, /Hinge/);
-  assert.notDeepEqual(upperA.exercises.map(function (ex) { return ex.id; }), upperB.exercises.map(function (ex) { return ex.id; }));
-  assert.notDeepEqual(lowerA.exercises.map(function (ex) { return ex.id; }), lowerB.exercises.map(function (ex) { return ex.id; }));
+  const week = [0, 1, 2, 3].map(function (slot) {
+    return L.buildSession({ library: catalog, plan: plan, week: 1, slot: slot });
+  });
+  assert.deepEqual(week.map(function (s) { return s.title; }), [
+    'Upper body',
+    'Lower body',
+    'Upper body',
+    'Lower body'
+  ]);
+  assert.equal(week[0].focus, 'Chest, back, arms');
+  assert.equal(week[1].focus, 'Quads, hamstrings, glutes');
+  assert.equal(week[2].focus, week[0].focus);
+  assert.equal(week[3].focus, week[1].focus);
+  assert.notDeepEqual(week[0].exercises.map(function (ex) { return ex.id; }), week[2].exercises.map(function (ex) { return ex.id; }));
+  assert.notDeepEqual(week[1].exercises.map(function (ex) { return ex.id; }), week[3].exercises.map(function (ex) { return ex.id; }));
 
   const fullPlan = L.normalizePlan({ goal: 'strength', days: 4, split: 'full', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
   const fulls = [0, 1, 2, 3].map(function (slot) {
     return L.buildSession({ library: catalog, plan: fullPlan, week: 1, slot: slot });
   });
-  assert.deepEqual(fulls.map(function (s) { return s.title; }), ['Full body A', 'Full body B', 'Full body C', 'Full body D']);
+  assert.deepEqual(fulls.map(function (s) { return s.title; }), ['Full body', 'Full body', 'Full body', 'Full body']);
   const fullIds = fulls.map(function (s) { return s.exercises.map(function (ex) { return ex.id; }).join(','); });
   assert.notEqual(fullIds[0], fullIds[1]);
   assert.notEqual(fullIds[0], fullIds[2]);
