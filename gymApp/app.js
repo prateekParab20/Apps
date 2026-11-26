@@ -555,6 +555,17 @@
     if (state.rest && state.rest.remaining > 0) ensureRestTicker();
   }
 
+  /* Nested plan stack tabs highlight the owning root (today or train), not a fake peer. */
+  function stackTab() {
+    if (state.section === 'preview') {
+      const from = state.preview && state.preview.from;
+      if (from === 'train') return 'train';
+      return 'today';
+    }
+    if (state.section === 'plan' || state.section === 'week') return 'today';
+    return state.section;
+  }
+
   function renderTabs() {
     const bar = document.getElementById('tabbar');
     if (state.section === 'setup' || (!state.plan.onboarded && !state.session)) {
@@ -570,7 +581,7 @@
       ['library', 'Library', 'library'],
       ['you', 'You', 'you']
     ];
-    const shown = (state.section === 'plan' || state.section === 'week' || state.section === 'preview') ? 'today' : state.section;
+    const shown = stackTab();
     document.getElementById('tabbar').innerHTML = tabs.map(function (tab) {
       const current = shown === tab[0] ? ' aria-current="page"' : '';
       const dot = tab[0] === 'train' && state.session ? '<i class="dot"></i>' : '';
@@ -594,8 +605,9 @@
     return '<button class="menu-btn" data-action="open-menu" aria-label="Open menu">☰</button>';
   }
 
+  /* Plan → week → preview stack: Back alone on the left (no menu), one level at a time. */
   function backBar() {
-    return '<div class="nav-bar">' + menuButton() + '<button class="text-btn" data-action="back">Back</button></div>';
+    return '<div class="nav-bar"><button class="text-btn" data-action="back">Back</button></div>';
   }
 
   function areaTitle() {
@@ -692,9 +704,6 @@
     } else {
       start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
     }
-    const planRow = state.area === 'strength'
-      ? '<button class="log-row" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</small></span><span class="chevron">›</span></button>'
-      : '';
     const list = [];
     for (let slot = 0; slot < areaCount(); slot += 1) {
       const other = sessionAt(view.week, slot, state.area);
@@ -703,6 +712,10 @@
       else if (slot === built.slot) status = view.slot.doneToday ? 'Next' : 'Up next';
       list.push('<button class="log-row' + (slot === built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
     }
+    /* This block opens the 4-week plan — keep it out of THIS WEEK so day count matches plan.days. */
+    const planEntry = state.area === 'strength'
+      ? '<div class="section-label" style="margin-top:18px">Plan</div><button class="plan-entry" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + ' · 4 weeks</small></span><span class="chevron">›</span></button>'
+      : '';
     const kicker = state.area === 'strength'
       ? 'Week ' + built.week + ' of 4 · ' + built.weekName
       : areaTitle();
@@ -715,8 +728,9 @@
       '<p class="cheer">' + esc(cheerLine(view)) + '</p>' +
       '<p class="session-meta">' + esc(sessionMeta(built)) + '</p>' +
       start + '</div>' +
-      '<div class="section-label" style="margin-top:18px">This week</div>' +
-      '<div class="group">' + planRow + list.join('') + '</div></section>';
+      planEntry +
+      '<div class="section-label">This week</div>' +
+      '<div class="group">' + list.join('') + '</div></section>';
   }
 
   function renderPlan() {
@@ -1759,6 +1773,7 @@
       state.section = el.dataset.section;
       state.sheet = null;
       state.menu = false;
+      state.preview = null;
       render();
       saveActive();
     },
@@ -1823,30 +1838,42 @@
       toast('Saved');
     },
     'open-plan': function () {
+      state.preview = null;
+      state.menu = false;
       state.section = 'plan';
       render();
     },
     'open-week': function (el) {
+      state.preview = null;
+      state.menu = false;
       state.planWeek = Number(el.dataset.week) || 1;
       state.section = 'week';
       render();
     },
     'open-preview': function (el) {
+      const from = state.section === 'week' || state.section === 'train' || state.section === 'today'
+        ? state.section
+        : 'today';
+      state.menu = false;
       state.preview = {
         week: Number(el.dataset.week) || 1,
         slot: Number(el.dataset.slot) || 0,
-        from: state.section
+        from: from
       };
       state.section = 'preview';
       render();
     },
     back: function () {
+      state.menu = false;
       if (state.section === 'preview') {
-        state.section = state.preview && state.preview.from && state.preview.from !== 'preview' ? state.preview.from : 'today';
+        const from = state.preview && state.preview.from;
         state.preview = null;
+        state.section = (from === 'week' || from === 'train' || from === 'today') ? from : 'today';
       } else if (state.section === 'week') {
         state.section = 'plan';
       } else if (state.section === 'plan') {
+        state.section = 'today';
+      } else {
         state.section = 'today';
       }
       render();

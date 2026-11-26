@@ -223,6 +223,23 @@ test('strength weeks add a set, then ease off, and days do not repeat the same l
   assert.ok(push.exercises.every(function (ex) { return /bench|press|raise|pushdown|dip/i.test(ex.name); }));
 });
 
+test('upper-lower 3-day weeks are Upper → Lower → Full body with plain titles', function () {
+  const plan = L.normalizePlan({ goal: 'strength', days: 3, split: 'upper-lower', blockStart: '2026-11-01', variation: 0, blockIndex: 0 }, new Date(2026, 10, 1));
+  const week = [0, 1, 2].map(function (slot) {
+    return L.buildSession({ library: catalog, plan: plan, week: 1, slot: slot });
+  });
+  assert.equal(plan.days, 3);
+  assert.deepEqual(week.map(function (s) { return s.title; }), [
+    'Upper body',
+    'Lower body',
+    'Full body'
+  ]);
+  week.forEach(function (session) {
+    assert.ok(!/[AB]$/.test(session.title));
+    assert.ok(session.title.indexOf('This block') === -1);
+  });
+});
+
 test('upper-lower weeks stay Upper → Lower → Upper → Lower with plain titles', function () {
   const plan = L.normalizePlan({ goal: 'strength', days: 4, split: 'upper-lower', blockStart: '2026-11-01', variation: 0, blockIndex: 0 }, new Date(2026, 10, 1));
   const week = [0, 1, 2, 3].map(function (slot) {
