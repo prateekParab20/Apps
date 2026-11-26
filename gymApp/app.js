@@ -2,6 +2,7 @@
 (function () {
   const Lib = window.GymLibrary;
   const L = window.GymLogic;
+  const Media = window.GymMedia;
   const view = document.getElementById('view');
   const CIRC = 2 * Math.PI * 18;
 
@@ -52,10 +53,17 @@
     draft: null,
     dialog: null,
     notes: '',
+    plan: null,
+    seen: [],
+    area: 'strength',
+    menu: false,
+    setup: null,
     calcW: '100',
     calcR: '5',
     canInstall: false,
-    scrollToId: null
+    scrollToId: null,
+    pulseSet: null,
+    pulseTimer: null
   };
 
   let deferredPrompt = null;
@@ -113,6 +121,7 @@
   }
 
   function routineTitle(type) {
+    if (type === 'plan' && state.session && state.session.typeName) return state.session.typeName;
     if (Lib.programs[type]) return Lib.programs[type].name;
     const template = state.templates.find(function (item) { return item.id === type; });
     if (template) return template.name;
@@ -299,6 +308,43 @@
     localStorage.setItem('stronglean_templates', JSON.stringify(state.templates));
   }
 
+  function savePlan() {
+    localStorage.setItem('stronglean_plan', JSON.stringify(state.plan));
+  }
+
+  function saveSeen() {
+    localStorage.setItem('stronglean_milestones', JSON.stringify(state.seen));
+  }
+
+  function syncPlan() {
+    const result = L.advancePlan(state.plan, state.workouts, new Date(), Lib.library);
+    state.plan = result.plan;
+    if (result.changed) savePlan();
+  }
+
+  function sessionAt(week, slot, area) {
+    const mode = area || state.area || 'strength';
+    const current = Math.min(4, L.blockWeek(state.plan, new Date()));
+    return L.buildSession({
+      library: Lib.library,
+      plan: state.plan,
+      mode: mode,
+      week: week,
+      slot: slot,
+      avoidIds: week === current ? L.weekIds(state.workouts, state.plan, new Date(), mode) : []
+    });
+  }
+
+  function currentBuilt() {
+    const slot = L.nextSlot(state.workouts, state.plan, new Date(), state.area);
+    const week = Math.min(4, L.blockWeek(state.plan, new Date()));
+    return { slot: slot, week: week, built: sessionAt(week, slot.slot, state.area) };
+  }
+
+  function areaCount() {
+    return state.area === 'strength' ? state.plan.days : 3;
+  }
+
   function saveActive() {
     if (!state.session) {
       localStorage.removeItem('gymActiveState');
@@ -329,6 +375,16 @@
     state.workouts = Array.isArray(workouts) ? workouts : [];
     const templates = readJSON('stronglean_templates', []);
     state.templates = Array.isArray(templates) ? templates : [];
+    const storedPlan = readJSON('stronglean_plan', null);
+    state.plan = L.normalizePlan(storedPlan, new Date());
+    if (!storedPlan) savePlan();
+    const storedSeen = readJSON('stronglean_milestones', null);
+    if (storedSeen == null) {
+      state.seen = L.milestoneBoard(state.workouts, new Date()).filter(function (item) { return item.earned; }).map(function (item) { return item.id; });
+      localStorage.setItem('stronglean_milestones', JSON.stringify(state.seen));
+    } else {
+      state.seen = Array.isArray(storedSeen) ? storedSeen : [];
+    }
     const saved = readJSON('gymActiveState', null);
     if (saved && saved.currentWorkout) {
       state.session = saved.currentWorkout;
@@ -395,7 +451,7 @@
     const stored = localStorage.getItem('theme');
     const dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const meta = document.getElementById('theme-color');
-    if (meta) meta.setAttribute('content', dark ? '#000000' : '#f2f2f7');
+    if (meta) meta.setAttribute('content', dark ? '#0b1016' : '#e6eef6');
   }
 
   function applyTheme(mode) {
@@ -441,10 +497,12 @@
   }
 
   function render(options) {
+    syncPlan();
     const opts = options || {};
     const keep = !!opts.keepScroll;
     const y = keep ? window.scrollY : 0;
-    view.innerHTML = pages[state.section] ? pages[state.section]() : pages.today();
+    const setup = state.section === 'setup' || (!state.plan.onboarded && !state.session);
+    view.innerHTML = setup ? renderSetup() : (pages[state.section] ? pages[state.section]() : pages.today());
     view.classList.remove('view-enter');
     if (!keep) {
       void view.offsetWidth;
@@ -460,18 +518,62 @@
     }
     renderChrome();
     ensureElapsed();
+    document.body.classList.remove('area-strength', 'area-mobility', 'area-cardio');
+    document.body.classList.add('area-' + (state.area || 'strength'));
+  }
+
+  function renderDrawer() {
+    const root = document.getElementById('drawer');
+    if (!state.menu) {
+      root.innerHTML = '';
+      return;
+    }
+    const item = function (area, label, detail) {
+      const on = state.area === area ? ' aria-current="true"' : '';
+      return '<button class="menu-row" data-action="set-area" data-area="' + area + '"' + on + '><i class="swatch ' + area + '"></i><span class="choice-copy"><strong>' + label + '</strong><small>' + detail + '</small></span></button>';
+    };
+    root.innerHTML = '<div class="drawer-backdrop" data-action="close-menu"></div><aside class="drawer" role="dialog" aria-label="Menu">' +
+      '<p class="brand">StrongLean</p>' +
+      '<p class="eyebrow">Sections</p>' +
+      item('strength', 'Strength', L.splitLabel(state.plan.split)) +
+      item('mobility', 'Mobility', 'Hips, spine, and holds') +
+      item('cardio', 'Cardio', 'Walks, bike, row') +
+      '<p class="eyebrow">App</p>' +
+      '<button class="menu-row" data-action="nav" data-section="history"><strong>History</strong><small>Sessions and charts</small></button>' +
+      '<button class="menu-row" data-action="nav" data-section="library"><strong>Library</strong><small>Every exercise</small></button>' +
+      '<button class="menu-row" data-action="edit-setup"><strong>Your details</strong><small>Goal and routine</small></button>' +
+      '</aside>';
   }
 
   function renderChrome() {
     renderTabs();
     renderRest(false);
     renderOverlay();
+    renderDrawer();
     renderDialog();
     document.body.classList.toggle('resting', !!(state.rest && state.rest.remaining > 0));
     if (state.rest && state.rest.remaining > 0) ensureRestTicker();
   }
 
+  /* Nested plan stack tabs highlight the owning root (today or train), not a fake peer. */
+  function stackTab() {
+    if (state.section === 'preview') {
+      const from = state.preview && state.preview.from;
+      if (from === 'train') return 'train';
+      return 'today';
+    }
+    if (state.section === 'plan' || state.section === 'week') return 'today';
+    return state.section;
+  }
+
   function renderTabs() {
+    const bar = document.getElementById('tabbar');
+    if (state.section === 'setup' || (!state.plan.onboarded && !state.session)) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      return;
+    }
+    bar.hidden = false;
     const tabs = [
       ['today', 'Today', 'today'],
       ['train', 'Train', 'train'],
@@ -479,8 +581,9 @@
       ['library', 'Library', 'library'],
       ['you', 'You', 'you']
     ];
+    const shown = stackTab();
     document.getElementById('tabbar').innerHTML = tabs.map(function (tab) {
-      const current = state.section === tab[0] ? ' aria-current="page"' : '';
+      const current = shown === tab[0] ? ' aria-current="page"' : '';
       const dot = tab[0] === 'train' && state.session ? '<i class="dot"></i>' : '';
       return '<button type="button" data-action="nav" data-section="' + tab[0] + '"' + current + '>' +
         icon(tab[2]) + dot + '<span>' + tab[1] + '</span></button>';
@@ -489,51 +592,195 @@
 
   const pages = {
     today: renderToday,
+    plan: renderPlan,
+    week: renderWeek,
+    preview: renderPreview,
     train: renderTrain,
     history: renderHistory,
     library: renderLibrary,
     you: renderYou
   };
 
-  function renderToday() {
-    const week = L.weekCount(state.workouts);
+  function menuButton() {
+    return '<button class="menu-btn" data-action="open-menu" aria-label="Open menu">☰</button>';
+  }
+
+  /* Plan → week → preview stack: Back alone on the left (no menu), one level at a time. */
+  function backBar() {
+    return '<div class="nav-bar"><button class="text-btn" data-action="back">Back</button></div>';
+  }
+
+  function areaTitle() {
+    if (state.area === 'mobility') return 'Mobility';
+    if (state.area === 'cardio') return 'Cardio';
+    return 'Strength';
+  }
+
+  function renderSetup() {
+    const draft = state.setup || {
+      name: state.plan.name || '',
+      goal: state.plan.goal || 'strength',
+      split: state.plan.split || 'upper-lower',
+      days: state.plan.days || 4
+    };
+    state.setup = draft;
+    const goalBtn = function (value, label, detail) {
+      return '<button class="choice" data-action="set-setup" data-field="goal" data-value="' + value + '" aria-pressed="' + (draft.goal === value ? 'true' : 'false') + '"><strong>' + label + '</strong><small>' + detail + '</small></button>';
+    };
+    const splitBtn = function (value, label, detail) {
+      return '<button class="choice" data-action="set-setup" data-field="split" data-value="' + value + '" aria-pressed="' + (draft.split === value ? 'true' : 'false') + '"><strong>' + label + '</strong><small>' + detail + '</small></button>';
+    };
+    return '<section class="page setup-page"><p class="brand">Train local</p><h1 class="brand-hero">StrongLean</h1>' +
+      '<p class="lede">' + (state.plan.onboarded ? 'Update your goal and routine. Everything stays on this device.' : 'What do you want? Strength, mobility, and cardio stay in their own sections.') + '</p>' +
+      (state.plan.onboarded ? '<h2 class="setup-sub">Your training</h2>' : '<h2 class="setup-sub">Get set</h2>') +
+      '<label class="field" style="margin-top:18px;border-radius:12px"><span class="label">Name</span><input id="setup-name" value="' + esc(draft.name) + '" placeholder="Optional"></label>' +
+      '<div class="section-label">Goal</div><div class="choice-list">' +
+      goalBtn('strength', 'Get stronger', 'Heavier sets, longer rest') +
+      goalBtn('muscle', 'Build muscle', 'More work in the 8–12 range') +
+      goalBtn('mixed', 'Stay athletic', 'A bit of both') +
+      '</div>' +
+      '<div class="section-label">Strength routine</div><div class="choice-list">' +
+      splitBtn('upper-lower', 'Upper / Lower', 'Upper body days and lower body days') +
+      splitBtn('push-pull', 'Push / Pull', 'Push, pull, and a leg day') +
+      splitBtn('full', 'Full body', 'A bit of everything each day') +
+      '</div>' +
+      '<div class="section-label">Days each week</div><div class="segmented" style="max-width:220px">' +
+      seg('set-setup', '3', '3 days', draft.days === 3) + seg('set-setup', '4', '4 days', draft.days === 4) +
+      '</div>' +
+      '<button class="btn btn-primary" style="margin-top:22px" data-action="save-setup">' + (state.plan.onboarded ? 'Save' : 'Continue') + '</button></section>';
+  }
+
+  function greeting() {
+    const hour = new Date().getHours();
+    const part = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
+    return state.plan.name ? part + ', ' + state.plan.name : part;
+  }
+
+  function cheerLine(view) {
+    if (state.session) return 'Pick up where you left off.';
+    if (view.slot.doneToday) return 'Done for today. Next session is ready when you are.';
+    if (state.area === 'mobility') return 'Slow is the point. Keep it easy.';
+    if (state.area === 'cardio') return 'Easy pace. You should still be able to talk.';
     const streak = L.streak(state.workouts);
-    const avg = L.avgDuration(state.workouts);
-    const volume = state.workouts.reduce(function (sum, workout) {
-      return sum + (Number(workout.totalVolume) || L.volumeOf(workout));
-    }, 0);
-    const series = L.recentVolume(state.workouts, 7);
-    const muscles = recentMuscles();
-    const recent = state.workouts.slice(0, 3);
-    const resume = state.session
-      ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume ' + esc(routineTitle(state.dayType)) + '</button>'
-      : '<button class="btn btn-primary" data-action="nav" data-section="train">Start a workout</button>';
-    const install = state.canInstall
-      ? '<button class="add-row" data-action="install">Install StrongLean</button>'
+    if (streak >= 3) return 'Keep it up. ' + streak + ' days in a row.';
+    if (view.built.week === 3) return 'Heavy week. You have got this.';
+    if (view.built.week === 4) return 'Lighter sets this week. You earned them.';
+    if (!state.workouts.length) return 'One session is a real start.';
+    return 'Show up. The numbers can follow.';
+  }
+
+  function weekDots(week) {
+    return '<div class="week-dots" aria-hidden="true">' + [1, 2, 3, 4].map(function (n) {
+      const cls = n < week ? ' done' : (n === week ? ' on' : '');
+      return '<i class="' + cls + '"></i>';
+    }).join('') + '</div>';
+  }
+
+  function sessionMeta(built) {
+    const bits = [];
+    if (built.focus) bits.push(built.focus);
+    bits.push(built.exercises.length + ' ' + (built.exercises.length === 1 ? 'piece' : 'exercises'));
+    return bits.join(' · ');
+  }
+
+  function sessionRowDetail(built, status) {
+    const bits = [];
+    if (status) bits.push(status);
+    if (built.focus) bits.push(built.focus);
+    else bits.push(built.exercises.length + ' exercises');
+    return bits.join(' · ');
+  }
+
+  function renderToday() {
+    const view = currentBuilt();
+    const built = view.built;
+    const streak = L.streak(state.workouts);
+    const used = view.slot.used || {};
+    let start;
+    if (state.session) {
+      start = '<button class="btn btn-primary" data-action="nav" data-section="train">Resume</button>';
+    } else if (view.slot.doneToday) {
+      start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start next</button>';
+    } else {
+      start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
+    }
+    const list = [];
+    for (let slot = 0; slot < areaCount(); slot += 1) {
+      const other = sessionAt(view.week, slot, state.area);
+      let status = '';
+      if (used[slot]) status = 'Done';
+      else if (slot === built.slot) status = view.slot.doneToday ? 'Next' : 'Up next';
+      list.push('<button class="log-row' + (slot === built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
+    }
+    /* This block opens the 4-week plan — keep it out of THIS WEEK so day count matches plan.days. */
+    const planEntry = state.area === 'strength'
+      ? '<div class="section-label" style="margin-top:18px">Plan</div><button class="plan-entry" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + ' · 4 weeks</small></span><span class="chevron">›</span></button>'
       : '';
+    const kicker = state.area === 'strength'
+      ? 'Week ' + built.week + ' of 4 · ' + built.weekName
+      : areaTitle();
     return '<section class="page">' +
-      '<header class="page-head"><div><h1>Today</h1><p class="lede">A calm place for routines, sets, and the progress that follows.</p></div></header>' +
-      '<div class="today-grid"><div class="stack">' +
-      '<div class="card hero-card"><p class="eyebrow">This week</p><p class="hero-number">' + week + '</p><p class="hero-unit">' + (week === 1 ? 'workout' : 'workouts') + '</p>' +
-      '<div class="macro-pills"><span>' + streak + ' day streak</span><span>' + esc(shownVolume(volume)) + ' ' + esc(state.unit) + '</span>' +
-      (avg ? '<span>' + avg + ' min avg</span>' : '') + '</div></div>' +
-      resume +
-      (install ? '<div class="group">' + install + '</div>' : '') +
-      '</div><div>' +
-      (series.length >= 2
-        ? '<div class="section-head"><h2>Volume</h2><span>Last ' + series.length + '</span></div><div class="card" style="padding:12px 12px 8px">' + trendSVG(series.map(function (point) { return point.volume; })) + '<p class="hero-sub">Latest ' + esc(shownVolume(series[series.length - 1].volume)) + ' ' + esc(state.unit) + '</p></div>'
-        : '<div class="section-head"><h2>Volume</h2></div><div class="card empty"><h3>Two sessions start the line</h3><p>Finish a couple of workouts and the weekly volume shows up here.</p></div>') +
-      (muscles.length
-        ? '<div class="section-head"><h2>Last 7 days</h2></div><div class="card" style="padding:12px">' + muscleSVG(muscles) + '<div class="muscle-pills">' + muscles.slice(0, 8).map(function (muscle) { return '<span class="pill">' + esc(muscle) + '</span>'; }).join('') + '</div></div>'
-        : '') +
-      '</div></div>' +
-      '<div class="section-head"><h2>Recent</h2></div>' +
-      (recent.length
-        ? '<div class="group">' + recent.map(function (workout, index) {
-          return '<button class="log-row" data-action="open-history" data-index="' + index + '"><span class="choice-copy"><strong>' + esc(workoutTitle(workout)) + '</strong><small>' + esc(formatWhen(workout.date)) + ' · ' + esc(shownVolume(workout.totalVolume || L.volumeOf(workout))) + ' ' + esc(state.unit) + '</small></span><span class="chevron">›</span></button>';
-        }).join('') + '</div>'
-        : '<div class="empty"><div class="empty-icon">' + icon('train') + '</div><h3>Nothing logged yet</h3><p>Start a built-in day or make a routine. It stays on this device.</p></div>') +
-      '<p class="footnote">Everything stays on this device. No account, no cloud.</p></section>';
+      '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
+      '<header class="page-head"><div><p class="brand-hero">StrongLean</p><h1 class="today-greet">' + esc(greeting()) + '</h1><p class="lede">' + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
+      '<div class="session-hero">' + (state.area === 'strength' ? weekDots(built.week) : '') +
+      '<p class="eyebrow">' + esc(kicker) + '</p>' +
+      '<h2>' + esc(built.title) + '</h2>' +
+      '<p class="cheer">' + esc(cheerLine(view)) + '</p>' +
+      '<p class="session-meta">' + esc(sessionMeta(built)) + '</p>' +
+      start + '</div>' +
+      planEntry +
+      '<div class="section-label">This week</div>' +
+      '<div class="group">' + list.join('') + '</div></section>';
+  }
+
+  function renderPlan() {
+    const week = Math.min(4, L.blockWeek(state.plan, new Date()));
+    const note = state.plan.lastNote && state.plan.lastNoteBlock === state.plan.blockIndex
+      ? '<div class="banner banner-ok">' + esc(state.plan.lastNote) + '</div>'
+      : '';
+    const rows = [1, 2, 3, 4].map(function (n) {
+      const copy = L.WEEK_COPY[n];
+      const badge = n < week ? ' done' : (n === week ? ' next' : '');
+      const trail = n === week ? 'Now' : (n < week ? 'Done' : '›');
+      return '<button class="log-row" data-action="open-week" data-week="' + n + '"><span class="set-num' + badge + '">' + n + '</span><span class="choice-copy"><strong>Week ' + n + ' · ' + esc(copy.name) + '</strong><small>' + esc(copy.text) + '</small></span><span class="chevron">' + trail + '</span></button>';
+    }).join('');
+    return '<section class="page">' + backBar() +
+      '<header class="page-head"><div><h1>This block</h1><p class="lede">' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</p></div></header>' +
+      note +
+      '<div class="group">' + rows + '</div>' +
+      '<button class="btn btn-quiet" data-action="nav" data-section="you">Change goal</button></section>';
+  }
+
+  function renderWeek() {
+    const n = state.planWeek >= 1 && state.planWeek <= 4 ? state.planWeek : 1;
+    const copy = L.WEEK_COPY[n];
+    const rows = [];
+    for (let slot = 0; slot < state.plan.days; slot += 1) {
+      const built = sessionAt(n, slot);
+      const detail = built.focus
+        ? built.focus + ' · ' + built.exercises.length + ' exercises'
+        : built.exercises.length + ' exercises' + (built.exercises[0] ? ' · ' + built.exercises[0].sets + ' × ' + built.exercises[0].reps : '');
+      rows.push('<button class="log-row" data-action="open-preview" data-week="' + n + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(detail) + '</small></span><span class="chevron">›</span></button>');
+    }
+    return '<section class="page">' + backBar() +
+      '<header class="page-head"><div><h1>Week ' + n + '</h1><p class="lede">' + esc(copy.name) + '. ' + esc(copy.text) + '</p></div></header>' +
+      '<div class="group">' + rows.join('') + '</div></section>';
+  }
+
+  function renderPreview() {
+    const preview = state.preview || { week: 1, slot: 0, from: 'today' };
+    const built = sessionAt(preview.week, preview.slot);
+    const rows = built.exercises.map(function (ex) {
+      return '<div class="log-row static"><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong><small>' + esc((ex.muscles || []).slice(0, 2).join(' · ')) + '</small></span><span>' + ex.sets + ' × ' + esc(ex.reps) + '</span></div>';
+    }).join('');
+    const start = state.session
+      ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume workout</button>'
+      : '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
+    const lede = 'Week ' + built.week + ' · ' + built.weekName + (built.focus ? ' · ' + built.focus : '');
+    return '<section class="page">' + backBar() +
+      '<header class="page-head"><div><h1>' + esc(built.title) + '</h1><p class="lede">' + esc(lede) + '</p></div></header>' +
+      '<div class="group">' + rows + '</div>' +
+      start + '</section>';
   }
 
   function renderTrain() {
@@ -546,9 +793,18 @@
       return '<div class="food-row"><button class="food-main" data-action="start" data-type="' + esc(template.id) + '"><span class="choice-copy"><strong>' + esc(template.name) + '</strong><small>' + template.exercises.length + ' exercises</small></span></button>' +
         '<button class="icon-btn" data-action="edit-template" data-id="' + esc(template.id) + '" aria-label="Edit ' + esc(template.name) + '">Edit</button></div>';
     }).join('');
-    return '<section class="page"><header class="page-head"><div><h1>Train</h1><p class="lede">Built-in days, or a routine of your own.</p></div></header>' +
-      '<div class="group"><button class="add-row" data-action="open-template">Create a routine</button></div>' +
-      '<div class="section-label">Routines</div><div class="group">' + custom + builtin + '</div></section>';
+    const weekNow = Math.min(4, L.blockWeek(state.plan, new Date()));
+    const weekRows = [];
+    for (let slot = 0; slot < areaCount(); slot += 1) {
+      const built = sessionAt(weekNow, slot, state.area);
+      weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(sessionRowDetail(built)) + '</small></span><span class="chevron">›</span></button>');
+    }
+    const routines = state.area === 'strength'
+      ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
+      : '';
+    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
+      '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>' +
+      routines + '</section>';
   }
 
   function renderSession() {
@@ -567,9 +823,9 @@
     const done = loggedSetCount(log);
     const complete = done >= total && total > 0;
     const open = sameId(state.openId, ex.id) || (state.openId == null && index === 0 && !complete);
-    const last = L.lastPerformance(state.workouts, ex.id, state.dayType);
-    const lastLine = last && Number(last.weight) > 0
-      ? '<small>Last ' + esc(displayWeight(last.weight)) + ' ' + esc(state.unit) + ' × ' + esc(last.reps) + '</small>'
+    const nextTarget = targetForSet(ex, 0);
+    const lastLine = nextTarget
+      ? '<small>Next ' + esc(nextTarget.label) + '</small>'
       : '<small>' + esc((ex.muscles || []).slice(0, 3).join(' · ')) + '</small>';
     const badge = complete ? '✓' : String(index + 1);
     let nextMarked = false;
@@ -581,16 +837,20 @@
       if (isNext) nextMarked = true;
       if (logged) {
         const weightText = Number(set.weight) > 0 ? esc(displayWeight(set.weight)) + ' ' + esc(state.unit) + ' × ' + esc(set.reps) : esc(set.reps) + ' reps';
-        rows.push('<div class="set-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
+        const record = isRecord(ex, set) ? '<span class="pr-badge">New best</span>' : '';
+        const pulse = state.pulseSet && sameId(state.pulseSet.id, ex.id) && state.pulseSet.index === i ? ' just-done' : '';
+        rows.push('<div class="set-row done-row' + pulse + '"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + record + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
       } else {
-        const same = previousNumbers(ex, i);
-        rows.push('<div class="set-row"><span class="set-num' + (isNext ? ' next' : '') + '">' + (i + 1) + '</span><span class="set-copy"><strong>Set ' + (i + 1) + '</strong><small>' + esc(ex.reps) + '</small></span>' +
-          (same ? '<button class="set-go quiet" data-action="log-same" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Same</button>' : '') +
-          '<button class="set-go" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Log</button></div>');
+        const target = targetForSet(ex, i);
+        const hint = target && target.kind === 'weight' ? 'Heavier than last time' : (target && target.kind === 'reps' ? 'One more rep' : (target ? 'Match the last set' : ex.reps));
+        rows.push('<div class="set-row' + (isNext ? ' next-set' : '') + '"><span class="set-num' + (isNext ? ' next' : '') + '">' + (i + 1) + '</span><span class="set-copy"><strong>' + (target ? esc(target.label) : 'Set ' + (i + 1)) + '</strong><small>' + esc(hint) + '</small></span>' +
+          (target ? '<button class="set-go" data-action="log-target" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Log</button>' : '') +
+          '<button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">' + (target ? 'Adjust' : 'Log') + '</button></div>');
       }
     }
     return '<article class="card ex" id="ex-' + esc(ex.id) + '"><button class="ex-head" data-action="toggle-ex" data-id="' + esc(ex.id) + '"><span class="set-num' + (complete ? ' done' : '') + '">' + badge + '</span><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong>' + lastLine + '</span><span class="chevron">' + (open ? '˅' : '›') + '</span></button>' +
-      (open ? '<div class="ex-body"><div class="ex-tools"><button data-action="open-howto" data-id="' + esc(ex.id) + '" data-slot="' + index + '">How to</button><button data-action="open-swap" data-id="' + esc(ex.id) + '" data-slot="' + index + '">Swap</button><button data-action="open-video" data-id="' + esc(ex.id) + '">Video</button></div>' +
+      (open ? '<div class="ex-body">' + exerciseVisual(ex, 'md') +
+        '<div class="ex-tools"><button data-action="open-howto" data-id="' + esc(ex.id) + '" data-slot="' + index + '">How to</button><button data-action="open-swap" data-id="' + esc(ex.id) + '" data-slot="' + index + '">Swap</button><button data-action="open-video" data-id="' + esc(ex.id) + '">Video</button></div>' +
         rows.join('') +
         '<div class="ex-tools" style="margin-top:8px"><button data-action="add-set" data-id="' + esc(ex.id) + '">Add a set</button>' +
         (total > 1 ? '<button data-action="remove-set" data-id="' + esc(ex.id) + '">Remove set</button>' : '') +
@@ -598,6 +858,45 @@
         (state.sessionExercises.length > 1 ? '<button class="btn btn-quiet danger-text" data-action="remove-ex" data-id="' + esc(ex.id) + '">Remove exercise</button>' : '') +
         '</div>' : '') +
       '</article>';
+  }
+
+  function exerciseVisual(ex, size) {
+    if (!Media || !ex) return '';
+    return Media.visualHTML(ex.id, { name: ex.name, muscles: ex.muscles, size: size || 'md' });
+  }
+
+  function isRecord(ex, set) {
+    if (!set || !(Number(set.weight) > 0)) return false;
+    let best = 0;
+    state.workouts.forEach(function (workout) {
+      (workout.exercises || []).forEach(function (item) {
+        if (!sameId(item.id, ex.id)) return;
+        (item.completedSets || []).forEach(function (logged) {
+          if (logged && Number(logged.weight) > best) best = Number(logged.weight);
+        });
+      });
+    });
+    return best > 0 && Number(set.weight) > best;
+  }
+
+  function targetForSet(ex, setIndex) {
+    const log = findLog(ex.id);
+    if (log && setIndex > 0 && log.completedSets) {
+      const prior = L.prefillFromSet(log.completedSets[setIndex - 1], ex.id);
+      if (prior && Number(prior.weight) > 0) {
+        const reps = Number(prior.reps) || L.lowRep(ex.reps);
+        return {
+          kind: 'match',
+          display: displayWeight(prior.weight),
+          reps: reps,
+          weightKg: Number(prior.weight),
+          label: displayWeight(prior.weight) + ' × ' + reps,
+          text: 'Same weight as the set you just logged.'
+        };
+      }
+    }
+    const last = L.lastPerformance(state.workouts, ex.id, state.dayType);
+    return L.suggestOverload(last, ex.reps, state.unit);
   }
 
   function previousNumbers(ex, setIndex) {
@@ -641,7 +940,18 @@
       }).join('') + '</div>'
       : '';
     const clear = state.workouts.length ? '<button class="btn btn-quiet danger-text" data-action="clear-history">Clear history</button>' : '';
-    return '<section class="page"><header class="page-head"><div><h1>History</h1><p class="lede">Sessions and the lifts that are moving.</p></div></header>' + sessions + progress + clear + '</section>';
+    const series = L.recentVolume(state.workouts, 7);
+    const muscles = recentMuscles();
+    const charts = '<div class="today-grid"><div>' +
+      (series.length >= 2
+        ? '<div class="section-head"><h2>Volume</h2></div><div class="card" style="padding:12px 12px 8px">' + trendSVG(series.map(function (point) { return point.volume; })) + '</div>'
+        : '') +
+      '</div><div>' +
+      (muscles.length
+        ? '<div class="section-head"><h2>Last 7 days</h2></div><div class="card" style="padding:12px">' + muscleSVG(muscles) + '</div>'
+        : '') +
+      '</div></div>';
+    return '<section class="page"><header class="page-head"><div><h1>History</h1><p class="lede">Sessions and the lifts that are moving.</p></div></header>' + charts + sessions + progress + clear + '</section>';
   }
 
   function renderLibrary() {
@@ -664,9 +974,29 @@
     return '<div class="lib-grid">' + groups.map(function (group) {
       return '<section><div class="section-label">' + esc(group.letter) + '</div><div class="group">' + group.items.map(function (ex) {
         const meta = [ex.category || '', (ex.muscles || []).slice(0, 2).join(', ')].filter(Boolean).join(' · ');
-        return '<button class="log-row" data-action="open-howto" data-id="' + esc(ex.id) + '"><span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong><small>' + esc(meta) + '</small></span><span class="chevron">›</span></button>';
+        return '<button class="log-row lib-row" data-action="open-howto" data-id="' + esc(ex.id) + '">' + exerciseVisual(ex, 'sm') + '<span class="choice-copy"><strong class="clip">' + esc(ex.name) + '</strong><small>' + esc(meta) + '</small></span><span class="chevron">›</span></button>';
       }).join('') + '</div></section>';
     }).join('') + '</div>';
+  }
+
+  function trophyCase() {
+    const board = L.milestoneBoard(state.workouts, new Date());
+    const next = board.find(function (item) { return !item.earned; });
+    const cards = board.map(function (item) {
+      return '<article class="award' + (item.earned ? ' earned' : ' locked') + '"><strong>' + esc(item.title) + '</strong><span>' + esc(item.earned ? item.line : item.need) + '</span></article>';
+    }).join('');
+    return '<div class="section-head"><h2>Milestones</h2></div>' +
+      (next ? '<p class="footnote tight">Next up · ' + esc(next.title) + '. ' + esc(next.need) + '.</p>' : '<p class="footnote tight">You have every milestone on this device.</p>') +
+      '<div class="award-grid">' + cards + '</div>';
+  }
+
+  function cheersSheet() {
+    const items = (state.sheet && state.sheet.items) || [];
+    return '<div class="cheer-hero"><p class="eyebrow">A new one</p><p>Keep it up. You earned this.</p></div>' +
+      items.map(function (item) {
+        return '<article class="award earned"><strong>' + esc(item.title) + '</strong><span>' + esc(item.line) + '</span></article>';
+      }).join('') +
+      '<button class="btn btn-primary" style="margin-top:16px" data-action="close-cheers">Continue</button>';
   }
 
   function renderYou() {
@@ -674,7 +1004,9 @@
     const theme = stored === 'light' || stored === 'dark' ? stored : 'system';
     const one = calculatorValue();
     const notify = notificationsActive();
-    return '<section class="page"><header class="page-head"><div><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
+    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
+      '<div class="group"><button class="log-row" data-action="edit-setup"><span class="choice-copy"><strong>' + esc(state.plan.name || 'Your details') + '</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(L.splitLabel(state.plan.split)) + ' · ' + state.plan.days + ' days</small></span><span class="chevron">›</span></button></div>' +
+      trophyCase() +
       '<div class="group"><label class="field"><span class="label">Body weight</span><input id="body-weight" inputmode="decimal" value="' + esc(displayWeight(state.weight)) + '"><span class="suffix">' + esc(state.unit) + '</span></label>' +
       '<div class="field"><span class="label">Units</span><div class="segmented wide">' +
       seg('set-unit', 'kg', 'kg', state.unit === 'kg') + seg('set-unit', 'lbs', 'lbs', state.unit === 'lbs') + '</div></div>' +
@@ -764,6 +1096,7 @@
     let body = '';
     let title = '';
     if (sheet.type === 'log') body = logSheet();
+    else if (sheet.type === 'cheers') { title = 'Keep it up'; body = cheersSheet(); }
     else if (sheet.type === 'finish') { title = 'Complete'; body = finishSheet(); }
     else if (sheet.type === 'howto') { title = 'How to'; body = howtoSheet(); }
     else if (sheet.type === 'add' || sheet.type === 'swap') { title = sheet.type === 'swap' ? 'Swap' : 'Add'; body = pickSheet(); }
@@ -784,10 +1117,10 @@
     if (!sameId(state.sheet.id, ex.id) || state.sheet.name !== ex.name) {
       applyLogExercise(ex, state.sheet.index, state.sheet.slot, false);
     }
-    const suggestion = state.sheet.suggestion
-      ? '<div class="banner banner-ok">' + esc(state.sheet.suggestion) + '</div>'
-      : '';
     const editing = !!state.sheet.editing;
+    const suggestion = !editing && state.sheet.target
+      ? '<button class="target-chip" type="button" data-action="save-target">' + esc(state.sheet.target.label) + '<small>' + esc(state.sheet.target.text) + '</small></button>'
+      : '';
     return '<div class="grabber"></div><div class="sheet-head"><button class="text-btn" data-action="close-sheet">Cancel</button><h2 class="clip" id="log-title">' + esc(ex.name) + '</h2><span class="sheet-trail"></span></div>' +
       '<div class="sheet-body"><p class="eyebrow" style="text-align:center">Set ' + (state.sheet.index + 1) + ' · ' + esc(ex.reps) + (ex.muscles && ex.muscles.length ? ' · ' + esc(ex.muscles.slice(0, 2).join(', ')) : '') + '</p>' + suggestion +
       '<p class="section-label" style="text-align:center;margin-top:8px">Weight · ' + esc(state.unit) + '</p>' +
@@ -823,7 +1156,9 @@
     const alts = (ex.alternatives || []).map(function (name) {
       return '<button class="log-row" data-action="swap-name" data-name="' + esc(name) + '"><span class="choice-copy"><strong>' + esc(name) + '</strong><small>Alternative</small></span></button>';
     }).join('');
-    return '<h1 style="font-size:28px">' + esc(ex.name) + '</h1><div class="muscle-pills" style="margin:12px 0">' + (ex.muscles || []).map(function (muscle) {
+    return '<h1 style="font-size:28px">' + esc(ex.name) + '</h1>' +
+      exerciseVisual(ex, 'lg') +
+      '<div class="muscle-pills" style="margin:12px 0">' + (ex.muscles || []).map(function (muscle) {
       return '<span class="pill">' + esc(muscle) + '</span>';
     }).join('') + (ex.category ? '<span class="pill">' + esc(ex.category) + '</span>' : '') + '</div>' +
       muscleSVG(ex.muscles) +
@@ -858,7 +1193,7 @@
     }).slice(0, 30);
     html += '<div class="section-label">Library</div><div class="group">' + list.map(function (ex) {
       const action = state.sheet.type === 'swap' ? 'do-swap' : 'do-add';
-      return '<button class="log-row" data-action="' + action + '" data-id="' + esc(ex.id) + '"><span class="choice-copy"><strong>' + esc(ex.name) + '</strong><small>' + esc((ex.muscles || []).slice(0, 3).join(', ')) + '</small></span></button>';
+      return '<button class="log-row lib-row" data-action="' + action + '" data-id="' + esc(ex.id) + '">' + exerciseVisual(ex, 'sm') + '<span class="choice-copy"><strong>' + esc(ex.name) + '</strong><small>' + esc((ex.muscles || []).slice(0, 3).join(', ')) + '</small></span></button>';
     }).join('') + '</div>';
     return html;
   }
@@ -948,16 +1283,16 @@
       reps = state.sheet.reps;
       editing = true;
     } else {
-      const prev = previousNumbers(ex, index);
-      if (prev) {
-        weight = displayWeight(prev.weight);
-        reps = String(prev.reps || L.lowRep(ex.reps));
+      const target = targetForSet(ex, index);
+      if (target) {
+        weight = String(target.display);
+        reps = String(target.reps);
       } else {
         reps = String(L.lowRep(ex.reps));
       }
+      state.sheet.target = target;
     }
-    const last = L.lastPerformance(state.workouts, ex.id, state.dayType);
-    const suggestion = L.suggestOverload(last, ex.reps, state.unit);
+    const target = state.sheet.target || targetForSet(ex, index);
     state.sheet.type = 'log';
     state.sheet.id = ex.id;
     state.sheet.name = ex.name;
@@ -967,7 +1302,8 @@
     state.sheet.weight = weight;
     state.sheet.reps = reps;
     state.sheet.editing = editing;
-    state.sheet.suggestion = suggestion ? suggestion.text : '';
+    state.sheet.target = editing ? null : (state.sheet.target || target);
+    state.sheet.suggestion = state.sheet.target ? state.sheet.target.text : '';
   }
 
   function readLogFields() {
@@ -1004,8 +1340,62 @@
       toast('Set updated');
       return;
     }
-    startRest((ex && ex.rest) || 90, ex ? ex.name : 'Rest');
+    state.pulseSet = { id: exerciseId, index: index };
+    clearTimeout(state.pulseTimer);
+    state.pulseTimer = setTimeout(function () {
+      state.pulseSet = null;
+    }, 900);
+    const restFor = ex && ex.rest != null ? Number(ex.rest) : 90;
+    const cue = upcomingCue(exerciseId);
+    if (restFor > 0) startRest(Math.max(10, restFor), ex ? ex.name : 'Rest', cue);
+    else if (cue) {
+      state.openId = cue.id;
+      state.scrollToId = cue.id;
+    }
     render({ keepScroll: true });
+  }
+
+  function upcomingCue(currentId) {
+    const list = state.sessionExercises;
+    if (!list.length) return null;
+    const start = Math.max(0, list.findIndex(function (ex) { return sameId(ex.id, currentId); }));
+    for (let step = 0; step < list.length; step += 1) {
+      const ex = list[(start + step) % list.length];
+      const log = findLog(ex.id);
+      const total = L.setCount(log, ex);
+      const sets = (log && log.completedSets) || [];
+      for (let i = 0; i < total; i += 1) {
+        if (!L.isLoggedSet(sets[i])) return { id: ex.id, label: ex.name + ' · Set ' + (i + 1) };
+      }
+    }
+    return null;
+  }
+
+  function beginSession(type, exercises, extra) {
+    const meta = extra || {};
+    if (state.rest) stopRest();
+    state.dayType = type;
+    state.sessionExercises = exercises;
+    state.startTime = Date.now();
+    state.openId = exercises[0].id;
+    state.session = {
+      date: new Date().toISOString(),
+      type: type,
+      typeName: meta.typeName || routineTitle(type),
+      exercises: exercises.map(function (ex) {
+        return { id: ex.id, name: ex.name, muscles: ex.muscles || [], completedSets: [] };
+      }),
+      startTime: state.startTime,
+      durationMin: 0,
+      totalVolume: 0,
+      notes: '',
+      extraExercises: []
+    };
+    if (meta.plan) state.session.plan = meta.plan;
+    state.section = 'train';
+    saveActive();
+    render();
+    toast(state.session.typeName + ' started');
   }
 
   function startWorkout(type) {
@@ -1019,27 +1409,30 @@
       toast('That routine has no exercises.');
       return;
     }
-    state.dayType = type;
-    state.sessionExercises = exercises;
-    state.startTime = Date.now();
-    state.openId = exercises[0].id;
-    state.session = {
-      date: new Date().toISOString(),
-      type: type,
-      typeName: routineTitle(type),
-      exercises: exercises.map(function (ex) {
-        return { id: ex.id, name: ex.name, completedSets: [] };
-      }),
-      startTime: state.startTime,
-      durationMin: 0,
-      totalVolume: 0,
-      notes: '',
-      extraExercises: []
-    };
-    state.section = 'train';
-    saveActive();
-    render();
-    toast(routineTitle(type) + ' started');
+    beginSession(type, exercises);
+  }
+
+  function startPlan() {
+    syncPlan();
+    const chosen = state.section === 'preview' ? state.preview : null;
+    const view = chosen ? { built: sessionAt(chosen.week, chosen.slot, state.area) } : currentBuilt();
+    if (!view.built.exercises.length) {
+      toast('That plan has no exercises yet.');
+      return;
+    }
+    state.preview = null;
+    beginSession('plan', view.built.exercises, {
+      typeName: view.built.title,
+      plan: {
+        blockIndex: state.plan.blockIndex,
+        week: view.built.week,
+        slot: view.built.slot,
+        goal: state.plan.goal,
+        split: state.plan.split,
+        mode: state.area,
+        emphasis: state.plan.emphasis.slice()
+      }
+    });
   }
 
   function addExerciseToSession(ex) {
@@ -1180,13 +1573,14 @@
     toast('Routine saved');
   }
 
-  function startRest(seconds, name) {
+  function startRest(seconds, name, cue) {
     const total = Math.max(10, seconds || 90);
     state.rest = {
       total: total,
       remaining: total,
       paused: false,
       name: name || 'Rest',
+      next: cue || null,
       endsAt: Date.now() + total * 1000
     };
     ensureRestTicker();
@@ -1217,8 +1611,8 @@
     bar.hidden = false;
     document.body.classList.add('resting');
     if (rebuild || !document.getElementById('rest-count')) {
-      bar.innerHTML = '<div class="rest-ring"><svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="18"></circle><circle id="rest-ring" class="val" cx="22" cy="22" r="18" stroke-dasharray="' + CIRC + '"></circle></svg><div class="rest-count" id="rest-count"></div></div>' +
-        '<div class="rest-copy"><strong id="rest-label"></strong><small>Rest</small></div>' +
+      bar.innerHTML = '<div class="rest-main"><div class="rest-ring"><svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="18"></circle><circle id="rest-ring" class="val" cx="22" cy="22" r="18" stroke-dasharray="' + CIRC + '"></circle></svg></div>' +
+        '<div class="rest-copy"><strong id="rest-count" class="rest-time"></strong><small id="rest-next">Rest</small></div></div>' +
         '<div class="rest-actions"><button type="button" data-action="adjust-rest" data-dir="-15">−15</button><button type="button" data-action="pause-rest" id="rest-pause">Pause</button><button type="button" data-action="adjust-rest" data-dir="15">+15</button><button type="button" class="go" data-action="skip-rest">Skip</button></div>';
     }
     paintRest();
@@ -1227,11 +1621,12 @@
   function paintRest() {
     const count = document.getElementById('rest-count');
     const ring = document.getElementById('rest-ring');
-    const label = document.getElementById('rest-label');
+    const label = document.getElementById('rest-next');
     const pause = document.getElementById('rest-pause');
     if (!count || !state.rest) return;
-    count.textContent = state.rest.remaining;
-    if (label) label.textContent = state.rest.name || 'Rest';
+    count.textContent = L.formatRest(state.rest.remaining);
+    count.classList.toggle('soon', state.rest.remaining <= 10);
+    if (label) label.textContent = state.rest.next ? 'Next · ' + state.rest.next.label : (state.rest.name || 'Rest');
     if (pause) pause.textContent = state.rest.paused ? 'Resume' : 'Pause';
     if (ring) {
       const pct = state.rest.total ? state.rest.remaining / state.rest.total : 0;
@@ -1241,17 +1636,22 @@
   }
 
   function completeRest() {
+    const next = state.rest && state.rest.next;
     stopRest();
     playBeep();
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     if (notificationsActive()) {
       try {
-        const note = new Notification('Rest complete', { body: 'Time for the next set.', icon: 'icon-192.png' });
+        const note = new Notification('Rest complete', { body: next ? next.label : 'Time for the next set.', icon: 'icon-192.png' });
         note.onclick = function () { window.focus(); };
       } catch (e) {}
     }
-    toast('Rest complete');
-    renderChrome();
+    if (next) {
+      state.openId = next.id;
+      state.scrollToId = next.id;
+    }
+    toast(next ? next.label : 'Rest complete');
+    render();
   }
 
   function stopRest() {
@@ -1309,7 +1709,8 @@
       workouts: state.workouts,
       templates: state.templates,
       unit: state.unit,
-      weight: state.weight
+      weight: state.weight,
+      plan: state.plan
     });
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1351,6 +1752,10 @@
                 localStorage.setItem('user_weight', String(weight));
               }
             }
+            if (parsed.settings.plan && typeof parsed.settings.plan === 'object') {
+              state.plan = L.normalizePlan(parsed.settings.plan, new Date());
+              savePlan();
+            }
             render();
             toast('Backup imported');
           }
@@ -1367,6 +1772,8 @@
     nav: function (el) {
       state.section = el.dataset.section;
       state.sheet = null;
+      state.menu = false;
+      state.preview = null;
       render();
       saveActive();
     },
@@ -1377,7 +1784,112 @@
         render();
         return;
       }
-      startWorkout(el.dataset.type);
+      if (el.dataset.type === 'plan') startPlan();
+      else startWorkout(el.dataset.type);
+    },
+    'open-menu': function () { state.menu = true; renderDrawer(); },
+    'close-menu': function () { state.menu = false; renderDrawer(); },
+    'set-area': function (el) {
+      const area = el.dataset.area;
+      if (area !== 'strength' && area !== 'mobility' && area !== 'cardio') return;
+      state.area = area;
+      state.menu = false;
+      state.section = 'today';
+      state.preview = null;
+      render();
+    },
+    'edit-setup': function () {
+      state.setup = {
+        name: state.plan.name || '',
+        goal: state.plan.goal,
+        split: state.plan.split,
+        days: state.plan.days
+      };
+      state.menu = false;
+      state.section = 'setup';
+      render();
+    },
+    'set-setup': function (el) {
+      if (!state.setup) state.setup = { name: '', goal: 'strength', split: 'upper-lower', days: 4 };
+      const field = el.dataset.field;
+      if (field === 'goal' || field === 'split') state.setup[field] = el.dataset.value;
+      else if (el.dataset.value === '3' || el.dataset.value === '4') state.setup.days = Number(el.dataset.value);
+      const name = document.getElementById('setup-name');
+      if (name) state.setup.name = name.value;
+      render({ keepScroll: true });
+    },
+    'save-setup': function () {
+      const name = document.getElementById('setup-name');
+      const draft = state.setup || { name: '', goal: 'strength', split: 'upper-lower', days: 4 };
+      if (name) draft.name = name.value;
+      state.plan.name = String(draft.name || '').trim();
+      state.plan.goal = draft.goal || 'strength';
+      state.plan.split = draft.split || 'upper-lower';
+      state.plan.days = draft.days === 3 ? 3 : 4;
+      state.plan.onboarded = true;
+      state.plan = L.normalizePlan(state.plan, new Date());
+      state.plan.onboarded = true;
+      state.plan.name = String(draft.name || '').trim();
+      savePlan();
+      state.section = 'today';
+      state.area = 'strength';
+      state.setup = null;
+      render();
+      toast('Saved');
+    },
+    'open-plan': function () {
+      state.preview = null;
+      state.menu = false;
+      state.section = 'plan';
+      render();
+    },
+    'open-week': function (el) {
+      state.preview = null;
+      state.menu = false;
+      state.planWeek = Number(el.dataset.week) || 1;
+      state.section = 'week';
+      render();
+    },
+    'open-preview': function (el) {
+      const from = state.section === 'week' || state.section === 'train' || state.section === 'today'
+        ? state.section
+        : 'today';
+      state.menu = false;
+      state.preview = {
+        week: Number(el.dataset.week) || 1,
+        slot: Number(el.dataset.slot) || 0,
+        from: from
+      };
+      state.section = 'preview';
+      render();
+    },
+    back: function () {
+      state.menu = false;
+      if (state.section === 'preview') {
+        const from = state.preview && state.preview.from;
+        state.preview = null;
+        state.section = (from === 'week' || from === 'train' || from === 'today') ? from : 'today';
+      } else if (state.section === 'week') {
+        state.section = 'plan';
+      } else if (state.section === 'plan') {
+        state.section = 'today';
+      } else {
+        state.section = 'today';
+      }
+      render();
+    },
+    'set-goal': function (el) {
+      const goal = el.dataset.value;
+      if (['strength', 'muscle', 'mobility', 'mixed'].indexOf(goal) < 0 || !state.plan) return;
+      state.plan.goal = goal;
+      savePlan();
+      render({ keepScroll: true });
+    },
+    'set-days': function (el) {
+      if (!state.plan) return;
+      state.plan.days = el.dataset.value === '3' ? 3 : 4;
+      savePlan();
+      render({ keepScroll: true });
     },
     'open-template': function () { openTemplate(null); },
     'edit-template': function (el) {
@@ -1481,6 +1993,27 @@
       }
       const weight = state.sheet.weight === '' ? 0 : L.toKg(state.sheet.weight, state.unit);
       commitSet(state.sheet.id, state.sheet.index, weight, reps);
+    },
+    'log-target': function (el) {
+      const id = idFrom(el);
+      const index = Number(el.dataset.index);
+      const slot = el.dataset.slot == null ? null : Number(el.dataset.slot);
+      const ex = slot != null && state.sessionExercises[slot] ? state.sessionExercises[slot] : sessionExercise(id);
+      const target = ex && targetForSet(ex, index);
+      if (!ex || !target) {
+        openLog(id, index, slot);
+        return;
+      }
+      state.sheet = { type: 'log', id: ex.id, slot: slot, index: index };
+      commitSet(ex.id, index, Number(target.weightKg) || 0, Number(target.reps) || 0);
+    },
+    'save-target': function () {
+      const target = state.sheet && state.sheet.target;
+      if (!target) {
+        actions['save-log']();
+        return;
+      }
+      commitSet(state.sheet.id, state.sheet.index, Number(target.weightKg) || 0, Number(target.reps) || 0);
     },
     'log-same': function (el) {
       const id = idFrom(el);
@@ -1652,20 +2185,30 @@
       workout.typeName = workout.typeName || routineTitle(state.dayType);
       state.workouts.unshift(workout);
       saveWorkouts();
-      stopRest();
       state.session = null;
       state.sessionExercises = [];
       state.dayType = null;
       state.startTime = null;
       state.sheet = null;
+      stopRest();
       localStorage.removeItem('gymActiveState');
       if (elapsedTimer) {
         clearInterval(elapsedTimer);
         elapsedTimer = null;
       }
-      state.section = 'history';
+      const fresh = L.freshMilestones(state.workouts, state.seen, new Date());
+      state.seen = state.seen.concat(fresh.map(function (item) { return item.id; }));
+      saveSeen();
+      state.section = 'today';
+      state.sheet = fresh.length ? { type: 'cheers', items: fresh } : null;
+      const toastEl = document.getElementById('toast');
+      if (toastEl) toastEl.classList.remove('show');
       render();
-      toast('Workout saved');
+      if (!fresh.length) toast('Workout saved');
+    },
+    'close-cheers': function () {
+      state.sheet = null;
+      render();
     },
     discard: function () {
       ask({

@@ -1,0 +1,126 @@
+{
+  "note": "Local photos used when free-exercise-db is missing a match, or when CDN frames are portrait crops that hide the movement under object-fit:cover. CDN demos remain Unlicense via yuhonas/free-exercise-db.",
+  "photos": [
+    {
+      "file": "assisted-pull-up.jpg",
+      "exerciseIds": [201, 302],
+      "title": "Francis practicando pullups asistido con liga - Crossfit",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Francis_practicando_pullups_asistido_con_liga_-_Crossfit.JPG",
+      "author": "Teran61",
+      "note": "Letterboxed to 5:4 for consistent cover framing; full person with band under knee."
+    },
+    {
+      "file": "box-jump.jpg",
+      "exerciseIds": [880],
+      "title": "Box Jump Multiple Response (frame 1)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Box_Jump_Multiple_Response",
+      "note": "Letterboxed 1.jpg (on-box landing) — 0.jpg standing start was ambiguous under cover crop."
+    },
+    {
+      "file": "landmine-180s.jpg",
+      "exerciseIds": [732],
+      "title": "Landmine 180s (frame 1)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Landmine_180s",
+      "note": "Letterboxed 1.jpg so head and full stance stay visible."
+    },
+    {
+      "file": "smith-pistol-squat.jpg",
+      "exerciseIds": [873],
+      "title": "Smith Machine Pistol Squat (frame 1)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Smith_Machine_Pistol_Squat",
+      "note": "Letterboxed 1.jpg mid-pistol; 0.jpg standing crop hid the movement."
+    },
+    {
+      "file": "trap-bar-deadlift.jpg",
+      "exerciseIds": [760],
+      "title": "Trap Bar Deadlift (frame 0)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Trap_Bar_Deadlift",
+      "note": "Letterboxed portrait so setup stays full-body under 5:4 cover."
+    },
+    {
+      "file": "svend-press.jpg",
+      "exerciseIds": [707],
+      "title": "Svend Press (frame 0)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Svend_Press",
+      "note": "Letterboxed portrait full-body plate press."
+    },
+    {
+      "file": "battling-ropes.jpg",
+      "exerciseIds": [855],
+      "title": "Battling Ropes (frame 0)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Battling_Ropes",
+      "note": "Letterboxed portrait wave demo."
+    },
+    {
+      "file": "med-ball-slam.jpg",
+      "exerciseIds": [854],
+      "title": "One-Arm Medicine Ball Slam (frame 0)",
+      "license": "Unlicense (free-exercise-db)",
+      "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/One-Arm_Medicine_Ball_Slam",
+      "note": "Letterboxed portrait overhead slam."
+    },
+    {
+      "file": "pigeon-pose.jpg",
+      "exerciseIds": [858],
+      "title": "Woman doing one legged pigeons pose",
+      "license": "CC0",
+      "source": "https://www.rawpixel.com/image/5971642/woman-doing-one-legged-pigeons-pose",
+      "author": "rawpixel / freepik (CC0)"
+    },
+    {
+      "file": "bird-dog.jpg",
+      "exerciseIds": [888],
+      "title": "Bird dog exercise.jpg",
+      "license": "CC BY 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Bird_dog_exercise.jpg",
+      "author": "PTPioneer"
+    },
+    {
+      "file": "cat-cow.jpg",
+      "exerciseIds": [788],
+      "title": "Yoga at Your Park - Bitilasana.jpg",
+      "license": "Public domain (US NPS)",
+      "source": "https://commons.wikimedia.org/wiki/File:Yoga_at_Your_Park_-_Bitilasana.jpg",
+      "author": "Mary O'Neill / National Park Service"
+    },
+    {
+      "file": "burpee.jpg",
+      "exerciseIds": [853],
+      "title": "Burpee 7 Land.jpg",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Burpee_7_Land.jpg",
+      "author": "Taco fleur"
+    },
+    {
+      "file": "jumping-jacks.jpg",
+      "exerciseIds": [803],
+      "title": "US Navy sailors performing jumping jacks",
+      "license": "Public domain (US Navy)",
+      "source": "https://commons.wikimedia.org/wiki/File:US_Navy_101112-N-9132C-184_Sailors_from_the_engineering_repair_division_perform_jumping_jacks_during_group_physical_training_in_the_hangar_bay_of_t.jpg",
+      "author": "U.S. Navy photo by Mass Communication Specialist 3rd Class Oliver Cole"
+    },
+    {
+      "file": "reverse-plank.jpg",
+      "exerciseIds": [889],
+      "title": "Purvottanasana.jpg",
+      "license": "CC BY-SA 3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Purvottanasana.jpg",
+      "author": "Joseph RENGER"
+    },
+    {
+      "file": "l-sit.jpg",
+      "exerciseIds": [878],
+      "title": "West Point male gymnast L-sit.jpg",
+      "license": "Public domain (US Army / West Point)",
+      "source": "https://commons.wikimedia.org/wiki/File:West_Point_male_gymnast_L-sit.jpg",
+      "author": "Tommy Gilligan / West Point Public Affairs"
+    }
+  ]
+}
