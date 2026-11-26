@@ -457,7 +457,8 @@
       settings: {
         unit: payload.unit || 'kg',
         weight: payload.weight != null ? String(payload.weight) : '65',
-        plan: payload.plan || null
+        plan: payload.plan || null,
+        schedule: payload.schedule || null
       }
     };
   }
@@ -734,7 +735,8 @@
   }
 
   const SPLIT_DAYS = {
-    'upper-lower': { 3: ['upper', 'lower', 'full'], 4: ['upper', 'lower', 'upper', 'lower'] },
+    /* Upper/Lower calendars use ULU (Upper → Lower → Upper …), including 3-day weeks. */
+    'upper-lower': { 3: ['upper', 'lower', 'upper'], 4: ['upper', 'lower', 'upper', 'lower'] },
     'push-pull': { 3: ['push', 'pull', 'legs'], 4: ['push', 'pull', 'legs', 'upper'] },
     full: { 3: ['full', 'full', 'full'], 4: ['full', 'full', 'full', 'full'] }
   };
@@ -816,13 +818,215 @@
     const index = ((slot % days.length) + days.length) % days.length;
     const day = days[index];
     const variant = days.slice(0, index + 1).filter(function (item) { return item === day; }).length - 1;
+    return layoutForDay(plan, day, variant);
+  }
+
+  function layoutForDay(plan, day, variant) {
+    const key = DAY_LABEL[day] ? day : 'full';
+    const v = Number.isFinite(Number(variant)) ? Number(variant) : 0;
     return {
-      day: day,
-      title: DAY_LABEL[day] || 'Session',
-      focus: DAY_FOCUS[day] || '',
-      variant: variant,
-      parts: dayParts(day, plan.goal, variant)
+      day: key,
+      title: DAY_LABEL[key] || 'Session',
+      focus: DAY_FOCUS[key] || '',
+      variant: v,
+      parts: dayParts(key, plan.goal, v)
     };
+  }
+
+  /* Calendar rotation: ULU for upper/lower, plan days for push-pull, always Full for full. */
+  function rotationFor(plan) {
+    const ready = normalizePlan(plan);
+    if (ready.split === 'full') return ['full'];
+    if (ready.split === 'upper-lower') return ['upper', 'lower'];
+    const pattern = SPLIT_DAYS['push-pull'];
+    return (pattern[ready.days] || pattern[4]).slice();
+  }
+
+  function defaultWeekdays(days) {
+    return days === 3 ? [1, 3, 5] : [1, 2, 4, 5];
+  }
+
+  function normalizeSchedule(schedule, plan) {
+    const ready = normalizePlan(plan);
+    const source = schedule && typeof schedule === 'object' ? schedule : {};
+    const weekdays = Array.isArray(source.weekdays)
+      ? source.weekdays.map(Number).filter(function (d) { return d >= 0 && d <= 6; })
+      : [];
+    const overrides = {};
+    const raw = source.overrides && typeof source.overrides === 'object' ? source.overrides : {};
+    Object.keys(raw).forEach(function (key) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+      const item = raw[key];
+      if (!item || typeof item !== 'object') return;
+      if (item.skip === true) {
+        overrides[key] = { skip: true };
+        return;
+      }
+      if (item.type && DAY_LABEL[item.type]) overrides[key] = { type: item.type };
+    });
+    const rotation = rotationFor(ready);
+    let nextIndex = Number(source.nextIndex);
+    if (!Number.isFinite(nextIndex) || nextIndex < 0) nextIndex = 0;
+    nextIndex = nextIndex % Math.max(1, rotation.length);
+    return {
+      weekdays: weekdays.length ? weekdays : defaultWeekdays(ready.days),
+      overrides: overrides,
+      nextIndex: nextIndex
+    };
+  }
+
+  function dayTypeLabel(type) {
+    return DAY_LABEL[type] || 'Session';
+  }
+
+  function isTrainingWeekday(schedule, plan, date) {
+    const ready = normalizeSchedule(schedule, plan);
+    const d = new Date(date);
+    return ready.weekdays.indexOf(d.getDay()) >= 0;
+  }
+
+  function overrideFor(schedule, plan, iso) {
+    const ready = normalizeSchedule(schedule, plan);
+    return ready.overrides[iso] || null;
+  }
+
+  function advanceSchedule(schedule, plan, loggedType) {
+    const ready = normalizeSchedule(schedule, plan);
+    const rotation = rotationFor(plan);
+    const i = rotation.indexOf(loggedType);
+    if (i >= 0) ready.nextIndex = (i + 1) % rotation.length;
+    else ready.nextIndex = (ready.nextIndex + 1) % rotation.length;
+    return ready;
+  }
+
+  function setScheduleDay(schedule, plan, iso, patch) {
+    const ready = normalizeSchedule(schedule, plan);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ready;
+    if (!patch || patch.clear) {
+      delete ready.overrides[iso];
+      return ready;
+    }
+    if (patch.skip === true) {
+      ready.overrides[iso] = { skip: true };
+      return ready;
+    }
+    if (patch.type && DAY_LABEL[patch.type]) {
+      ready.overrides[iso] = { type: patch.type };
+      return ready;
+    }
+    return ready;
+  }
+
+  function strengthLoggedType(workout) {
+    if (!workout) return null;
+    const mode = workout.plan && workout.plan.mode ? workout.plan.mode : 'strength';
+    if (mode !== 'strength') return null;
+    if (workout.plan && workout.plan.day && DAY_LABEL[workout.plan.day]) return workout.plan.day;
+    const name = String(workout.typeName || '').toLowerCase();
+    if (name.indexOf('upper') === 0) return 'upper';
+    if (name.indexOf('lower') === 0) return 'lower';
+    if (name === 'push') return 'push';
+    if (name === 'pull') return 'pull';
+    if (name === 'legs') return 'legs';
+    if (name.indexOf('full') === 0) return 'full';
+    return null;
+  }
+
+  function monthGrid(year, month, schedule, plan, workouts, now) {
+    const ready = normalizeSchedule(schedule, plan);
+    const rotation = rotationFor(plan);
+    const todayIso = isoDay(now || new Date());
+    const first = new Date(year, month, 1);
+    const startPad = first.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startPad; i += 1) cells.push({ empty: true });
+
+    const byDay = {};
+    (workouts || []).forEach(function (workout) {
+      if (!workout || !workout.date) return;
+      const mode = workout.plan && workout.plan.mode ? workout.plan.mode : 'strength';
+      if (mode !== 'strength') return;
+      const iso = isoDay(workout.date);
+      if (!byDay[iso]) byDay[iso] = workout;
+    });
+
+    const futureDates = [];
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(year, month, day);
+      const iso = isoDay(date);
+      const override = ready.overrides[iso] || null;
+      const weekdayHit = ready.weekdays.indexOf(date.getDay()) >= 0;
+      const skipped = !!(override && override.skip);
+      const forced = override && override.type ? override.type : null;
+      const isSession = !skipped && (weekdayHit || !!forced);
+      if (isSession && iso >= todayIso && !byDay[iso]) futureDates.push(iso);
+    }
+
+    const assigned = {};
+    let cursor = ready.nextIndex % rotation.length;
+    futureDates.forEach(function (iso) {
+      const override = ready.overrides[iso];
+      const suggested = rotation[cursor % rotation.length];
+      cursor += 1;
+      assigned[iso] = override && override.type ? override.type : suggested;
+    });
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(year, month, day);
+      const iso = isoDay(date);
+      const override = ready.overrides[iso] || null;
+      const weekdayHit = ready.weekdays.indexOf(date.getDay()) >= 0;
+      const skipped = !!(override && override.skip);
+      const logged = byDay[iso] || null;
+      const loggedType = strengthLoggedType(logged);
+      let status = 'rest';
+      let type = null;
+      let tweaked = false;
+      if (skipped) {
+        status = 'skip';
+      } else if (loggedType) {
+        status = 'done';
+        type = loggedType;
+      } else if (assigned[iso]) {
+        status = iso === todayIso ? 'today' : 'planned';
+        type = assigned[iso];
+        tweaked = !!(override && override.type);
+      } else if (weekdayHit || (override && override.type)) {
+        status = iso < todayIso ? 'missed' : 'planned';
+        type = override && override.type ? override.type : null;
+        tweaked = !!(override && override.type);
+      }
+      cells.push({
+        empty: false,
+        date: iso,
+        day: day,
+        weekday: date.getDay(),
+        status: status,
+        type: type,
+        title: type ? dayTypeLabel(type) : (status === 'skip' ? 'Skip' : ''),
+        short: type ? dayTypeLabel(type).split(' ')[0] : (status === 'skip' ? 'Skip' : ''),
+        tweaked: tweaked,
+        isToday: iso === todayIso
+      });
+    }
+    while (cells.length % 7) cells.push({ empty: true });
+    return {
+      year: year,
+      month: month,
+      label: first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      weekdays: ready.weekdays.slice(),
+      rotation: rotation.slice(),
+      nextIndex: ready.nextIndex,
+      cells: cells
+    };
+  }
+
+  function suggestionForDate(schedule, plan, iso, workouts, now) {
+    const when = parseDay(iso);
+    if (Number.isNaN(when.getTime())) return null;
+    const grid = monthGrid(when.getFullYear(), when.getMonth(), schedule, plan, workouts, now || when);
+    return grid.cells.find(function (cell) { return !cell.empty && cell.date === iso; }) || null;
   }
 
   function poolFor(library, group, kind) {
@@ -979,7 +1183,10 @@
         exercises: exercises
       };
     }
-    const layout = sessionParts(plan, slot);
+    const forcedDay = options.day && DAY_LABEL[options.day] ? options.day : null;
+    const layout = forcedDay
+      ? layoutForDay(plan, forcedDay, options.variant || 0)
+      : sessionParts(plan, slot);
     const avoid = (options.avoidIds || []).slice();
     const chosen = [];
     layout.parts.forEach(function (part, partIndex) {
@@ -989,13 +1196,17 @@
         chosen.push(schemeFor(ex, plan.goal, week, part.kind));
       });
     });
+    const slotOut = forcedDay
+      ? Math.max(0, (SPLIT_DAYS[plan.split] || SPLIT_DAYS['upper-lower'])[plan.days].indexOf(forcedDay))
+      : ((slot % plan.days) + plan.days) % plan.days;
     return {
       title: layout.title,
       focus: layout.focus,
+      day: layout.day,
       summary: phase.text,
       week: week,
       weekName: phase.name,
-      slot: ((slot % plan.days) + plan.days) % plan.days,
+      slot: slotOut,
       mode: 'strength',
       split: plan.split,
       exercises: chosen
@@ -1064,7 +1275,19 @@
     buildSession: buildSession,
     goalLabel: goalLabel,
     splitLabel: splitLabel,
+    dayTypeLabel: dayTypeLabel,
+    rotationFor: rotationFor,
+    defaultWeekdays: defaultWeekdays,
+    normalizeSchedule: normalizeSchedule,
+    isTrainingWeekday: isTrainingWeekday,
+    overrideFor: overrideFor,
+    advanceSchedule: advanceSchedule,
+    setScheduleDay: setScheduleDay,
+    monthGrid: monthGrid,
+    suggestionForDate: suggestionForDate,
+    strengthLoggedType: strengthLoggedType,
     GROUP_LABEL: GROUP_LABEL,
-    WEEK_COPY: WEEK_COPY
+    WEEK_COPY: WEEK_COPY,
+    DAY_LABEL: DAY_LABEL
   };
 });
