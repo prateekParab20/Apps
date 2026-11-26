@@ -54,6 +54,8 @@
     dialog: null,
     notes: '',
     plan: null,
+    schedule: null,
+    calendarCursor: null,
     seen: [],
     area: 'strength',
     menu: false,
@@ -312,6 +314,11 @@
     localStorage.setItem('stronglean_plan', JSON.stringify(state.plan));
   }
 
+  function saveSchedule() {
+    state.schedule = L.normalizeSchedule(state.schedule, state.plan);
+    localStorage.setItem('stronglean_schedule', JSON.stringify(state.schedule));
+  }
+
   function saveSeen() {
     localStorage.setItem('stronglean_milestones', JSON.stringify(state.seen));
   }
@@ -320,9 +327,10 @@
     const result = L.advancePlan(state.plan, state.workouts, new Date(), Lib.library);
     state.plan = result.plan;
     if (result.changed) savePlan();
+    state.schedule = L.normalizeSchedule(state.schedule, state.plan);
   }
 
-  function sessionAt(week, slot, area) {
+  function sessionAt(week, slot, area, day) {
     const mode = area || state.area || 'strength';
     const current = Math.min(4, L.blockWeek(state.plan, new Date()));
     return L.buildSession({
@@ -331,14 +339,58 @@
       mode: mode,
       week: week,
       slot: slot,
+      day: mode === 'strength' ? day : null,
       avoidIds: week === current ? L.weekIds(state.workouts, state.plan, new Date(), mode) : []
     });
   }
 
+  function todaySuggestion() {
+    if (state.area !== 'strength') return null;
+    return L.suggestionForDate(state.schedule, state.plan, L.isoDay(new Date()), state.workouts, new Date());
+  }
+
+  function nextPlannedSuggestion() {
+    const now = new Date();
+    const grid = L.monthGrid(now.getFullYear(), now.getMonth(), state.schedule, state.plan, state.workouts, now);
+    const todayIso = L.isoDay(now);
+    let found = grid.cells.find(function (cell) {
+      return !cell.empty && cell.type && (cell.status === 'planned' || cell.status === 'today') && cell.date >= todayIso && cell.status !== 'done';
+    });
+    if (found) return found;
+    /* Peek into next month if this month is done. */
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextGrid = L.monthGrid(next.getFullYear(), next.getMonth(), state.schedule, state.plan, state.workouts, now);
+    return nextGrid.cells.find(function (cell) {
+      return !cell.empty && cell.type && cell.status === 'planned';
+    }) || null;
+  }
+
   function currentBuilt() {
-    const slot = L.nextSlot(state.workouts, state.plan, new Date(), state.area);
     const week = Math.min(4, L.blockWeek(state.plan, new Date()));
-    return { slot: slot, week: week, built: sessionAt(week, slot.slot, state.area) };
+    if (state.area === 'strength') {
+      const tip = todaySuggestion();
+      if (tip && tip.type && tip.status !== 'skip' && tip.status !== 'done') {
+        return {
+          slot: { slot: 0, doneToday: tip.status === 'done', used: {}, count: state.plan.days },
+          week: week,
+          built: sessionAt(week, 0, 'strength', tip.type),
+          suggestion: tip
+        };
+      }
+      if (tip && (tip.status === 'done' || tip.status === 'skip')) {
+        const slot = L.nextSlot(state.workouts, state.plan, new Date(), state.area);
+        const next = nextPlannedSuggestion();
+        const day = next && next.type ? next.type : null;
+        return {
+          slot: Object.assign({}, slot, { doneToday: tip.status === 'done' }),
+          week: week,
+          built: sessionAt(week, slot.slot, state.area, day),
+          suggestion: next
+        };
+      }
+    }
+    const slot = L.nextSlot(state.workouts, state.plan, new Date(), state.area);
+    return { slot: slot, week: week, built: sessionAt(week, slot.slot, state.area), suggestion: null };
   }
 
   function areaCount() {
@@ -378,6 +430,11 @@
     const storedPlan = readJSON('stronglean_plan', null);
     state.plan = L.normalizePlan(storedPlan, new Date());
     if (!storedPlan) savePlan();
+    const storedSchedule = readJSON('stronglean_schedule', null);
+    state.schedule = L.normalizeSchedule(storedSchedule, state.plan);
+    if (!storedSchedule) saveSchedule();
+    const nowCal = new Date();
+    state.calendarCursor = { year: nowCal.getFullYear(), month: nowCal.getMonth() };
     const storedSeen = readJSON('stronglean_milestones', null);
     if (storedSeen == null) {
       state.seen = L.milestoneBoard(state.workouts, new Date()).filter(function (item) { return item.earned; }).map(function (item) { return item.id; });
@@ -447,20 +504,35 @@
     toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
   }
 
-  function paintThemeColor() {
+  function themePreference() {
     const stored = localStorage.getItem('theme');
-    const dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+    return 'light';
+  }
+
+  function isDarkTheme() {
+    const pref = themePreference();
+    if (pref === 'dark') return true;
+    if (pref === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function paintThemeColor() {
     const meta = document.getElementById('theme-color');
-    if (meta) meta.setAttribute('content', dark ? '#0b1016' : '#e6eef6');
+    if (meta) meta.setAttribute('content', isDarkTheme() ? '#221c19' : '#fff8f3');
+  }
+
+  function syncThemeClass() {
+    document.documentElement.classList.remove('light', 'dark');
+    const pref = themePreference();
+    if (pref === 'light') document.documentElement.classList.add('light');
+    else if (pref === 'dark') document.documentElement.classList.add('dark');
   }
 
   function applyTheme(mode) {
-    if (mode === 'system') localStorage.removeItem('theme');
-    else localStorage.setItem('theme', mode);
-    document.documentElement.classList.remove('light', 'dark');
-    const stored = localStorage.getItem('theme');
-    if (stored === 'light') document.documentElement.classList.add('light');
-    if (stored === 'dark') document.documentElement.classList.add('dark');
+    if (mode === 'system') localStorage.setItem('theme', 'system');
+    else if (mode === 'light' || mode === 'dark') localStorage.setItem('theme', mode);
+    syncThemeClass();
     paintThemeColor();
     if (state.section === 'you' && !state.sheet && !state.template) render({ keepScroll: true });
   }
@@ -691,28 +763,69 @@
     return bits.join(' · ');
   }
 
+  function calendarMonthLabel(year, month) {
+    return new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+
+  function calendarModeDots(modes) {
+    if (!modes || !modes.length) return '';
+    return '<span class="cal-dots" aria-hidden="true">' + modes.map(function (mode) {
+      return '<i class="cal-dot mode-' + esc(mode) + '" title="' + esc(L.modeDayLabel(mode)) + '"></i>';
+    }).join('') + '</span>';
+  }
+
+  function renderCalendar() {
+    const cursor = state.calendarCursor || { year: new Date().getFullYear(), month: new Date().getMonth() };
+    const grid = L.monthGrid(cursor.year, cursor.month, state.schedule, state.plan, state.workouts, new Date());
+    const heads = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (d) {
+      return '<span class="cal-head">' + d + '</span>';
+    }).join('');
+    const cells = grid.cells.map(function (cell) {
+      if (cell.empty) return '<span class="cal-cell is-empty"></span>';
+      const classes = ['cal-cell'];
+      if (cell.isToday) classes.push('is-today');
+      if (cell.status === 'done') classes.push('is-done');
+      else if (cell.hasLog) classes.push('is-logged');
+      if (cell.status === 'planned' || cell.status === 'today') classes.push('is-planned');
+      if (cell.status === 'skip') classes.push('is-skip');
+      if (cell.status === 'missed') classes.push('is-missed');
+      if (cell.tweaked) classes.push('is-tweaked');
+      const mark = cell.short ? '<em>' + esc(cell.short) + '</em>' : '<em class="cal-blank">&nbsp;</em>';
+      return '<button type="button" class="' + classes.join(' ') + '" data-action="cal-day" data-date="' + esc(cell.date) + '"><strong>' + cell.day + '</strong>' + mark + calendarModeDots(cell.loggedModes) + '</button>';
+    }).join('');
+    const rot = (grid.rotation || []).map(function (day) { return L.dayTypeLabel(day).split(' ')[0]; }).join(' · ');
+    const hint = state.area === 'strength'
+      ? rot + ' · tap a day to swap or skip'
+      : 'Strength · Mobility · Cardio · tap a day';
+    return '<div class="section-label">Schedule</div>' +
+      '<div class="cal-card">' +
+      '<div class="cal-nav">' +
+      '<button type="button" class="text-btn" data-action="cal-prev" aria-label="Previous month">‹</button>' +
+      '<strong>' + esc(calendarMonthLabel(cursor.year, cursor.month)) + '</strong>' +
+      '<button type="button" class="text-btn" data-action="cal-next" aria-label="Next month">›</button>' +
+      '</div>' +
+      '<p class="cal-hint">' + esc(hint) + '</p>' +
+      '<div class="cal-grid">' + heads + cells + '</div>' +
+      '</div>';
+  }
+
   function renderToday() {
     const view = currentBuilt();
     const built = view.built;
     const streak = L.streak(state.workouts);
-    const used = view.slot.used || {};
+    const tip = view.suggestion;
+    const doneToday = tip && tip.status === 'done';
     let start;
     if (state.session) {
       start = '<button class="btn btn-primary" data-action="nav" data-section="train">Resume</button>';
-    } else if (view.slot.doneToday) {
+    } else if (state.area === 'strength' && tip && tip.status === 'skip') {
+      start = '<button class="btn btn-primary" data-action="start" data-type="plan">Train anyway</button>';
+    } else if (doneToday || view.slot.doneToday) {
       start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start next</button>';
     } else {
       start = '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
     }
-    const list = [];
-    for (let slot = 0; slot < areaCount(); slot += 1) {
-      const other = sessionAt(view.week, slot, state.area);
-      let status = '';
-      if (used[slot]) status = 'Done';
-      else if (slot === built.slot) status = view.slot.doneToday ? 'Next' : 'Up next';
-      list.push('<button class="log-row' + (slot === built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
-    }
-    /* This block opens the 4-week plan — keep it out of THIS WEEK so day count matches plan.days. */
+    /* This block opens the 4-week plan — keep it out of the calendar so day count matches plan.days. */
     const planEntry = state.area === 'strength'
       ? '<div class="section-label" style="margin-top:18px">Plan</div><button class="plan-entry" data-action="open-plan"><span class="choice-copy"><strong>This block</strong><small>' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + ' · 4 weeks</small></span><span class="chevron">›</span></button>'
       : '';
@@ -729,8 +842,7 @@
       '<p class="session-meta">' + esc(sessionMeta(built)) + '</p>' +
       start + '</div>' +
       planEntry +
-      '<div class="section-label">This week</div>' +
-      '<div class="group">' + list.join('') + '</div></section>';
+      renderCalendar() + '</section>';
   }
 
   function renderPlan() {
@@ -794,16 +906,20 @@
         '<button class="icon-btn" data-action="edit-template" data-id="' + esc(template.id) + '" aria-label="Edit ' + esc(template.name) + '">Edit</button></div>';
     }).join('');
     const weekNow = Math.min(4, L.blockWeek(state.plan, new Date()));
-    const weekRows = [];
-    for (let slot = 0; slot < areaCount(); slot += 1) {
-      const built = sessionAt(weekNow, slot, state.area);
-      weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(sessionRowDetail(built)) + '</small></span><span class="chevron">›</span></button>');
-    }
+    const areaSessions = state.area === 'strength' ? '' : (function () {
+      const weekRows = [];
+      for (let slot = 0; slot < areaCount(); slot += 1) {
+        const built = sessionAt(weekNow, slot, state.area);
+        weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(sessionRowDetail(built)) + '</small></span><span class="chevron">›</span></button>');
+      }
+      return '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>';
+    }());
     const routines = state.area === 'strength'
       ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
       : '';
     return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
-      '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>' +
+      renderCalendar() +
+      areaSessions +
       routines + '</section>';
   }
 
@@ -1000,8 +1116,7 @@
   }
 
   function renderYou() {
-    const stored = localStorage.getItem('theme');
-    const theme = stored === 'light' || stored === 'dark' ? stored : 'system';
+    const theme = themePreference();
     const one = calculatorValue();
     const notify = notificationsActive();
     return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
@@ -1103,6 +1218,7 @@
     else if (sheet.type === 'abs') { title = 'Core'; body = absSheet(); }
     else if (sheet.type === 'history') { title = 'Session'; body = historySheet(); }
     else if (sheet.type === 'progress') { title = 'Progress'; body = progressSheet(); }
+    else if (sheet.type === 'cal-day') { title = 'Session day'; body = calDaySheet(); }
     if (sheet.type === 'log') {
       return '<div class="overlay" data-action="close-sheet"><div class="sheet" role="dialog" aria-modal="true" data-action="stop">' + body + '</div></div>';
     }
@@ -1142,6 +1258,57 @@
       }).join('<br>') + '</div>' : '') +
       '<textarea id="finish-notes" class="note" placeholder="How did it feel?">' + esc(state.notes) + '</textarea>' +
       '<button class="btn btn-primary" style="margin-top:12px" data-action="save-finish">Save workout</button>';
+  }
+
+  function scheduleTypeChoices() {
+    const split = state.plan.split;
+    if (split === 'full') return ['full'];
+    if (split === 'push-pull') return ['push', 'pull', 'legs', 'upper'];
+    return ['upper', 'lower', 'full'];
+  }
+
+  function calDaySheet() {
+    const iso = state.sheet.date;
+    const tip = L.suggestionForDate(state.schedule, state.plan, iso, state.workouts, new Date());
+    const when = new Date(iso + 'T12:00:00');
+    const label = when.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const current = tip && tip.type ? tip.type : (state.sheet.dayType || null);
+    const logs = tip && tip.logs ? tip.logs : [];
+    let statusLine;
+    if (tip && tip.status === 'skip') {
+      statusLine = 'Skipped for now';
+    } else if (tip && tip.status === 'done') {
+      statusLine = 'Logged · ' + (tip.title || L.dayTypeLabel(current));
+    } else if (current) {
+      statusLine = 'Suggested · ' + L.dayTypeLabel(current);
+    } else if (logs.length) {
+      statusLine = 'Logged · ' + logs.map(function (entry) {
+        return entry.typeName || L.modeDayLabel(entry.mode);
+      }).join(' · ');
+    } else {
+      statusLine = 'Rest day';
+    }
+    const loggedBlock = logs.length
+      ? '<div class="section-label">Logged</div><div class="group">' + logs.map(function (entry) {
+        return '<div class="log-row static"><span class="choice-copy"><strong>' + esc(entry.typeName || L.modeDayLabel(entry.mode)) + '</strong><small>' + esc(L.modeDayLabel(entry.mode)) + '</small></span></div>';
+      }).join('') + '</div>'
+      : '';
+    const choices = scheduleTypeChoices().map(function (type) {
+      const on = current === type && !(tip && tip.status === 'skip');
+      return '<button class="choice" data-action="cal-set-type" data-type="' + type + '" aria-pressed="' + (on ? 'true' : 'false') + '"><strong>' + esc(L.dayTypeLabel(type)) + '</strong><small>' + (on ? 'Selected' : 'Use this day') + '</small></button>';
+    }).join('');
+    const isToday = iso === L.isoDay(new Date());
+    const start = tip && tip.status === 'done'
+      ? ''
+      : '<button class="btn btn-primary" style="margin-top:14px" data-action="cal-start"' + (current ? '' : ' disabled') + '>Start ' + esc(current ? L.dayTypeLabel(current) : 'session') + '</button>';
+    return '<p class="eyebrow">' + esc(label) + (isToday ? ' · Today' : '') + '</p>' +
+      '<p class="lede" style="margin-top:4px">' + esc(statusLine) + '</p>' +
+      loggedBlock +
+      '<div class="section-label">Day type</div><div class="choice-list">' + choices + '</div>' +
+      '<div class="cal-day-actions">' +
+      '<button class="btn btn-quiet" data-action="cal-skip">' + (tip && tip.status === 'skip' ? 'Unskip day' : 'Skip this day') + '</button>' +
+      (tip && tip.tweaked ? '<button class="btn btn-quiet" data-action="cal-reset">Use default</button>' : '') +
+      '</div>' + start;
   }
 
   function howtoSheet() {
@@ -1415,18 +1582,28 @@
   function startPlan() {
     syncPlan();
     const chosen = state.section === 'preview' ? state.preview : null;
-    const view = chosen ? { built: sessionAt(chosen.week, chosen.slot, state.area) } : currentBuilt();
+    let view;
+    if (chosen) {
+      view = { built: sessionAt(chosen.week, chosen.slot, state.area, chosen.day || null) };
+    } else if (state.area === 'strength' && state.sheet && state.sheet.type === 'cal-day' && state.sheet.dayType) {
+      const week = Math.min(4, L.blockWeek(state.plan, new Date()));
+      view = { built: sessionAt(week, 0, 'strength', state.sheet.dayType) };
+    } else {
+      view = currentBuilt();
+    }
     if (!view.built.exercises.length) {
       toast('That plan has no exercises yet.');
       return;
     }
     state.preview = null;
+    state.sheet = null;
     beginSession('plan', view.built.exercises, {
       typeName: view.built.title,
       plan: {
         blockIndex: state.plan.blockIndex,
         week: view.built.week,
         slot: view.built.slot,
+        day: view.built.day || null,
         goal: state.plan.goal,
         split: state.plan.split,
         mode: state.area,
@@ -1710,7 +1887,8 @@
       templates: state.templates,
       unit: state.unit,
       weight: state.weight,
-      plan: state.plan
+      plan: state.plan,
+      schedule: state.schedule
     });
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1755,6 +1933,13 @@
             if (parsed.settings.plan && typeof parsed.settings.plan === 'object') {
               state.plan = L.normalizePlan(parsed.settings.plan, new Date());
               savePlan();
+            }
+            if (parsed.settings.schedule && typeof parsed.settings.schedule === 'object') {
+              state.schedule = L.normalizeSchedule(parsed.settings.schedule, state.plan);
+              saveSchedule();
+            } else {
+              state.schedule = L.normalizeSchedule(state.schedule, state.plan);
+              saveSchedule();
             }
             render();
             toast('Backup imported');
@@ -1822,20 +2007,113 @@
       const name = document.getElementById('setup-name');
       const draft = state.setup || { name: '', goal: 'strength', split: 'upper-lower', days: 4 };
       if (name) draft.name = name.value;
+      const days = draft.days === 3 ? 3 : 4;
+      const splitChanged = (draft.split || 'upper-lower') !== state.plan.split;
+      const daysChanged = days !== state.plan.days;
       state.plan.name = String(draft.name || '').trim();
       state.plan.goal = draft.goal || 'strength';
       state.plan.split = draft.split || 'upper-lower';
-      state.plan.days = draft.days === 3 ? 3 : 4;
+      state.plan.days = days;
       state.plan.onboarded = true;
       state.plan = L.normalizePlan(state.plan, new Date());
       state.plan.onboarded = true;
       state.plan.name = String(draft.name || '').trim();
       savePlan();
+      if (daysChanged || !state.schedule) {
+        state.schedule = L.normalizeSchedule({
+          weekdays: L.defaultWeekdays(state.plan.days),
+          overrides: state.schedule && state.schedule.overrides || {},
+          nextIndex: state.schedule && state.schedule.nextIndex || 0
+        }, state.plan);
+      } else {
+        state.schedule = L.normalizeSchedule(state.schedule, state.plan);
+      }
+      if (splitChanged) state.schedule.nextIndex = 0;
+      saveSchedule();
       state.section = 'today';
       state.area = 'strength';
       state.setup = null;
       render();
       toast('Saved');
+    },
+    'cal-prev': function () {
+      const cursor = state.calendarCursor || { year: new Date().getFullYear(), month: new Date().getMonth() };
+      cursor.month -= 1;
+      if (cursor.month < 0) {
+        cursor.month = 11;
+        cursor.year -= 1;
+      }
+      state.calendarCursor = cursor;
+      render({ keepScroll: true });
+    },
+    'cal-next': function () {
+      const cursor = state.calendarCursor || { year: new Date().getFullYear(), month: new Date().getMonth() };
+      cursor.month += 1;
+      if (cursor.month > 11) {
+        cursor.month = 0;
+        cursor.year += 1;
+      }
+      state.calendarCursor = cursor;
+      render({ keepScroll: true });
+    },
+    'cal-day': function (el) {
+      const iso = el.dataset.date;
+      if (!iso) return;
+      const tip = L.suggestionForDate(state.schedule, state.plan, iso, state.workouts, new Date());
+      state.sheet = {
+        type: 'cal-day',
+        date: iso,
+        dayType: tip && tip.type ? tip.type : null
+      };
+      renderChrome();
+    },
+    'cal-set-type': function (el) {
+      const type = el.dataset.type;
+      if (!state.sheet || state.sheet.type !== 'cal-day' || !L.DAY_LABEL[type]) return;
+      state.schedule = L.setScheduleDay(state.schedule, state.plan, state.sheet.date, { type: type });
+      saveSchedule();
+      state.sheet.dayType = type;
+      render();
+      renderChrome();
+      toast(L.dayTypeLabel(type) + ' set');
+    },
+    'cal-skip': function () {
+      if (!state.sheet || state.sheet.type !== 'cal-day') return;
+      const tip = L.suggestionForDate(state.schedule, state.plan, state.sheet.date, state.workouts, new Date());
+      if (tip && tip.status === 'skip') {
+        state.schedule = L.setScheduleDay(state.schedule, state.plan, state.sheet.date, { clear: true });
+      } else {
+        state.schedule = L.setScheduleDay(state.schedule, state.plan, state.sheet.date, { skip: true });
+      }
+      saveSchedule();
+      state.sheet = null;
+      render();
+      toast('Schedule updated');
+    },
+    'cal-reset': function () {
+      if (!state.sheet || state.sheet.type !== 'cal-day') return;
+      state.schedule = L.setScheduleDay(state.schedule, state.plan, state.sheet.date, { clear: true });
+      saveSchedule();
+      const tip = L.suggestionForDate(state.schedule, state.plan, state.sheet.date, state.workouts, new Date());
+      state.sheet.dayType = tip && tip.type ? tip.type : null;
+      render();
+      renderChrome();
+      toast('Back to default');
+    },
+    'cal-start': function () {
+      if (!state.sheet || state.sheet.type !== 'cal-day') return;
+      if (state.session) {
+        toast('Finish or discard the workout in progress.');
+        state.section = 'train';
+        state.sheet = null;
+        render();
+        return;
+      }
+      if (!state.sheet.dayType) {
+        toast('Pick a day type first.');
+        return;
+      }
+      startPlan();
     },
     'open-plan': function () {
       state.preview = null;
@@ -1889,6 +2167,12 @@
       if (!state.plan) return;
       state.plan.days = el.dataset.value === '3' ? 3 : 4;
       savePlan();
+      state.schedule = L.normalizeSchedule({
+        weekdays: L.defaultWeekdays(state.plan.days),
+        overrides: state.schedule && state.schedule.overrides || {},
+        nextIndex: state.schedule && state.schedule.nextIndex || 0
+      }, state.plan);
+      saveSchedule();
       render({ keepScroll: true });
     },
     'open-template': function () { openTemplate(null); },
@@ -2185,6 +2469,15 @@
       workout.typeName = workout.typeName || routineTitle(state.dayType);
       state.workouts.unshift(workout);
       saveWorkouts();
+      const loggedType = L.strengthLoggedType(workout);
+      if (loggedType && (!workout.plan || workout.plan.mode === 'strength' || !workout.plan.mode)) {
+        state.schedule = L.advanceSchedule(state.schedule, state.plan, loggedType);
+        const dayIso = L.isoDay(workout.date || new Date());
+        if (state.schedule.overrides[dayIso]) {
+          state.schedule = L.setScheduleDay(state.schedule, state.plan, dayIso, { clear: true });
+        }
+        saveSchedule();
+      }
       state.session = null;
       state.sessionExercises = [];
       state.dayType = null;
@@ -2442,6 +2735,7 @@
   }
 
   load();
+  syncThemeClass();
   paintThemeColor();
   render();
 })();

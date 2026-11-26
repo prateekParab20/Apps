@@ -223,7 +223,7 @@ test('strength weeks add a set, then ease off, and days do not repeat the same l
   assert.ok(push.exercises.every(function (ex) { return /bench|press|raise|pushdown|dip/i.test(ex.name); }));
 });
 
-test('upper-lower 3-day weeks are Upper → Lower → Full body with plain titles', function () {
+test('upper-lower 3-day weeks are Upper → Lower → Upper with plain titles', function () {
   const plan = L.normalizePlan({ goal: 'strength', days: 3, split: 'upper-lower', blockStart: '2026-11-01', variation: 0, blockIndex: 0 }, new Date(2026, 10, 1));
   const week = [0, 1, 2].map(function (slot) {
     return L.buildSession({ library: catalog, plan: plan, week: 1, slot: slot });
@@ -232,7 +232,7 @@ test('upper-lower 3-day weeks are Upper → Lower → Full body with plain title
   assert.deepEqual(week.map(function (s) { return s.title; }), [
     'Upper body',
     'Lower body',
-    'Full body'
+    'Upper body'
   ]);
   week.forEach(function (session) {
     assert.ok(!/[AB]$/.test(session.title));
@@ -362,4 +362,108 @@ test('milestones celebrate firsts, streaks, records, and a return', function () 
   const board = L.milestoneBoard(first, now);
   assert.equal(board.find(function (item) { return item.id === 'ten'; }).earned, false);
   assert.equal(board.find(function (item) { return item.id === 'first'; }).earned, true);
+});
+
+test('calendar ULU suggests Upper then Lower across scheduled days', function () {
+  const plan = L.normalizePlan({ goal: 'strength', days: 4, split: 'upper-lower', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  assert.deepEqual(L.rotationFor(plan), ['upper', 'lower']);
+  const schedule = L.normalizeSchedule({ nextIndex: 0 }, plan);
+  assert.deepEqual(schedule.weekdays, [1, 2, 4, 5]);
+  const now = new Date(2026, 10, 2); /* Monday */
+  const grid = L.monthGrid(2026, 10, schedule, plan, [], now);
+  const planned = grid.cells.filter(function (cell) { return !cell.empty && (cell.status === 'planned' || cell.status === 'today'); });
+  assert.ok(planned.length >= 4);
+  assert.equal(planned[0].type, 'upper');
+  assert.equal(planned[1].type, 'lower');
+  assert.equal(planned[2].type, 'upper');
+  assert.equal(planned[3].type, 'lower');
+  assert.equal(planned[0].title, 'Upper body');
+  assert.equal(planned[1].title, 'Lower body');
+
+  const afterUpper = L.advanceSchedule(schedule, plan, 'upper');
+  assert.equal(afterUpper.nextIndex, 1);
+  const nextGrid = L.monthGrid(2026, 10, afterUpper, plan, [
+    { date: '2026-11-02T08:00:00', typeName: 'Upper body', plan: { mode: 'strength', day: 'upper' }, exercises: [] }
+  ], now);
+  const upcoming = nextGrid.cells.filter(function (cell) {
+    return !cell.empty && cell.date > '2026-11-02' && (cell.status === 'planned' || cell.status === 'today');
+  });
+  assert.equal(upcoming[0].type, 'lower');
+  assert.equal(upcoming[1].type, 'upper');
+});
+
+test('full-body calendar defaults every session day to Full body', function () {
+  const plan = L.normalizePlan({ goal: 'strength', days: 3, split: 'full', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  assert.deepEqual(L.rotationFor(plan), ['full']);
+  const schedule = L.normalizeSchedule({}, plan);
+  assert.deepEqual(schedule.weekdays, [1, 3, 5]);
+  const now = new Date(2026, 10, 2);
+  const grid = L.monthGrid(2026, 10, schedule, plan, [], now);
+  const planned = grid.cells.filter(function (cell) { return !cell.empty && cell.type; });
+  assert.ok(planned.length >= 3);
+  planned.forEach(function (cell) {
+    assert.equal(cell.type, 'full');
+    assert.equal(cell.title, 'Full body');
+  });
+  const advanced = L.advanceSchedule(schedule, plan, 'full');
+  assert.equal(advanced.nextIndex, 0);
+  const still = L.monthGrid(2026, 10, advanced, plan, [], now).cells.filter(function (cell) {
+    return !cell.empty && (cell.status === 'planned' || cell.status === 'today');
+  });
+  still.forEach(function (cell) { assert.equal(cell.type, 'full'); });
+});
+
+test('calendar day tweaks persist and skips leave the rotation alone', function () {
+  const plan = L.normalizePlan({ days: 4, split: 'upper-lower', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  let schedule = L.normalizeSchedule({ nextIndex: 0 }, plan);
+  schedule = L.setScheduleDay(schedule, plan, '2026-11-03', { type: 'upper' });
+  schedule = L.setScheduleDay(schedule, plan, '2026-11-02', { skip: true });
+  const now = new Date(2026, 10, 2);
+  const grid = L.monthGrid(2026, 10, schedule, plan, [], now);
+  const tue = grid.cells.find(function (cell) { return cell.date === '2026-11-03'; });
+  const mon = grid.cells.find(function (cell) { return cell.date === '2026-11-02'; });
+  assert.equal(mon.status, 'skip');
+  assert.equal(tue.type, 'upper');
+  assert.equal(tue.tweaked, true);
+  const built = L.buildSession({ library: catalog, plan: plan, week: 1, day: 'lower' });
+  assert.equal(built.title, 'Lower body');
+  assert.equal(built.day, 'lower');
+});
+
+test('monthGrid shows mobility and cardio logs alongside strength plans', function () {
+  const plan = L.normalizePlan({ days: 4, split: 'upper-lower', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  const schedule = L.normalizeSchedule({ nextIndex: 0 }, plan);
+  const now = new Date(2026, 10, 5); /* Thursday */
+  const workouts = [
+    { date: '2026-11-02T08:00:00', typeName: 'Upper body', plan: { mode: 'strength', day: 'upper' }, exercises: [] },
+    { date: '2026-11-03T09:00:00', typeName: 'Hips', plan: { mode: 'mobility' }, exercises: [] },
+    { date: '2026-11-04T07:30:00', typeName: 'Easy', plan: { mode: 'cardio' }, exercises: [] },
+    { date: '2026-11-05T18:00:00', typeName: 'Hips', plan: { mode: 'mobility' }, exercises: [] }
+  ];
+  const grid = L.monthGrid(2026, 10, schedule, plan, workouts, now);
+  const mon = grid.cells.find(function (cell) { return cell.date === '2026-11-02'; });
+  const tue = grid.cells.find(function (cell) { return cell.date === '2026-11-03'; });
+  const wed = grid.cells.find(function (cell) { return cell.date === '2026-11-04'; });
+  const thu = grid.cells.find(function (cell) { return cell.date === '2026-11-05'; });
+
+  assert.equal(mon.status, 'done');
+  assert.equal(mon.type, 'upper');
+  assert.equal(mon.hasLog, true);
+  assert.deepEqual(mon.loggedModes, ['strength']);
+
+  assert.equal(tue.hasLog, true);
+  assert.ok(tue.loggedModes.indexOf('mobility') >= 0);
+  assert.equal(tue.short, 'Mobility');
+  assert.notEqual(tue.status, 'done');
+
+  assert.equal(wed.hasLog, true);
+  assert.ok(wed.loggedModes.indexOf('cardio') >= 0);
+  assert.equal(wed.short, 'Cardio');
+
+  /* Mobility on a planned strength day keeps the strength suggestion and marks the log. */
+  assert.equal(thu.hasLog, true);
+  assert.ok(thu.loggedModes.indexOf('mobility') >= 0);
+  assert.ok(thu.type === 'upper' || thu.type === 'lower');
+  assert.ok(thu.status === 'today' || thu.status === 'planned');
+  assert.ok(thu.short === 'Upper' || thu.short === 'Lower');
 });
