@@ -596,25 +596,17 @@
 
   function renderDrawer() {
     const root = document.getElementById('drawer');
+    /* Area switch lives in the header now — drawer only for rare overflow. */
     if (!state.menu) {
       root.innerHTML = '';
       return;
     }
-    const item = function (area, label, detail) {
-      const on = state.area === area ? ' aria-current="true"' : '';
-      return '<button class="menu-row" data-action="set-area" data-area="' + area + '"' + on + '><i class="swatch ' + area + '"></i><span class="choice-copy"><strong>' + label + '</strong><small>' + detail + '</small></span></button>';
-    };
-    root.innerHTML = '<div class="drawer-backdrop" data-action="close-menu"></div><aside class="drawer" role="dialog" aria-label="Menu">' +
+    root.innerHTML = '<div class="drawer-backdrop" data-action="close-menu"></div><aside class="drawer" role="dialog" aria-label="More">' +
       '<p class="brand">StrongLean</p>' +
-      '<p class="eyebrow">Sections</p>' +
-      item('strength', 'Strength', L.splitLabel(state.plan.split)) +
-      item('mobility', 'Mobility', 'Hips, spine, and holds') +
-      item('cardio', 'Cardio', 'Walks, bike, row') +
-      '<p class="eyebrow">App</p>' +
-      '<button class="menu-row" data-action="nav" data-section="history"><strong>History</strong><small>Global calendar and sessions</small></button>' +
+      '<p class="lede" style="margin:4px 8px 12px">Quick links. Lift · Mobility · Cardio switch at the top of Today and Train.</p>' +
       '<button class="menu-row" data-action="open-schedule"><strong>Training days</strong><small>' + esc(weekdaySummary()) + '</small></button>' +
-      '<button class="menu-row" data-action="nav" data-section="library"><strong>Library</strong><small>Every exercise</small></button>' +
       '<button class="menu-row" data-action="edit-setup"><strong>Your details</strong><small>Goal and routine</small></button>' +
+      '<button class="menu-row" data-action="nav" data-section="you"><strong>Settings</strong><small>Units, theme, backup</small></button>' +
       '</aside>';
   }
 
@@ -675,18 +667,113 @@
   };
 
   function menuButton() {
-    return '<button class="menu-btn" data-action="open-menu" aria-label="Open menu">☰</button>';
+    return '<button class="menu-btn" data-action="open-menu" aria-label="More">⋯</button>';
   }
 
   /* Plan → week → preview stack: Back alone on the left (no menu), one level at a time. */
-  function backBar() {
-    return '<div class="nav-bar"><button class="text-btn" data-action="back">Back</button></div>';
+  function backBar(label) {
+    return '<div class="nav-bar"><button class="back-btn" data-action="back" aria-label="Go back"><span aria-hidden="true">←</span> ' + esc(label || 'Back') + '</button></div>';
   }
 
   function areaTitle() {
     if (state.area === 'mobility') return 'Mobility';
     if (state.area === 'cardio') return 'Cardio';
-    return 'Strength';
+    return 'Lift';
+  }
+
+  /* Always-visible mode switch — Hevy/Strong pattern: don’t hide Lift/Mobility/Cardio in a drawer. */
+  function areaSwitch() {
+    const modes = [
+      ['strength', 'Lift'],
+      ['mobility', 'Mobility'],
+      ['cardio', 'Cardio']
+    ];
+    return '<div class="area-switch" role="tablist" aria-label="Training mode">' + modes.map(function (item) {
+      const on = state.area === item[0];
+      return '<button type="button" role="tab" class="area-tab" data-action="set-area" data-area="' + item[0] + '" aria-selected="' + (on ? 'true' : 'false') + '">' + esc(item[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function pageChrome(options) {
+    options = options || {};
+    if (options.back) return backBar(options.backLabel);
+    const more = options.more === false ? '' : menuButton();
+    return '<div class="page-chrome">' +
+      '<div class="page-chrome-row">' +
+      '<p class="brand-inline">StrongLean</p>' +
+      more +
+      '</div>' +
+      (options.switcher !== false ? areaSwitch() : '') +
+      '</div>';
+  }
+
+  /* Single back path for UI Back + Android/browser Back. Returns true if handled in-app. */
+  function goBack() {
+    if (state.dialog) {
+      state.dialog = null;
+      renderDialog();
+      return true;
+    }
+    if (state.menu) {
+      state.menu = false;
+      renderDrawer();
+      return true;
+    }
+    if (state.sheet) {
+      closeSheet();
+      return true;
+    }
+    if (state.template) {
+      if (state.template.page === 'pick') {
+        state.template.page = 'edit';
+        renderOverlay();
+        return true;
+      }
+      const nameInput = document.getElementById('draft-name');
+      if (nameInput && state.draft) state.draft.name = nameInput.value;
+      state.template = null;
+      state.draft = null;
+      renderOverlay();
+      return true;
+    }
+    if (state.session && state.section === 'train') {
+      toast('Finish or discard the workout to leave.');
+      return true;
+    }
+    if (state.section === 'preview') {
+      const from = state.preview && state.preview.from;
+      state.preview = null;
+      state.section = (from === 'week' || from === 'train' || from === 'today') ? from : 'today';
+      render();
+      return true;
+    }
+    if (state.section === 'week') {
+      state.section = 'plan';
+      render();
+      return true;
+    }
+    if (state.section === 'plan' || state.section === 'setup') {
+      state.section = 'today';
+      state.setup = null;
+      render();
+      return true;
+    }
+    if (state.section !== 'today') {
+      state.section = 'today';
+      state.preview = null;
+      render();
+      return true;
+    }
+    return false;
+  }
+
+  function armHardwareBack() {
+    try {
+      if (!history.state || !history.state.stronglean) {
+        history.replaceState({ stronglean: 'root' }, '');
+      }
+      history.pushState({ stronglean: 'trap' }, '');
+    } catch (err) {}
   }
 
   function renderSetup() {
@@ -703,8 +790,10 @@
     const splitBtn = function (value, label, detail) {
       return '<button class="choice" data-action="set-setup" data-field="split" data-value="' + value + '" aria-pressed="' + (draft.split === value ? 'true' : 'false') + '"><strong>' + label + '</strong><small>' + detail + '</small></button>';
     };
-    return '<section class="page setup-page"><p class="brand">Train local</p><h1 class="brand-hero">StrongLean</h1>' +
-      '<p class="lede">' + (state.plan.onboarded ? 'Update your goal and routine. Everything stays on this device.' : 'What do you want? Strength, mobility, and cardio stay in their own sections.') + '</p>' +
+    return '<section class="page setup-page">' +
+      (state.plan.onboarded ? backBar('You') : '<p class="brand">Train local</p>') +
+      '<h1 class="brand-hero">StrongLean</h1>' +
+      '<p class="lede">' + (state.plan.onboarded ? 'Update your goal and routine. Everything stays on this device.' : 'What do you want? Lift, mobility, and cardio stay in their own modes.') + '</p>' +
       (state.plan.onboarded ? '<h2 class="setup-sub">Your training</h2>' : '<h2 class="setup-sub">Get set</h2>') +
       '<label class="field" style="margin-top:18px;border-radius:12px"><span class="label">Name</span><input id="setup-name" value="' + esc(draft.name) + '" placeholder="Optional"></label>' +
       '<div class="section-label">Goal</div><div class="choice-list">' +
@@ -892,8 +981,8 @@
       ? 'Week ' + built.week + ' of 4 · ' + built.weekName
       : areaTitle();
     return '<section class="page">' +
-      '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
-      '<header class="page-head"><div><p class="brand-hero">StrongLean</p><h1 class="today-greet">' + esc(greeting()) + '</h1><p class="lede">' + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
+      pageChrome() +
+      '<header class="page-head"><div><h1 class="today-greet">' + esc(greeting()) + '</h1><p class="lede">' + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
       '<div class="session-hero">' + (state.area === 'strength' ? weekDots(built.week) : '') +
       '<p class="eyebrow">' + esc(kicker) + '</p>' +
       '<h2>' + esc(built.title) + '</h2>' +
@@ -915,7 +1004,7 @@
       const trail = n === week ? 'Now' : (n < week ? 'Done' : '›');
       return '<button class="log-row" data-action="open-week" data-week="' + n + '"><span class="set-num' + badge + '">' + n + '</span><span class="choice-copy"><strong>Week ' + n + ' · ' + esc(copy.name) + '</strong><small>' + esc(copy.text) + '</small></span><span class="chevron">' + trail + '</span></button>';
     }).join('');
-    return '<section class="page">' + backBar() +
+    return '<section class="page">' + backBar('Today') +
       '<header class="page-head"><div><h1>This block</h1><p class="lede">' + esc(L.splitLabel(state.plan.split)) + ' · ' + esc(L.goalLabel(state.plan.goal)) + '</p></div></header>' +
       note +
       '<div class="group">' + rows + '</div>' +
@@ -933,7 +1022,7 @@
         : built.exercises.length + ' exercises' + (built.exercises[0] ? ' · ' + built.exercises[0].sets + ' × ' + built.exercises[0].reps : '');
       rows.push('<button class="log-row" data-action="open-preview" data-week="' + n + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(detail) + '</small></span><span class="chevron">›</span></button>');
     }
-    return '<section class="page">' + backBar() +
+    return '<section class="page">' + backBar('This block') +
       '<header class="page-head"><div><h1>Week ' + n + '</h1><p class="lede">' + esc(copy.name) + '. ' + esc(copy.text) + '</p></div></header>' +
       '<div class="group">' + rows.join('') + '</div></section>';
   }
@@ -948,7 +1037,8 @@
       ? '<button class="btn btn-primary" data-action="nav" data-section="train">Resume workout</button>'
       : '<button class="btn btn-primary" data-action="start" data-type="plan">Start</button>';
     const lede = 'Week ' + built.week + ' · ' + built.weekName + (built.focus ? ' · ' + built.focus : '');
-    return '<section class="page">' + backBar() +
+    const backLabel = preview.from === 'train' ? 'Train' : (preview.from === 'week' ? 'Week' : 'Today');
+    return '<section class="page">' + backBar(backLabel) +
       '<header class="page-head"><div><h1>' + esc(built.title) + '</h1><p class="lede">' + esc(lede) + '</p></div></header>' +
       '<div class="group">' + rows + '</div>' +
       start + '</section>';
@@ -976,7 +1066,8 @@
     const routines = state.area === 'strength'
       ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
       : '';
-    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
+    return '<section class="page">' + pageChrome() +
+      '<header class="page-head"><div><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
       areaSessions +
       routines + '</section>';
   }
@@ -984,8 +1075,9 @@
   function renderSession() {
     const counts = progressCounts();
     const cards = state.sessionExercises.map(function (ex, index) { return exerciseCard(ex, index); }).join('');
-    return '<section class="page"><header class="page-head"><div class="titles"><h1>' + esc(routineTitle(state.dayType)) + '</h1><p class="lede"><span id="elapsed">' + esc(L.formatElapsed(Date.now() - state.startTime)) + '</span> · ' + counts.done + ' of ' + counts.total + ' sets</p></div>' +
-      '<button class="text-btn strong" data-action="finish">Finish</button></header>' +
+    return '<section class="page">' +
+      '<div class="nav-bar session-nav"><p class="brand-inline">In session</p><button class="text-btn strong" data-action="finish">Finish</button></div>' +
+      '<header class="page-head"><div class="titles"><h1>' + esc(routineTitle(state.dayType)) + '</h1><p class="lede"><span id="elapsed">' + esc(L.formatElapsed(Date.now() - state.startTime)) + '</span> · ' + counts.done + ' of ' + counts.total + ' sets</p></div></header>' +
       cards +
       '<div class="group"><button class="add-row" data-action="open-add">Add an exercise</button><button class="add-row" data-action="open-abs">Add core work</button></div>' +
       '<button class="btn btn-quiet danger-text" data-action="discard">Discard workout</button></section>';
@@ -1125,13 +1217,15 @@
         ? '<div class="section-head"><h2>Last 7 days</h2></div><div class="card" style="padding:12px">' + muscleSVG(muscles) + '</div>'
         : '') +
       '</div></div>';
-    return '<section class="page"><header class="page-head"><div><h1>History</h1><p class="lede">Global calendar plus sessions across Lift, Mobility, and Cardio.</p></div></header>' +
+    return '<section class="page">' + pageChrome({ switcher: false }) +
+      '<header class="page-head"><div><h1>History</h1><p class="lede">Calendar and sessions for Lift, Mobility, and Cardio.</p></div></header>' +
       renderCalendar() +
       charts + sessions + progress + clear + '</section>';
   }
 
   function renderLibrary() {
-    return '<section class="page"><header class="page-head"><div><h1>Library</h1><p class="lede" id="library-count">' + filteredLibrary().length + ' exercises</p></div></header>' +
+    return '<section class="page">' + pageChrome({ switcher: false }) +
+      '<header class="page-head"><div><h1>Library</h1><p class="lede" id="library-count">' + filteredLibrary().length + ' exercises</p></div></header>' +
       '<label class="search"><span class="sr-only">Search exercises</span><input id="library-search" type="search" placeholder="Search" value="' + esc(state.query) + '" autocomplete="off"></label>' +
       '<div class="chips">' + FILTERS.map(function (filter) {
         return '<button type="button" data-action="filter" data-filter="' + esc(filter.id) + '" aria-pressed="' + (state.filter === filter.id ? 'true' : 'false') + '">' + esc(filter.label) + '</button>';
@@ -1179,8 +1273,12 @@
     const theme = themePreference();
     const one = calculatorValue();
     const notify = notificationsActive();
-    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
-      '<div class="group"><button class="log-row" data-action="edit-setup"><span class="choice-copy"><strong>' + esc(state.plan.name || 'Your details') + '</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(L.splitLabel(state.plan.split)) + ' · ' + state.plan.days + ' days</small></span><span class="chevron">›</span></button></div>' +
+    return '<section class="page">' + pageChrome({ switcher: false, more: false }) +
+      '<header class="page-head"><div><h1>You</h1><p class="lede">Plan, schedule, units, and backups.</p></div></header>' +
+      '<div class="group">' +
+      '<button class="log-row" data-action="edit-setup"><span class="choice-copy"><strong>' + esc(state.plan.name || 'Your details') + '</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(L.splitLabel(state.plan.split)) + ' · ' + state.plan.days + ' days</small></span><span class="chevron">›</span></button>' +
+      '<button class="log-row" data-action="open-schedule"><span class="choice-copy"><strong>Training days</strong><small>' + esc(weekdaySummary()) + '</small></span><span class="chevron">›</span></button>' +
+      '</div>' +
       trophyCase() +
       '<div class="group"><label class="field"><span class="label">Body weight</span><input id="body-weight" inputmode="decimal" value="' + esc(displayWeight(state.weight)) + '"><span class="suffix">' + esc(state.unit) + '</span></label>' +
       '<div class="field"><span class="label">Units</span><div class="segmented wide">' +
@@ -2045,12 +2143,24 @@
   const actions = {
     stop: function () {},
     nav: function (el) {
-      state.section = el.dataset.section;
+      const section = el.dataset.section;
+      if (!section) return;
+      if (state.session && section !== 'train') {
+        toast('Finish or discard the workout first.');
+        state.section = 'train';
+        state.sheet = null;
+        state.menu = false;
+        render();
+        armHardwareBack();
+        return;
+      }
+      state.section = section;
       state.sheet = null;
       state.menu = false;
       state.preview = null;
       render();
       saveActive();
+      armHardwareBack();
     },
     start: function (el) {
       if (state.session) {
@@ -2061,17 +2171,28 @@
       }
       if (el.dataset.type === 'plan') startPlan();
       else startWorkout(el.dataset.type);
+      armHardwareBack();
     },
-    'open-menu': function () { state.menu = true; renderDrawer(); },
-    'close-menu': function () { state.menu = false; renderDrawer(); },
+    'open-menu': function () {
+      state.menu = true;
+      renderDrawer();
+      armHardwareBack();
+    },
+    'close-menu': function () {
+      state.menu = false;
+      renderDrawer();
+    },
     'set-area': function (el) {
       const area = el.dataset.area;
       if (area !== 'strength' && area !== 'mobility' && area !== 'cardio') return;
       state.area = area;
       state.menu = false;
-      state.section = 'today';
       state.preview = null;
+      /* Stay on Train if already training; otherwise land on Today. */
+      if (state.section !== 'train' && state.section !== 'today') state.section = 'today';
+      if (state.session) state.section = 'train';
       render();
+      armHardwareBack();
     },
     'edit-setup': function () {
       state.setup = {
@@ -2247,6 +2368,7 @@
       state.menu = false;
       state.sheet = { type: 'schedule' };
       renderChrome();
+      armHardwareBack();
     },
     'schedule-preset': function (el) {
       const preset = el.dataset.preset;
@@ -2290,6 +2412,7 @@
       state.menu = false;
       state.section = 'plan';
       render();
+      armHardwareBack();
     },
     'open-week': function (el) {
       state.preview = null;
@@ -2297,6 +2420,7 @@
       state.planWeek = Number(el.dataset.week) || 1;
       state.section = 'week';
       render();
+      armHardwareBack();
     },
     'open-preview': function (el) {
       const from = state.section === 'week' || state.section === 'train' || state.section === 'today'
@@ -2310,21 +2434,11 @@
       };
       state.section = 'preview';
       render();
+      armHardwareBack();
     },
     back: function () {
-      state.menu = false;
-      if (state.section === 'preview') {
-        const from = state.preview && state.preview.from;
-        state.preview = null;
-        state.section = (from === 'week' || from === 'train' || from === 'today') ? from : 'today';
-      } else if (state.section === 'week') {
-        state.section = 'plan';
-      } else if (state.section === 'plan') {
-        state.section = 'today';
-      } else {
-        state.section = 'today';
-      }
-      render();
+      goBack();
+      armHardwareBack();
     },
     'set-goal': function (el) {
       const goal = el.dataset.value;
@@ -2871,13 +2985,9 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
-      if (state.dialog) {
-        state.dialog = null;
-        renderDialog();
-      } else if (state.sheet) closeSheet();
-      else if (state.template && state.template.page === 'pick') {
-        state.template.page = 'edit';
-        renderOverlay();
+      if (goBack()) {
+        event.preventDefault();
+        armHardwareBack();
       }
     }
     if (event.key === 'Enter' && state.sheet && state.sheet.type === 'log' && event.target.tagName !== 'TEXTAREA') {
@@ -2904,8 +3014,17 @@
     navigator.serviceWorker.register('./sw.js').catch(function () {});
   }
 
+  window.addEventListener('popstate', function () {
+    if (goBack()) {
+      armHardwareBack();
+      return;
+    }
+    /* At Today with nothing open — allow leaving the PWA/tab. */
+  });
+
   load();
   syncThemeClass();
   paintThemeColor();
   render();
+  armHardwareBack();
 })();

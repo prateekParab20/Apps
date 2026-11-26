@@ -1007,8 +1007,70 @@ body.resting .toast { bottom: calc(var(--tabh) + 92px); }
 }
 .view-enter { animation: page-enter 0.4s var(--ease-out); }
 
-.nav-bar { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  min-height: 44px;
+}
 .nav-bar .text-btn { padding-left: 0; }
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+}
+.page-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.page-chrome-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+}
+.brand-inline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--label);
+}
+.area-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--label) 6%, transparent);
+}
+.area-tab {
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--secondary);
+  font-size: 14px;
+  font-weight: 700;
+}
+.area-tab[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--accent-deep);
+  box-shadow: var(--shadow-soft, 0 1px 0 color-mix(in srgb, var(--label) 8%, transparent));
+}
 .topbar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 4px; }
 .menu-btn {
   width: 44px;
@@ -1016,7 +1078,8 @@ body.resting .toast { bottom: calc(var(--tabh) + 92px); }
   border: 0;
   border-radius: 14px;
   background: var(--fill);
-  font-size: 18px;
+  font-size: 22px;
+  line-height: 1;
   color: var(--label);
   transition: transform 0.14s var(--ease-out), background 0.14s ease;
 }
@@ -1028,6 +1091,7 @@ body.resting .toast { bottom: calc(var(--tabh) + 92px); }
   text-transform: uppercase;
   color: var(--accent);
 }
+.session-nav .brand-inline { color: var(--secondary); font-size: 14px; }
 .choice-list { display: flex; flex-direction: column; gap: 10px; }
 .choice {
   display: flex;
