@@ -846,16 +846,29 @@
     return days === 3 ? [1, 3, 5] : [1, 2, 4, 5];
   }
 
-  /* Routinery / Streaks-style presets: user picks which days work, then rotation fills types. */
+  /* Quick fills for one mode’s week row (Streaks / Routinery pattern). */
   const WEEKDAY_PRESETS = {
     weekdays: [1, 2, 3, 4, 5],
     mwf: [1, 3, 5],
     mtthf: [1, 2, 4, 5],
-    everyday: [0, 1, 2, 3, 4, 5, 6]
+    tue_thu: [2, 4],
+    sat_sun: [0, 6],
+    everyday: [0, 1, 2, 3, 4, 5, 6],
+    none: []
   };
 
+  function cleanWeekdays(list, fallback) {
+    const next = (Array.isArray(list) ? list : [])
+      .map(Number)
+      .filter(function (d) { return d >= 0 && d <= 6; });
+    const unique = next.filter(function (d, i, arr) { return arr.indexOf(d) === i; }).sort(function (a, b) { return a - b; });
+    if (unique.length) return unique;
+    return Array.isArray(fallback) ? fallback.slice() : [];
+  }
+
   function weekdayPresetOf(weekdays) {
-    const sorted = (weekdays || []).slice().sort(function (a, b) { return a - b; });
+    const sorted = cleanWeekdays(weekdays, []);
+    if (!sorted.length) return 'none';
     const keys = Object.keys(WEEKDAY_PRESETS);
     for (let i = 0; i < keys.length; i += 1) {
       const preset = WEEKDAY_PRESETS[keys[i]];
@@ -868,6 +881,7 @@
 
   function weekdaysForPreset(preset, planDays) {
     if (preset === 'custom') return null;
+    if (preset === 'none') return [];
     if (WEEKDAY_PRESETS[preset]) return WEEKDAY_PRESETS[preset].slice();
     return defaultWeekdays(planDays);
   }
@@ -881,19 +895,39 @@
     return out;
   }
 
+  /* Separate weekly days per mode: Lift Mon/Wed/Fri, Mobility Tue/Thu, etc. */
+  function normalizeModeDays(source, plan) {
+    const ready = normalizePlan(plan);
+    const raw = source && typeof source === 'object' ? source : {};
+    const nested = raw.modeDays && typeof raw.modeDays === 'object' ? raw.modeDays : {};
+    const legacy = Array.isArray(raw.weekdays) ? raw.weekdays : null;
+    const strengthFallback = defaultWeekdays(ready.days);
+    const strength = cleanWeekdays(
+      nested.strength != null ? nested.strength : legacy,
+      strengthFallback
+    );
+    const mobility = cleanWeekdays(nested.mobility, []);
+    const cardio = cleanWeekdays(nested.cardio, []);
+    return {
+      strength: strength.length ? strength : strengthFallback,
+      mobility: mobility,
+      cardio: cardio
+    };
+  }
+
+  function modesForWeekday(modeDays, weekday) {
+    const out = [];
+    if ((modeDays.strength || []).indexOf(weekday) >= 0) out.push('strength');
+    if ((modeDays.mobility || []).indexOf(weekday) >= 0) out.push('mobility');
+    if ((modeDays.cardio || []).indexOf(weekday) >= 0) out.push('cardio');
+    return out;
+  }
+
   function normalizeSchedule(schedule, plan) {
     const ready = normalizePlan(plan);
     const source = schedule && typeof schedule === 'object' ? schedule : {};
-    let weekdays = Array.isArray(source.weekdays)
-      ? source.weekdays.map(Number).filter(function (d) { return d >= 0 && d <= 6; })
-      : [];
-    const preset = typeof source.preset === 'string' ? source.preset : '';
-    if (!weekdays.length && preset && WEEKDAY_PRESETS[preset]) {
-      weekdays = WEEKDAY_PRESETS[preset].slice();
-    }
-    if (!weekdays.length) weekdays = defaultWeekdays(ready.days);
-    /* Unique + sorted for stable compare. */
-    weekdays = weekdays.filter(function (d, i, arr) { return arr.indexOf(d) === i; }).sort(function (a, b) { return a - b; });
+    const modeDays = normalizeModeDays(source, ready);
+    const weekdays = modeDays.strength.slice();
     const overrides = {};
     const raw = source.overrides && typeof source.overrides === 'object' ? source.overrides : {};
     Object.keys(raw).forEach(function (key) {
@@ -917,6 +951,7 @@
     nextIndex = nextIndex % Math.max(1, rotation.length);
     return {
       weekdays: weekdays,
+      modeDays: modeDays,
       preset: weekdayPresetOf(weekdays),
       overrides: overrides,
       nextIndex: nextIndex
@@ -924,30 +959,60 @@
   }
 
   function setScheduleWeekdays(schedule, plan, weekdays) {
+    return setModeWeekdays(schedule, plan, 'strength', weekdays);
+  }
+
+  function setModeWeekdays(schedule, plan, mode, weekdays) {
     const ready = normalizeSchedule(schedule, plan);
-    const next = Array.isArray(weekdays)
-      ? weekdays.map(Number).filter(function (d) { return d >= 0 && d <= 6; })
-      : [];
-    const unique = next.filter(function (d, i, arr) { return arr.indexOf(d) === i; }).sort(function (a, b) { return a - b; });
-    ready.weekdays = unique.length ? unique : defaultWeekdays(normalizePlan(plan).days);
+    if (['strength', 'mobility', 'cardio'].indexOf(mode) < 0) return ready;
+    const fallback = mode === 'strength' ? defaultWeekdays(normalizePlan(plan).days) : [];
+    const next = cleanWeekdays(weekdays, fallback);
+    if (mode === 'strength' && !next.length) {
+      ready.modeDays.strength = defaultWeekdays(normalizePlan(plan).days);
+    } else {
+      ready.modeDays[mode] = next;
+    }
+    ready.weekdays = ready.modeDays.strength.slice();
     ready.preset = weekdayPresetOf(ready.weekdays);
     return ready;
   }
 
   function applyWeekdayPreset(schedule, plan, preset) {
+    return applyModeWeekdayPreset(schedule, plan, 'strength', preset);
+  }
+
+  function applyModeWeekdayPreset(schedule, plan, mode, preset) {
+    if (preset === 'custom') return normalizeSchedule(schedule, plan);
     const days = weekdaysForPreset(preset, normalizePlan(plan).days);
-    if (!days) return normalizeSchedule(schedule, plan);
-    return setScheduleWeekdays(schedule, plan, days);
+    if (days == null) return normalizeSchedule(schedule, plan);
+    return setModeWeekdays(schedule, plan, mode, days);
+  }
+
+  function toggleModeWeekday(schedule, plan, mode, day) {
+    const ready = normalizeSchedule(schedule, plan);
+    if (['strength', 'mobility', 'cardio'].indexOf(mode) < 0) return ready;
+    const d = Number(day);
+    if (!Number.isFinite(d) || d < 0 || d > 6) return ready;
+    const list = (ready.modeDays[mode] || []).slice();
+    const idx = list.indexOf(d);
+    if (idx >= 0) {
+      if (mode === 'strength' && list.length === 1) return ready;
+      list.splice(idx, 1);
+    } else {
+      list.push(d);
+    }
+    return setModeWeekdays(ready, plan, mode, list);
   }
 
   function dayTypeLabel(type) {
     return DAY_LABEL[type] || 'Session';
   }
 
-  function isTrainingWeekday(schedule, plan, date) {
+  function isTrainingWeekday(schedule, plan, date, mode) {
     const ready = normalizeSchedule(schedule, plan);
-    const d = new Date(date);
-    return ready.weekdays.indexOf(d.getDay()) >= 0;
+    const d = new Date(date).getDay();
+    const key = mode === 'mobility' || mode === 'cardio' ? mode : 'strength';
+    return (ready.modeDays[key] || []).indexOf(d) >= 0;
   }
 
   function overrideFor(schedule, plan, iso) {
@@ -1060,10 +1125,10 @@
       const date = new Date(year, month, day);
       const iso = isoDay(date);
       const override = ready.overrides[iso] || null;
-      const weekdayHit = ready.weekdays.indexOf(date.getDay()) >= 0;
+      const strengthHit = (ready.modeDays.strength || []).indexOf(date.getDay()) >= 0;
       const skipped = !!(override && override.skip);
       const forced = override && override.type ? override.type : null;
-      const isSession = !skipped && (weekdayHit || !!forced);
+      const isSession = !skipped && (strengthHit || !!forced);
       if (isSession && iso >= todayIso && !strengthByDay[iso]) futureDates.push(iso);
     }
 
@@ -1080,7 +1145,9 @@
       const date = new Date(year, month, day);
       const iso = isoDay(date);
       const override = ready.overrides[iso] || null;
-      const weekdayHit = ready.weekdays.indexOf(date.getDay()) >= 0;
+      const weekday = date.getDay();
+      const strengthHit = (ready.modeDays.strength || []).indexOf(weekday) >= 0;
+      const weeklyModes = modesForWeekday(ready.modeDays, weekday);
       const skipped = !!(override && override.skip);
       const logged = strengthByDay[iso] || null;
       const loggedType = strengthLoggedType(logged);
@@ -1101,12 +1168,17 @@
         status = iso === todayIso ? 'today' : 'planned';
         type = assigned[iso];
         tweaked = !!(override && override.type);
-      } else if (weekdayHit || (override && override.type)) {
+      } else if (strengthHit || (override && override.type)) {
         status = iso < todayIso ? 'missed' : 'planned';
         type = override && override.type ? override.type : null;
         tweaked = !!(override && override.type);
+      } else if (weeklyModes.length) {
+        status = iso < todayIso ? 'missed' : (iso === todayIso ? 'today' : 'planned');
       }
       const plannedModes = normalizeModes(override && override.modes);
+      weeklyModes.forEach(function (mode) {
+        if (plannedModes.indexOf(mode) < 0) plannedModes.push(mode);
+      });
       /* Strength training days imply strength mode for tracking chips/dots. */
       if (type && plannedModes.indexOf('strength') < 0 && (status === 'planned' || status === 'today' || status === 'done' || status === 'missed')) {
         plannedModes.unshift('strength');
@@ -1155,6 +1227,11 @@
       month: month,
       label: first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
       weekdays: ready.weekdays.slice(),
+      modeDays: {
+        strength: ready.modeDays.strength.slice(),
+        mobility: ready.modeDays.mobility.slice(),
+        cardio: ready.modeDays.cardio.slice()
+      },
       rotation: rotation.slice(),
       nextIndex: ready.nextIndex,
       cells: cells
@@ -1423,10 +1500,14 @@
     advanceSchedule: advanceSchedule,
     setScheduleDay: setScheduleDay,
     setScheduleWeekdays: setScheduleWeekdays,
+    setModeWeekdays: setModeWeekdays,
     applyWeekdayPreset: applyWeekdayPreset,
+    applyModeWeekdayPreset: applyModeWeekdayPreset,
+    toggleModeWeekday: toggleModeWeekday,
     toggleScheduleMode: toggleScheduleMode,
     weekdayPresetOf: weekdayPresetOf,
     weekdaysForPreset: weekdaysForPreset,
+    modesForWeekday: modesForWeekday,
     WEEKDAY_PRESETS: WEEKDAY_PRESETS,
     monthGrid: monthGrid,
     suggestionForDate: suggestionForDate,

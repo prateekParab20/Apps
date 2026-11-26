@@ -776,24 +776,60 @@
   }
 
   const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const WEEKDAY_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  function weekdaySummary() {
-    const days = (state.schedule && state.schedule.weekdays) || L.defaultWeekdays(state.plan.days);
+  function modeDaysOf() {
+    const ready = L.normalizeSchedule(state.schedule, state.plan);
+    return ready.modeDays || { strength: ready.weekdays || [], mobility: [], cardio: [] };
+  }
+
+  function formatDayList(days) {
+    if (!days || !days.length) return 'None';
     return days.map(function (d) { return WEEKDAY_NAMES[d]; }).join(' · ');
+  }
+
+  function weekdaySummary() {
+    const md = modeDaysOf();
+    return 'Lift ' + formatDayList(md.strength);
+  }
+
+  function modeWeekRow(mode, days) {
+    return '<div class="mode-week-row" role="group" aria-label="' + esc(mode) + ' days">' +
+      WEEKDAY_SHORT.map(function (label, index) {
+        const on = (days || []).indexOf(index) >= 0;
+        return '<button type="button" class="mode-day' + (on ? ' on mode-' + mode : '') + '" data-action="schedule-toggle-mode-day" data-mode="' + mode + '" data-day="' + index + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+          '<span>' + label + '</span></button>';
+      }).join('') +
+      '</div>';
+  }
+
+  function modeQuickFills(mode) {
+    const fills = mode === 'strength'
+      ? [{ id: 'mwf', label: 'MWF' }, { id: 'mtthf', label: '4 days' }, { id: 'weekdays', label: 'Weekdays' }]
+      : [{ id: 'tue_thu', label: 'Tu/Th' }, { id: 'mwf', label: 'MWF' }, { id: 'sat_sun', label: 'Weekend' }, { id: 'none', label: 'Clear' }];
+    return '<div class="mode-quick">' + fills.map(function (item) {
+      return '<button type="button" class="mode-quick-btn" data-action="schedule-mode-preset" data-mode="' + mode + '" data-preset="' + item.id + '">' + esc(item.label) + '</button>';
+    }).join('') + '</div>';
   }
 
   /* Compact week strip on Today — full month lives once on History (global). */
   function renderWeekStrip() {
-    const days = (state.schedule && state.schedule.weekdays) || [];
-    const chips = WEEKDAY_LETTERS.map(function (letter, index) {
-      const on = days.indexOf(index) >= 0;
-      return '<span class="week-chip' + (on ? ' on' : '') + '" aria-hidden="true">' + letter + '</span>';
+    const md = modeDaysOf();
+    const rows = [
+      ['strength', 'Lift', md.strength],
+      ['mobility', 'Mobility', md.mobility],
+      ['cardio', 'Cardio', md.cardio]
+    ].map(function (row) {
+      const dots = WEEKDAY_LETTERS.map(function (letter, index) {
+        const on = (row[2] || []).indexOf(index) >= 0;
+        return '<i class="week-dot' + (on ? ' on mode-' + row[0] : '') + '" title="' + letter + '"></i>';
+      }).join('');
+      return '<div class="week-mode-line"><span class="week-mode-label">' + esc(row[1]) + '</span><span class="week-dots">' + dots + '</span></div>';
     }).join('');
     return '<div class="section-label">This week</div>' +
       '<button type="button" class="week-strip" data-action="open-schedule">' +
-      '<span class="week-chips">' + chips + '</span>' +
-      '<span class="choice-copy"><strong>Training days</strong><small>' + esc(weekdaySummary()) + ' · edit</small></span>' +
+      '<div class="week-mode-stack">' + rows + '</div>' +
       '<span class="chevron">›</span></button>';
   }
 
@@ -1347,26 +1383,21 @@
   }
 
   function scheduleSheet() {
-    const ready = L.normalizeSchedule(state.schedule, state.plan);
-    const presets = [
-      { id: 'weekdays', label: 'Weekdays', detail: 'Mon–Fri' },
-      { id: 'mwf', label: '3 days', detail: 'Mon · Wed · Fri' },
-      { id: 'mtthf', label: '4 days', detail: 'Mon · Tue · Thu · Fri' },
-      { id: 'everyday', label: 'Every day', detail: 'All seven' },
-      { id: 'custom', label: 'Custom', detail: 'Pick below' }
-    ];
-    const presetButtons = presets.map(function (item) {
-      const on = ready.preset === item.id;
-      return '<button class="choice" data-action="schedule-preset" data-preset="' + item.id + '" aria-pressed="' + (on ? 'true' : 'false') + '"><strong>' + esc(item.label) + '</strong><small>' + esc(item.detail) + '</small></button>';
+    const md = modeDaysOf();
+    const blocks = [
+      { mode: 'strength', title: 'Lift', detail: 'Strength days · types rotate here', days: md.strength },
+      { mode: 'mobility', title: 'Mobility', detail: 'Separate from lifting', days: md.mobility },
+      { mode: 'cardio', title: 'Cardio', detail: 'Walks, bike, row', days: md.cardio }
+    ].map(function (block) {
+      return '<div class="mode-day-block mode-' + block.mode + '">' +
+        '<div class="mode-day-head"><strong>' + esc(block.title) + '</strong><small>' + esc(block.detail) + '</small></div>' +
+        modeWeekRow(block.mode, block.days) +
+        modeQuickFills(block.mode) +
+        '<p class="mode-day-summary">' + esc(formatDayList(block.days)) + '</p>' +
+        '</div>';
     }).join('');
-    const toggles = WEEKDAY_NAMES.map(function (name, index) {
-      const on = ready.weekdays.indexOf(index) >= 0;
-      return '<button type="button" class="day-toggle' + (on ? ' on' : '') + '" data-action="schedule-toggle-day" data-day="' + index + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(name) + '</button>';
-    }).join('');
-    return '<p class="lede">Pick the days that actually fit your week. Lift types rotate on those days — Mobility and Cardio are marked per day on the calendar.</p>' +
-      '<div class="section-label">Presets</div><div class="choice-list">' + presetButtons + '</div>' +
-      '<div class="section-label">Custom days</div><div class="day-toggle-row">' + toggles + '</div>' +
-      '<p class="footnote tight">Now: ' + esc(weekdaySummary()) + '</p>' +
+    return '<p class="lede">Set Lift, Mobility, and Cardio on different days of the week. Overlap is fine.</p>' +
+      blocks +
       '<button class="btn btn-primary" style="margin-top:12px" data-action="close-sheet">Done</button>';
   }
 
@@ -2219,39 +2250,40 @@
     },
     'schedule-preset': function (el) {
       const preset = el.dataset.preset;
-      if (preset === 'custom') {
-        /* Keep current days; just mark as custom by toggling nothing — user edits chips. */
-        state.schedule = L.normalizeSchedule(state.schedule, state.plan);
-        state.schedule.preset = 'custom';
-        saveSchedule();
-        renderChrome();
+      state.schedule = L.applyModeWeekdayPreset(state.schedule, state.plan, 'strength', preset);
+      saveSchedule();
+      render();
+      renderChrome();
+      toast('Lift days updated');
+    },
+    'schedule-mode-preset': function (el) {
+      const mode = el.dataset.mode;
+      const preset = el.dataset.preset;
+      if (['strength', 'mobility', 'cardio'].indexOf(mode) < 0) return;
+      state.schedule = L.applyModeWeekdayPreset(state.schedule, state.plan, mode, preset);
+      saveSchedule();
+      render();
+      renderChrome();
+    },
+    'schedule-toggle-mode-day': function (el) {
+      const mode = el.dataset.mode;
+      const day = Number(el.dataset.day);
+      if (['strength', 'mobility', 'cardio'].indexOf(mode) < 0) return;
+      if (!Number.isFinite(day) || day < 0 || day > 6) return;
+      const before = L.normalizeSchedule(state.schedule, state.plan);
+      const next = L.toggleModeWeekday(state.schedule, state.plan, mode, day);
+      if (mode === 'strength' && before.modeDays.strength.length === 1 && next.modeDays.strength.length === 1 && before.modeDays.strength[0] === next.modeDays.strength[0]) {
+        toast('Keep at least one lift day.');
         return;
       }
-      state.schedule = L.applyWeekdayPreset(state.schedule, state.plan, preset);
+      state.schedule = next;
       saveSchedule();
       render();
       renderChrome();
-      toast('Days updated');
     },
     'schedule-toggle-day': function (el) {
-      const day = Number(el.dataset.day);
-      if (!Number.isFinite(day) || day < 0 || day > 6) return;
-      const ready = L.normalizeSchedule(state.schedule, state.plan);
-      const next = ready.weekdays.slice();
-      const idx = next.indexOf(day);
-      if (idx >= 0) {
-        if (next.length === 1) {
-          toast('Keep at least one training day.');
-          return;
-        }
-        next.splice(idx, 1);
-      } else {
-        next.push(day);
-      }
-      state.schedule = L.setScheduleWeekdays(state.schedule, state.plan, next);
-      saveSchedule();
-      render();
-      renderChrome();
+      el.dataset.mode = 'strength';
+      actions['schedule-toggle-mode-day'](el);
     },
     'open-plan': function () {
       state.preview = null;
