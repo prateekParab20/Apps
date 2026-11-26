@@ -488,20 +488,35 @@
     toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
   }
 
-  function paintThemeColor() {
+  function themePreference() {
     const stored = localStorage.getItem('theme');
-    const dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+    return 'light';
+  }
+
+  function isDarkTheme() {
+    const pref = themePreference();
+    if (pref === 'dark') return true;
+    if (pref === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function paintThemeColor() {
     const meta = document.getElementById('theme-color');
-    if (meta) meta.setAttribute('content', dark ? '#0b1016' : '#e6eef6');
+    if (meta) meta.setAttribute('content', isDarkTheme() ? '#221c19' : '#fff8f3');
+  }
+
+  function syncThemeClass() {
+    document.documentElement.classList.remove('light', 'dark');
+    const pref = themePreference();
+    if (pref === 'light') document.documentElement.classList.add('light');
+    else if (pref === 'dark') document.documentElement.classList.add('dark');
   }
 
   function applyTheme(mode) {
-    if (mode === 'system') localStorage.removeItem('theme');
-    else localStorage.setItem('theme', mode);
-    document.documentElement.classList.remove('light', 'dark');
-    const stored = localStorage.getItem('theme');
-    if (stored === 'light') document.documentElement.classList.add('light');
-    if (stored === 'dark') document.documentElement.classList.add('dark');
+    if (mode === 'system') localStorage.setItem('theme', 'system');
+    else if (mode === 'light' || mode === 'dark') localStorage.setItem('theme', mode);
+    syncThemeClass();
     paintThemeColor();
     if (state.section === 'you' && !state.sheet && !state.template) render({ keepScroll: true });
   }
@@ -1088,8 +1103,7 @@
   }
 
   function renderYou() {
-    const stored = localStorage.getItem('theme');
-    const theme = stored === 'light' || stored === 'dark' ? stored : 'system';
+    const theme = themePreference();
     const one = calculatorValue();
     const notify = notificationsActive();
     return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
@@ -2692,6 +2706,7 @@
   }
 
   load();
+  syncThemeClass();
   paintThemeColor();
   render();
 })();
