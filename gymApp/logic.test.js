@@ -429,3 +429,41 @@ test('calendar day tweaks persist and skips leave the rotation alone', function 
   assert.equal(built.title, 'Lower body');
   assert.equal(built.day, 'lower');
 });
+
+test('monthGrid shows mobility and cardio logs alongside strength plans', function () {
+  const plan = L.normalizePlan({ days: 4, split: 'upper-lower', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  const schedule = L.normalizeSchedule({ nextIndex: 0 }, plan);
+  const now = new Date(2026, 10, 5); /* Thursday */
+  const workouts = [
+    { date: '2026-11-02T08:00:00', typeName: 'Upper body', plan: { mode: 'strength', day: 'upper' }, exercises: [] },
+    { date: '2026-11-03T09:00:00', typeName: 'Hips', plan: { mode: 'mobility' }, exercises: [] },
+    { date: '2026-11-04T07:30:00', typeName: 'Easy', plan: { mode: 'cardio' }, exercises: [] },
+    { date: '2026-11-05T18:00:00', typeName: 'Hips', plan: { mode: 'mobility' }, exercises: [] }
+  ];
+  const grid = L.monthGrid(2026, 10, schedule, plan, workouts, now);
+  const mon = grid.cells.find(function (cell) { return cell.date === '2026-11-02'; });
+  const tue = grid.cells.find(function (cell) { return cell.date === '2026-11-03'; });
+  const wed = grid.cells.find(function (cell) { return cell.date === '2026-11-04'; });
+  const thu = grid.cells.find(function (cell) { return cell.date === '2026-11-05'; });
+
+  assert.equal(mon.status, 'done');
+  assert.equal(mon.type, 'upper');
+  assert.equal(mon.hasLog, true);
+  assert.deepEqual(mon.loggedModes, ['strength']);
+
+  assert.equal(tue.hasLog, true);
+  assert.ok(tue.loggedModes.indexOf('mobility') >= 0);
+  assert.equal(tue.short, 'Mobility');
+  assert.notEqual(tue.status, 'done');
+
+  assert.equal(wed.hasLog, true);
+  assert.ok(wed.loggedModes.indexOf('cardio') >= 0);
+  assert.equal(wed.short, 'Cardio');
+
+  /* Mobility on a planned strength day keeps the strength suggestion and marks the log. */
+  assert.equal(thu.hasLog, true);
+  assert.ok(thu.loggedModes.indexOf('mobility') >= 0);
+  assert.ok(thu.type === 'upper' || thu.type === 'lower');
+  assert.ok(thu.status === 'today' || thu.status === 'planned');
+  assert.ok(thu.short === 'Upper' || thu.short === 'Lower');
+});

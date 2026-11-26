@@ -767,20 +767,14 @@
     return new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   }
 
+  function calendarModeDots(modes) {
+    if (!modes || !modes.length) return '';
+    return '<span class="cal-dots" aria-hidden="true">' + modes.map(function (mode) {
+      return '<i class="cal-dot mode-' + esc(mode) + '" title="' + esc(L.modeDayLabel(mode)) + '"></i>';
+    }).join('') + '</span>';
+  }
+
   function renderCalendar() {
-    if (state.area !== 'strength') {
-      const view = currentBuilt();
-      const used = view.slot.used || {};
-      const list = [];
-      for (let slot = 0; slot < areaCount(); slot += 1) {
-        const other = sessionAt(view.week, slot, state.area);
-        let status = '';
-        if (used[slot]) status = 'Done';
-        else if (slot === view.built.slot) status = view.slot.doneToday ? 'Next' : 'Up next';
-        list.push('<button class="log-row' + (slot === view.built.slot ? ' is-next' : '') + '" data-action="open-preview" data-week="' + view.week + '" data-slot="' + other.slot + '"><span class="choice-copy"><strong>' + esc(other.title) + '</strong><small>' + esc(sessionRowDetail(other, status)) + '</small></span><span class="chevron">›</span></button>');
-      }
-      return '<div class="section-label">This week</div><div class="group">' + list.join('') + '</div>';
-    }
     const cursor = state.calendarCursor || { year: new Date().getFullYear(), month: new Date().getMonth() };
     const grid = L.monthGrid(cursor.year, cursor.month, state.schedule, state.plan, state.workouts, new Date());
     const heads = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (d) {
@@ -791,14 +785,18 @@
       const classes = ['cal-cell'];
       if (cell.isToday) classes.push('is-today');
       if (cell.status === 'done') classes.push('is-done');
+      else if (cell.hasLog) classes.push('is-logged');
       if (cell.status === 'planned' || cell.status === 'today') classes.push('is-planned');
       if (cell.status === 'skip') classes.push('is-skip');
       if (cell.status === 'missed') classes.push('is-missed');
       if (cell.tweaked) classes.push('is-tweaked');
       const mark = cell.short ? '<em>' + esc(cell.short) + '</em>' : '<em class="cal-blank">&nbsp;</em>';
-      return '<button type="button" class="' + classes.join(' ') + '" data-action="cal-day" data-date="' + esc(cell.date) + '"><strong>' + cell.day + '</strong>' + mark + '</button>';
+      return '<button type="button" class="' + classes.join(' ') + '" data-action="cal-day" data-date="' + esc(cell.date) + '"><strong>' + cell.day + '</strong>' + mark + calendarModeDots(cell.loggedModes) + '</button>';
     }).join('');
     const rot = (grid.rotation || []).map(function (day) { return L.dayTypeLabel(day).split(' ')[0]; }).join(' · ');
+    const hint = state.area === 'strength'
+      ? rot + ' · tap a day to swap or skip'
+      : 'Strength · Mobility · Cardio · tap a day';
     return '<div class="section-label">Schedule</div>' +
       '<div class="cal-card">' +
       '<div class="cal-nav">' +
@@ -806,7 +804,7 @@
       '<strong>' + esc(calendarMonthLabel(cursor.year, cursor.month)) + '</strong>' +
       '<button type="button" class="text-btn" data-action="cal-next" aria-label="Next month">›</button>' +
       '</div>' +
-      '<p class="cal-hint">' + esc(rot) + ' · tap a day to swap or skip</p>' +
+      '<p class="cal-hint">' + esc(hint) + '</p>' +
       '<div class="cal-grid">' + heads + cells + '</div>' +
       '</div>';
   }
@@ -908,21 +906,20 @@
         '<button class="icon-btn" data-action="edit-template" data-id="' + esc(template.id) + '" aria-label="Edit ' + esc(template.name) + '">Edit</button></div>';
     }).join('');
     const weekNow = Math.min(4, L.blockWeek(state.plan, new Date()));
-    const sessions = state.area === 'strength'
-      ? renderCalendar()
-      : (function () {
-        const weekRows = [];
-        for (let slot = 0; slot < areaCount(); slot += 1) {
-          const built = sessionAt(weekNow, slot, state.area);
-          weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(sessionRowDetail(built)) + '</small></span><span class="chevron">›</span></button>');
-        }
-        return '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>';
-      }());
+    const areaSessions = state.area === 'strength' ? '' : (function () {
+      const weekRows = [];
+      for (let slot = 0; slot < areaCount(); slot += 1) {
+        const built = sessionAt(weekNow, slot, state.area);
+        weekRows.push('<button class="log-row" data-action="open-preview" data-week="' + weekNow + '" data-slot="' + built.slot + '"><span class="choice-copy"><strong>' + esc(built.title) + '</strong><small>' + esc(sessionRowDetail(built)) + '</small></span><span class="chevron">›</span></button>');
+      }
+      return '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>';
+    }());
     const routines = state.area === 'strength'
       ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
       : '';
     return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
-      sessions +
+      renderCalendar() +
+      areaSessions +
       routines + '</section>';
   }
 
@@ -1276,11 +1273,26 @@
     const when = new Date(iso + 'T12:00:00');
     const label = when.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const current = tip && tip.type ? tip.type : (state.sheet.dayType || null);
-    const statusLine = tip && tip.status === 'done'
-      ? 'Logged · ' + (tip.title || L.dayTypeLabel(current))
-      : (tip && tip.status === 'skip'
-        ? 'Skipped for now'
-        : (current ? 'Suggested · ' + L.dayTypeLabel(current) : 'Rest day'));
+    const logs = tip && tip.logs ? tip.logs : [];
+    let statusLine;
+    if (tip && tip.status === 'skip') {
+      statusLine = 'Skipped for now';
+    } else if (tip && tip.status === 'done') {
+      statusLine = 'Logged · ' + (tip.title || L.dayTypeLabel(current));
+    } else if (current) {
+      statusLine = 'Suggested · ' + L.dayTypeLabel(current);
+    } else if (logs.length) {
+      statusLine = 'Logged · ' + logs.map(function (entry) {
+        return entry.typeName || L.modeDayLabel(entry.mode);
+      }).join(' · ');
+    } else {
+      statusLine = 'Rest day';
+    }
+    const loggedBlock = logs.length
+      ? '<div class="section-label">Logged</div><div class="group">' + logs.map(function (entry) {
+        return '<div class="log-row static"><span class="choice-copy"><strong>' + esc(entry.typeName || L.modeDayLabel(entry.mode)) + '</strong><small>' + esc(L.modeDayLabel(entry.mode)) + '</small></span></div>';
+      }).join('') + '</div>'
+      : '';
     const choices = scheduleTypeChoices().map(function (type) {
       const on = current === type && !(tip && tip.status === 'skip');
       return '<button class="choice" data-action="cal-set-type" data-type="' + type + '" aria-pressed="' + (on ? 'true' : 'false') + '"><strong>' + esc(L.dayTypeLabel(type)) + '</strong><small>' + (on ? 'Selected' : 'Use this day') + '</small></button>';
@@ -1291,6 +1303,7 @@
       : '<button class="btn btn-primary" style="margin-top:14px" data-action="cal-start"' + (current ? '' : ' disabled') + '>Start ' + esc(current ? L.dayTypeLabel(current) : 'session') + '</button>';
     return '<p class="eyebrow">' + esc(label) + (isToday ? ' · Today' : '') + '</p>' +
       '<p class="lede" style="margin-top:4px">' + esc(statusLine) + '</p>' +
+      loggedBlock +
       '<div class="section-label">Day type</div><div class="choice-list">' + choices + '</div>' +
       '<div class="cal-day-actions">' +
       '<button class="btn btn-quiet" data-action="cal-skip">' + (tip && tip.status === 'skip' ? 'Unskip day' : 'Skip this day') + '</button>' +

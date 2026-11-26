@@ -1264,6 +1264,24 @@ body.resting .toast { bottom: calc(var(--tabh) + 92px); }
   white-space: nowrap;
 }
 .cal-cell em.cal-blank { opacity: 0; }
+.cal-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 6px;
+  margin-top: 1px;
+}
+.cal-dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.cal-dot.mode-strength { background: var(--accent); }
+.cal-dot.mode-mobility { background: var(--blue); }
+.cal-dot.mode-cardio { background: var(--orange); }
 .cal-cell.is-today {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
@@ -1273,6 +1291,11 @@ body.resting .toast { bottom: calc(var(--tabh) + 92px); }
   background: var(--ok-bg);
 }
 .cal-cell.is-done em { color: var(--green); }
+.cal-cell.is-logged {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+}
+.cal-cell.is-logged em { color: var(--blue); }
+.cal-cell.is-logged.is-planned em { color: var(--accent-deep); }
 .cal-cell.is-skip {
   opacity: 0.55;
 }

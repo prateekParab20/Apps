@@ -919,7 +919,7 @@
 
   function strengthLoggedType(workout) {
     if (!workout) return null;
-    const mode = workout.plan && workout.plan.mode ? workout.plan.mode : 'strength';
+    const mode = modeOfWorkout(workout);
     if (mode !== 'strength') return null;
     if (workout.plan && workout.plan.day && DAY_LABEL[workout.plan.day]) return workout.plan.day;
     const name = String(workout.typeName || '').toLowerCase();
@@ -932,6 +932,12 @@
     return null;
   }
 
+  function modeDayLabel(mode) {
+    if (mode === 'mobility') return 'Mobility';
+    if (mode === 'cardio') return 'Cardio';
+    return 'Strength';
+  }
+
   function monthGrid(year, month, schedule, plan, workouts, now) {
     const ready = normalizeSchedule(schedule, plan);
     const rotation = rotationFor(plan);
@@ -942,13 +948,20 @@
     const cells = [];
     for (let i = 0; i < startPad; i += 1) cells.push({ empty: true });
 
-    const byDay = {};
+    /* All modes land on the grid; only strength logs consume a planned strength slot. */
+    const logsByDay = {};
+    const strengthByDay = {};
     (workouts || []).forEach(function (workout) {
       if (!workout || !workout.date) return;
-      const mode = workout.plan && workout.plan.mode ? workout.plan.mode : 'strength';
-      if (mode !== 'strength') return;
       const iso = isoDay(workout.date);
-      if (!byDay[iso]) byDay[iso] = workout;
+      const mode = modeOfWorkout(workout);
+      if (!logsByDay[iso]) logsByDay[iso] = [];
+      logsByDay[iso].push({
+        mode: mode,
+        type: mode === 'strength' ? strengthLoggedType(workout) : null,
+        typeName: workout.typeName || modeDayLabel(mode)
+      });
+      if (mode === 'strength' && !strengthByDay[iso]) strengthByDay[iso] = workout;
     });
 
     const futureDates = [];
@@ -960,7 +973,7 @@
       const skipped = !!(override && override.skip);
       const forced = override && override.type ? override.type : null;
       const isSession = !skipped && (weekdayHit || !!forced);
-      if (isSession && iso >= todayIso && !byDay[iso]) futureDates.push(iso);
+      if (isSession && iso >= todayIso && !strengthByDay[iso]) futureDates.push(iso);
     }
 
     const assigned = {};
@@ -978,8 +991,13 @@
       const override = ready.overrides[iso] || null;
       const weekdayHit = ready.weekdays.indexOf(date.getDay()) >= 0;
       const skipped = !!(override && override.skip);
-      const logged = byDay[iso] || null;
+      const logged = strengthByDay[iso] || null;
       const loggedType = strengthLoggedType(logged);
+      const logs = logsByDay[iso] || [];
+      const loggedModes = [];
+      logs.forEach(function (entry) {
+        if (loggedModes.indexOf(entry.mode) < 0) loggedModes.push(entry.mode);
+      });
       let status = 'rest';
       let type = null;
       let tweaked = false;
@@ -997,6 +1015,14 @@
         type = override && override.type ? override.type : null;
         tweaked = !!(override && override.type);
       }
+      let title = type ? dayTypeLabel(type) : (status === 'skip' ? 'Skip' : '');
+      let short = type ? dayTypeLabel(type).split(' ')[0] : (status === 'skip' ? 'Skip' : '');
+      /* Non-strength logs label the day when there is no strength plan/type. */
+      if (!type && !skipped && logs.length) {
+        const primary = logs[0];
+        title = primary.typeName || modeDayLabel(primary.mode);
+        short = modeDayLabel(primary.mode);
+      }
       cells.push({
         empty: false,
         date: iso,
@@ -1004,10 +1030,13 @@
         weekday: date.getDay(),
         status: status,
         type: type,
-        title: type ? dayTypeLabel(type) : (status === 'skip' ? 'Skip' : ''),
-        short: type ? dayTypeLabel(type).split(' ')[0] : (status === 'skip' ? 'Skip' : ''),
+        title: title,
+        short: short,
         tweaked: tweaked,
-        isToday: iso === todayIso
+        isToday: iso === todayIso,
+        logs: logs.slice(),
+        loggedModes: loggedModes.slice(),
+        hasLog: logs.length > 0
       });
     }
     while (cells.length % 7) cells.push({ empty: true });
@@ -1286,6 +1315,7 @@
     monthGrid: monthGrid,
     suggestionForDate: suggestionForDate,
     strengthLoggedType: strengthLoggedType,
+    modeDayLabel: modeDayLabel,
     GROUP_LABEL: GROUP_LABEL,
     WEEK_COPY: WEEK_COPY,
     DAY_LABEL: DAY_LABEL
