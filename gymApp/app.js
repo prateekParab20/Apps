@@ -61,7 +61,9 @@
     calcW: '100',
     calcR: '5',
     canInstall: false,
-    scrollToId: null
+    scrollToId: null,
+    pulseSet: null,
+    pulseTimer: null
   };
 
   let deferredPrompt = null;
@@ -449,7 +451,7 @@
     const stored = localStorage.getItem('theme');
     const dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const meta = document.getElementById('theme-color');
-    if (meta) meta.setAttribute('content', dark ? '#000000' : '#f2f2f7');
+    if (meta) meta.setAttribute('content', dark ? '#0b1016' : '#e6eef6');
   }
 
   function applyTheme(mode) {
@@ -531,6 +533,7 @@
       return '<button class="menu-row" data-action="set-area" data-area="' + area + '"' + on + '><i class="swatch ' + area + '"></i><span class="choice-copy"><strong>' + label + '</strong><small>' + detail + '</small></span></button>';
     };
     root.innerHTML = '<div class="drawer-backdrop" data-action="close-menu"></div><aside class="drawer" role="dialog" aria-label="Menu">' +
+      '<p class="brand">StrongLean</p>' +
       '<p class="eyebrow">Sections</p>' +
       item('strength', 'Strength', L.splitLabel(state.plan.split)) +
       item('mobility', 'Mobility', 'Hips, spine, and holds') +
@@ -615,8 +618,9 @@
     const splitBtn = function (value, label, detail) {
       return '<button class="choice" data-action="set-setup" data-field="split" data-value="' + value + '" aria-pressed="' + (draft.split === value ? 'true' : 'false') + '"><strong>' + label + '</strong><small>' + detail + '</small></button>';
     };
-    return '<section class="page setup-page"><p class="eyebrow">Start</p><h1>' + (state.plan.onboarded ? 'Your training' : 'What do you want?') + '</h1>' +
-      '<p class="lede">This stays on the device. Strength, mobility, and cardio stay in their own sections.</p>' +
+    return '<section class="page setup-page"><p class="brand">Train local</p><h1 class="brand-hero">StrongLean</h1>' +
+      '<p class="lede">' + (state.plan.onboarded ? 'Update your goal and routine. Everything stays on this device.' : 'What do you want? Strength, mobility, and cardio stay in their own sections.') + '</p>' +
+      (state.plan.onboarded ? '<h2 class="setup-sub">Your training</h2>' : '<h2 class="setup-sub">Get set</h2>') +
       '<label class="field" style="margin-top:18px;border-radius:12px"><span class="label">Name</span><input id="setup-name" value="' + esc(draft.name) + '" placeholder="Optional"></label>' +
       '<div class="section-label">Goal</div><div class="choice-list">' +
       goalBtn('strength', 'Get stronger', 'Heavier sets, longer rest') +
@@ -704,8 +708,8 @@
       : areaTitle();
     return '<section class="page">' +
       '<div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div>' +
-      '<header class="page-head"><div><h1>' + esc(greeting()) + '</h1><p class="lede">' + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
-      '<div class="card session-hero">' + (state.area === 'strength' ? weekDots(built.week) : '') +
+      '<header class="page-head"><div><p class="brand-hero">StrongLean</p><h1 class="today-greet">' + esc(greeting()) + '</h1><p class="lede">' + (streak ? streak + ' day streak' : esc(state.area === 'strength' ? L.splitLabel(state.plan.split) : areaTitle())) + '</p></div></header>' +
+      '<div class="session-hero">' + (state.area === 'strength' ? weekDots(built.week) : '') +
       '<p class="eyebrow">' + esc(kicker) + '</p>' +
       '<h2>' + esc(built.title) + '</h2>' +
       '<p class="cheer">' + esc(cheerLine(view)) + '</p>' +
@@ -784,7 +788,7 @@
     const routines = state.area === 'strength'
       ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
       : '';
-    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
+    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
       '<div class="section-label">Sessions</div><div class="group">' + weekRows.join('') + '</div>' +
       routines + '</section>';
   }
@@ -820,7 +824,8 @@
       if (logged) {
         const weightText = Number(set.weight) > 0 ? esc(displayWeight(set.weight)) + ' ' + esc(state.unit) + ' × ' + esc(set.reps) : esc(set.reps) + ' reps';
         const record = isRecord(ex, set) ? '<span class="pr-badge">New best</span>' : '';
-        rows.push('<div class="set-row done-row"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + record + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
+        const pulse = state.pulseSet && sameId(state.pulseSet.id, ex.id) && state.pulseSet.index === i ? ' just-done' : '';
+        rows.push('<div class="set-row done-row' + pulse + '"><span class="set-num done">✓</span><span class="set-copy"><strong>' + weightText + '</strong><small>Set ' + (i + 1) + record + '</small></span><button class="set-go quiet" data-action="open-log" data-id="' + esc(ex.id) + '" data-index="' + i + '" data-slot="' + index + '">Edit</button></div>');
       } else {
         const target = targetForSet(ex, i);
         const hint = target && target.kind === 'weight' ? 'Heavier than last time' : (target && target.kind === 'reps' ? 'One more rep' : (target ? 'Match the last set' : ex.reps));
@@ -985,7 +990,7 @@
     const theme = stored === 'light' || stored === 'dark' ? stored : 'system';
     const one = calculatorValue();
     const notify = notificationsActive();
-    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
+    return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">You</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>You</h1><p class="lede">Units, appearance, and a copy of your data.</p></div></header>' +
       '<div class="group"><button class="log-row" data-action="edit-setup"><span class="choice-copy"><strong>' + esc(state.plan.name || 'Your details') + '</strong><small>' + esc(L.goalLabel(state.plan.goal)) + ' · ' + esc(L.splitLabel(state.plan.split)) + ' · ' + state.plan.days + ' days</small></span><span class="chevron">›</span></button></div>' +
       trophyCase() +
       '<div class="group"><label class="field"><span class="label">Body weight</span><input id="body-weight" inputmode="decimal" value="' + esc(displayWeight(state.weight)) + '"><span class="suffix">' + esc(state.unit) + '</span></label>' +
@@ -1321,6 +1326,11 @@
       toast('Set updated');
       return;
     }
+    state.pulseSet = { id: exerciseId, index: index };
+    clearTimeout(state.pulseTimer);
+    state.pulseTimer = setTimeout(function () {
+      state.pulseSet = null;
+    }, 900);
     const restFor = ex && ex.rest != null ? Number(ex.rest) : 90;
     const cue = upcomingCue(exerciseId);
     if (restFor > 0) startRest(Math.max(10, restFor), ex ? ex.name : 'Rest', cue);

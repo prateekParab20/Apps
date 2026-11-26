@@ -1,5 +1,5 @@
 /* Network-first cache so StrongLean opens offline after the first visit. */
-const CACHE = 'stronglean-v6';
+const CACHE = 'stronglean-v7';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './logic.js', './library.js', './media.js', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (event) {
