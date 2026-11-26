@@ -1324,12 +1324,86 @@
     return state.notifications && typeof Notification !== 'undefined' && Notification.permission === 'granted';
   }
 
+  function sheetContent() {
+    const sheet = state.sheet;
+    if (!sheet) return null;
+    let body = '';
+    let title = '';
+    if (sheet.type === 'log') body = logSheet();
+    else if (sheet.type === 'cheers') { title = 'Keep it up'; body = cheersSheet(); }
+    else if (sheet.type === 'finish') { title = 'Complete'; body = finishSheet(); }
+    else if (sheet.type === 'howto') { title = 'How to'; body = howtoSheet(); }
+    else if (sheet.type === 'add' || sheet.type === 'swap') { title = sheet.type === 'swap' ? 'Swap' : 'Add'; body = pickSheet(); }
+    else if (sheet.type === 'abs') { title = 'Core'; body = absSheet(); }
+    else if (sheet.type === 'history') { title = 'Session'; body = historySheet(); }
+    else if (sheet.type === 'progress') { title = 'Progress'; body = progressSheet(); }
+    else if (sheet.type === 'cal-day') { title = 'Session day'; body = calDaySheet(); }
+    else if (sheet.type === 'schedule') { title = 'Training days'; body = scheduleSheet(); }
+    return {
+      type: sheet.type,
+      title: title,
+      body: body,
+      closeLabel: sheet.back ? 'Back' : 'Close'
+    };
+  }
+
+  function patchSheetBody(content) {
+    const root = document.getElementById('overlay');
+    const existing = root && root.querySelector('.sheet');
+    if (!root || !existing || !content || content.type === 'log') return false;
+    if (root.getAttribute('data-sheet-type') !== content.type) return false;
+    const body = existing.querySelector('.sheet-body');
+    const title = existing.querySelector('.sheet-head h2');
+    const closeBtn = existing.querySelector('.sheet-head [data-action="close-sheet"]');
+    if (title && content.title) title.textContent = content.title;
+    if (closeBtn) closeBtn.textContent = content.closeLabel;
+    if (body) {
+      const scroll = body.scrollTop;
+      body.innerHTML = content.body;
+      body.scrollTop = scroll;
+    }
+    return true;
+  }
+
+  /* Day/preset taps should never remount the sheet (that replays sheet-in). */
+  function refreshScheduleUI() {
+    syncPlan();
+    if (state.sheet && state.sheet.type === 'schedule') {
+      const content = sheetContent();
+      if (!patchSheetBody(content)) {
+        const root = document.getElementById('overlay');
+        root.setAttribute('data-sheet-type', content.type);
+        root.innerHTML = sheetHTML();
+      }
+      const y = window.scrollY;
+      const setup = state.section === 'setup' || (!state.plan.onboarded && !state.session);
+      view.innerHTML = setup ? renderSetup() : (pages[state.section] ? pages[state.section]() : pages.today());
+      window.scrollTo(0, y);
+      renderTabs();
+      renderRest(false);
+      renderDrawer();
+      return;
+    }
+    render({ keepScroll: true });
+  }
+
   function renderOverlay() {
     const root = document.getElementById('overlay');
-    let html = '';
-    if (state.template) html += templateModal();
-    if (state.sheet) html += sheetHTML();
-    root.innerHTML = html;
+    if (state.template) {
+      root.innerHTML = templateModal() + (state.sheet ? sheetHTML() : '');
+      root.removeAttribute('data-sheet-type');
+      return;
+    }
+    if (!state.sheet) {
+      root.innerHTML = '';
+      root.removeAttribute('data-sheet-type');
+      return;
+    }
+    const content = sheetContent();
+    /* Keep the sheet mounted while tapping days/presets so sheet-in does not replay. */
+    if (patchSheetBody(content)) return;
+    root.setAttribute('data-sheet-type', content.type);
+    root.innerHTML = sheetHTML();
   }
 
   function templateModal() {
@@ -1365,25 +1439,14 @@
   }
 
   function sheetHTML() {
-    const sheet = state.sheet;
-    let body = '';
-    let title = '';
-    if (sheet.type === 'log') body = logSheet();
-    else if (sheet.type === 'cheers') { title = 'Keep it up'; body = cheersSheet(); }
-    else if (sheet.type === 'finish') { title = 'Complete'; body = finishSheet(); }
-    else if (sheet.type === 'howto') { title = 'How to'; body = howtoSheet(); }
-    else if (sheet.type === 'add' || sheet.type === 'swap') { title = sheet.type === 'swap' ? 'Swap' : 'Add'; body = pickSheet(); }
-    else if (sheet.type === 'abs') { title = 'Core'; body = absSheet(); }
-    else if (sheet.type === 'history') { title = 'Session'; body = historySheet(); }
-    else if (sheet.type === 'progress') { title = 'Progress'; body = progressSheet(); }
-    else if (sheet.type === 'cal-day') { title = 'Session day'; body = calDaySheet(); }
-    else if (sheet.type === 'schedule') { title = 'Training days'; body = scheduleSheet(); }
-    if (sheet.type === 'log') {
-      return '<div class="overlay" data-action="close-sheet"><div class="sheet" role="dialog" aria-modal="true" data-action="stop">' + body + '</div></div>';
+    const content = sheetContent();
+    if (!content) return '';
+    if (content.type === 'log') {
+      return '<div class="overlay" data-action="close-sheet"><div class="sheet" role="dialog" aria-modal="true" data-action="stop">' + content.body + '</div></div>';
     }
-    return '<div class="overlay" data-action="close-sheet"><div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '" data-action="stop"><div class="grabber"></div>' +
-      '<div class="sheet-head"><button class="text-btn" data-action="close-sheet">' + (sheet.back ? 'Back' : 'Close') + '</button><h2>' + esc(title) + '</h2><span class="sheet-trail"></span></div>' +
-      '<div class="sheet-body">' + body + '</div></div></div>';
+    return '<div class="overlay" data-action="close-sheet"><div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(content.title) + '" data-action="stop"><div class="grabber"></div>' +
+      '<div class="sheet-head"><button class="text-btn" data-action="close-sheet">' + esc(content.closeLabel) + '</button><h2>' + esc(content.title) + '</h2><span class="sheet-trail"></span></div>' +
+      '<div class="sheet-body">' + content.body + '</div></div></div>';
   }
 
   function logSheet() {
@@ -2374,8 +2437,7 @@
       const preset = el.dataset.preset;
       state.schedule = L.applyModeWeekdayPreset(state.schedule, state.plan, 'strength', preset);
       saveSchedule();
-      render();
-      renderChrome();
+      refreshScheduleUI();
       toast('Lift days updated');
     },
     'schedule-mode-preset': function (el) {
@@ -2384,8 +2446,7 @@
       if (['strength', 'mobility', 'cardio'].indexOf(mode) < 0) return;
       state.schedule = L.applyModeWeekdayPreset(state.schedule, state.plan, mode, preset);
       saveSchedule();
-      render();
-      renderChrome();
+      refreshScheduleUI();
     },
     'schedule-toggle-mode-day': function (el) {
       const mode = el.dataset.mode;
@@ -2400,8 +2461,7 @@
       }
       state.schedule = next;
       saveSchedule();
-      render();
-      renderChrome();
+      refreshScheduleUI();
     },
     'schedule-toggle-day': function (el) {
       el.dataset.mode = 'strength';
@@ -2916,9 +2976,12 @@
   document.addEventListener('click', function (event) {
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
+    if (el.dataset.action === 'stop') {
+      event.stopPropagation();
+      return;
+    }
     const action = actions[el.dataset.action];
     if (!action) return;
-    if (el.dataset.action === 'stop') return;
     unlockAudio();
     action(el, event);
   });
