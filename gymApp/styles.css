@@ -719,28 +719,28 @@ html.dark .brand-hero {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
 }
 .ex-visual-md {
   margin: 0 0 10px;
   border-radius: 14px;
-  aspect-ratio: 16 / 10;
-  max-height: 180px;
+  aspect-ratio: 5 / 4;
+  max-height: 240px;
 }
 .ex-visual-lg {
   margin: 10px 0 4px;
   border-radius: 18px;
-  aspect-ratio: 16 / 10;
-  max-height: 220px;
+  aspect-ratio: 5 / 4;
+  max-height: 280px;
 }
 .ex-visual.ex-visual-sm {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  max-width: 52px;
-  flex: 0 0 52px;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  flex: 0 0 64px;
   margin: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   aspect-ratio: auto;
   max-height: none;
   overflow: hidden;
