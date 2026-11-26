@@ -1,0 +1,61 @@
+{
+  "note": "Local photos used only when free-exercise-db has no suitable match. CDN demos remain Unlicense via yuhonas/free-exercise-db.",
+  "photos": [
+    {
+      "file": "pigeon-pose.jpg",
+      "exerciseIds": [858],
+      "title": "Woman doing one legged pigeons pose",
+      "license": "CC0",
+      "source": "https://www.rawpixel.com/image/5971642/woman-doing-one-legged-pigeons-pose",
+      "author": "rawpixel / freepik (CC0)"
+    },
+    {
+      "file": "bird-dog.jpg",
+      "exerciseIds": [888],
+      "title": "Bird dog exercise.jpg",
+      "license": "CC BY 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Bird_dog_exercise.jpg",
+      "author": "PTPioneer"
+    },
+    {
+      "file": "cat-cow.jpg",
+      "exerciseIds": [788],
+      "title": "Yoga at Your Park - Bitilasana.jpg",
+      "license": "Public domain (US NPS)",
+      "source": "https://commons.wikimedia.org/wiki/File:Yoga_at_Your_Park_-_Bitilasana.jpg",
+      "author": "Mary O'Neill / National Park Service"
+    },
+    {
+      "file": "burpee.jpg",
+      "exerciseIds": [853],
+      "title": "Burpee 7 Land.jpg",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Burpee_7_Land.jpg",
+      "author": "Taco fleur"
+    },
+    {
+      "file": "jumping-jacks.jpg",
+      "exerciseIds": [803],
+      "title": "US Navy sailors performing jumping jacks",
+      "license": "Public domain (US Navy)",
+      "source": "https://commons.wikimedia.org/wiki/File:US_Navy_101112-N-9132C-184_Sailors_from_the_engineering_repair_division_perform_jumping_jacks_during_group_physical_training_in_the_hangar_bay_of_t.jpg",
+      "author": "U.S. Navy photo by Mass Communication Specialist 3rd Class Oliver Cole"
+    },
+    {
+      "file": "reverse-plank.jpg",
+      "exerciseIds": [889],
+      "title": "Purvottanasana.jpg",
+      "license": "CC BY-SA 3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Purvottanasana.jpg",
+      "author": "Joseph RENGER"
+    },
+    {
+      "file": "l-sit.jpg",
+      "exerciseIds": [878],
+      "title": "West Point male gymnast L-sit.jpg",
+      "license": "Public domain (US Army / West Point)",
+      "source": "https://commons.wikimedia.org/wiki/File:West_Point_male_gymnast_L-sit.jpg",
+      "author": "Tommy Gilligan / West Point Public Affairs"
+    }
+  ]
+}
