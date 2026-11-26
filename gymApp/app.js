@@ -349,24 +349,40 @@
     return L.suggestionForDate(state.schedule, state.plan, L.isoDay(new Date()), state.workouts, new Date());
   }
 
+  function nextPlannedSuggestion() {
+    const now = new Date();
+    const grid = L.monthGrid(now.getFullYear(), now.getMonth(), state.schedule, state.plan, state.workouts, now);
+    const todayIso = L.isoDay(now);
+    let found = grid.cells.find(function (cell) {
+      return !cell.empty && cell.type && (cell.status === 'planned' || cell.status === 'today') && cell.date >= todayIso && cell.status !== 'done';
+    });
+    if (found) return found;
+    /* Peek into next month if this month is done. */
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextGrid = L.monthGrid(next.getFullYear(), next.getMonth(), state.schedule, state.plan, state.workouts, now);
+    return nextGrid.cells.find(function (cell) {
+      return !cell.empty && cell.type && cell.status === 'planned';
+    }) || null;
+  }
+
   function currentBuilt() {
     const week = Math.min(4, L.blockWeek(state.plan, new Date()));
     if (state.area === 'strength') {
       const tip = todaySuggestion();
       if (tip && tip.type && tip.status !== 'skip' && tip.status !== 'done') {
         return {
-          slot: { slot: 0, doneToday: false, used: {}, count: state.plan.days },
+          slot: { slot: 0, doneToday: tip.status === 'done', used: {}, count: state.plan.days },
           week: week,
           built: sessionAt(week, 0, 'strength', tip.type),
           suggestion: tip
         };
       }
-      if (tip && tip.status === 'done') {
+      if (tip && (tip.status === 'done' || tip.status === 'skip')) {
         const slot = L.nextSlot(state.workouts, state.plan, new Date(), state.area);
-        const next = L.suggestionForDate(state.schedule, state.plan, L.isoDay(new Date()), state.workouts, new Date());
+        const next = nextPlannedSuggestion();
         const day = next && next.type ? next.type : null;
         return {
-          slot: slot,
+          slot: Object.assign({}, slot, { doneToday: tip.status === 'done' }),
           week: week,
           built: sessionAt(week, slot.slot, state.area, day),
           suggestion: next
