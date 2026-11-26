@@ -3,7 +3,10 @@
   "photos": [
     {
       "file": "assisted-pull-up.jpg",
-      "exerciseIds": [201, 302],
+      "exerciseIds": [
+        201,
+        302
+      ],
       "title": "Francis practicando pullups asistido con liga - Crossfit",
       "license": "CC BY-SA 4.0",
       "source": "https://commons.wikimedia.org/wiki/File:Francis_practicando_pullups_asistido_con_liga_-_Crossfit.JPG",
@@ -12,15 +15,19 @@
     },
     {
       "file": "box-jump.jpg",
-      "exerciseIds": [880],
+      "exerciseIds": [
+        880
+      ],
       "title": "Box Jump Multiple Response (frame 1)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Box_Jump_Multiple_Response",
-      "note": "Letterboxed 1.jpg (on-box landing) — 0.jpg standing start was ambiguous under cover crop."
+      "note": "Letterboxed 1.jpg (on-box landing) \u2014 0.jpg standing start was ambiguous under cover crop."
     },
     {
       "file": "landmine-180s.jpg",
-      "exerciseIds": [732],
+      "exerciseIds": [
+        732
+      ],
       "title": "Landmine 180s (frame 1)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Landmine_180s",
@@ -28,7 +35,9 @@
     },
     {
       "file": "smith-pistol-squat.jpg",
-      "exerciseIds": [873],
+      "exerciseIds": [
+        873
+      ],
       "title": "Smith Machine Pistol Squat (frame 1)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Smith_Machine_Pistol_Squat",
@@ -36,7 +45,9 @@
     },
     {
       "file": "trap-bar-deadlift.jpg",
-      "exerciseIds": [760],
+      "exerciseIds": [
+        760
+      ],
       "title": "Trap Bar Deadlift (frame 0)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Trap_Bar_Deadlift",
@@ -44,7 +55,9 @@
     },
     {
       "file": "svend-press.jpg",
-      "exerciseIds": [707],
+      "exerciseIds": [
+        707
+      ],
       "title": "Svend Press (frame 0)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Svend_Press",
@@ -52,7 +65,9 @@
     },
     {
       "file": "battling-ropes.jpg",
-      "exerciseIds": [855],
+      "exerciseIds": [
+        855
+      ],
       "title": "Battling Ropes (frame 0)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/Battling_Ropes",
@@ -60,7 +75,9 @@
     },
     {
       "file": "med-ball-slam.jpg",
-      "exerciseIds": [854],
+      "exerciseIds": [
+        854
+      ],
       "title": "One-Arm Medicine Ball Slam (frame 0)",
       "license": "Unlicense (free-exercise-db)",
       "source": "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/One-Arm_Medicine_Ball_Slam",
@@ -68,7 +85,9 @@
     },
     {
       "file": "pigeon-pose.jpg",
-      "exerciseIds": [858],
+      "exerciseIds": [
+        858
+      ],
       "title": "Woman doing one legged pigeons pose",
       "license": "CC0",
       "source": "https://www.rawpixel.com/image/5971642/woman-doing-one-legged-pigeons-pose",
@@ -76,7 +95,9 @@
     },
     {
       "file": "bird-dog.jpg",
-      "exerciseIds": [888],
+      "exerciseIds": [
+        888
+      ],
       "title": "Bird dog exercise.jpg",
       "license": "CC BY 2.0",
       "source": "https://commons.wikimedia.org/wiki/File:Bird_dog_exercise.jpg",
@@ -84,7 +105,9 @@
     },
     {
       "file": "cat-cow.jpg",
-      "exerciseIds": [788],
+      "exerciseIds": [
+        788
+      ],
       "title": "Yoga at Your Park - Bitilasana.jpg",
       "license": "Public domain (US NPS)",
       "source": "https://commons.wikimedia.org/wiki/File:Yoga_at_Your_Park_-_Bitilasana.jpg",
@@ -92,7 +115,9 @@
     },
     {
       "file": "burpee.jpg",
-      "exerciseIds": [853],
+      "exerciseIds": [
+        853
+      ],
       "title": "Burpee 7 Land.jpg",
       "license": "CC BY-SA 4.0",
       "source": "https://commons.wikimedia.org/wiki/File:Burpee_7_Land.jpg",
@@ -100,7 +125,9 @@
     },
     {
       "file": "jumping-jacks.jpg",
-      "exerciseIds": [803],
+      "exerciseIds": [
+        803
+      ],
       "title": "US Navy sailors performing jumping jacks",
       "license": "Public domain (US Navy)",
       "source": "https://commons.wikimedia.org/wiki/File:US_Navy_101112-N-9132C-184_Sailors_from_the_engineering_repair_division_perform_jumping_jacks_during_group_physical_training_in_the_hangar_bay_of_t.jpg",
@@ -108,7 +135,9 @@
     },
     {
       "file": "reverse-plank.jpg",
-      "exerciseIds": [889],
+      "exerciseIds": [
+        889
+      ],
       "title": "Purvottanasana.jpg",
       "license": "CC BY-SA 3.0",
       "source": "https://commons.wikimedia.org/wiki/File:Purvottanasana.jpg",
@@ -116,11 +145,34 @@
     },
     {
       "file": "l-sit.jpg",
-      "exerciseIds": [878],
+      "exerciseIds": [
+        878
+      ],
       "title": "West Point male gymnast L-sit.jpg",
       "license": "Public domain (US Army / West Point)",
       "source": "https://commons.wikimedia.org/wiki/File:West_Point_male_gymnast_L-sit.jpg",
       "author": "Tommy Gilligan / West Point Public Affairs"
     }
-  ]
+  ],
+  "source": "free-exercise-db (Unlicense) https://github.com/yuhonas/free-exercise-db",
+  "local_mirrors": {
+    "worlds-greatest-stretch.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "ninety-ninety.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "childs-pose.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "couch-stretch.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "open-book.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "quad-stretch.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "calf-stretch.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "chin-tuck.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "figure-four.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "thoracic-stretch.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "brisk-walk.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "march-place.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "bike.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "elliptical.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "rower.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "dead-bug.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "plank.jpg": "mirrored from free-exercise-db for reliable offline/demo display",
+    "superman.jpg": "mirrored from free-exercise-db for reliable offline/demo display"
+  }
 }

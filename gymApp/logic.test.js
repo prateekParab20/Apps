@@ -453,17 +453,51 @@ test('monthGrid shows mobility and cardio logs alongside strength plans', functi
 
   assert.equal(tue.hasLog, true);
   assert.ok(tue.loggedModes.indexOf('mobility') >= 0);
-  assert.equal(tue.short, 'Mobility');
+  assert.equal(tue.short, 'M');
   assert.notEqual(tue.status, 'done');
 
   assert.equal(wed.hasLog, true);
   assert.ok(wed.loggedModes.indexOf('cardio') >= 0);
-  assert.equal(wed.short, 'Cardio');
+  assert.equal(wed.short, 'C');
 
   /* Mobility on a planned strength day keeps the strength suggestion and marks the log. */
   assert.equal(thu.hasLog, true);
   assert.ok(thu.loggedModes.indexOf('mobility') >= 0);
   assert.ok(thu.type === 'upper' || thu.type === 'lower');
   assert.ok(thu.status === 'today' || thu.status === 'planned');
-  assert.ok(thu.short === 'Upper' || thu.short === 'Lower');
+  assert.ok(thu.short === 'U' || thu.short === 'L');
+});
+
+test('weekday presets and custom days drive the calendar', function () {
+  const plan = L.normalizePlan({ days: 4, split: 'upper-lower', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  let schedule = L.applyWeekdayPreset({}, plan, 'weekdays');
+  assert.deepEqual(schedule.weekdays, [1, 2, 3, 4, 5]);
+  assert.equal(schedule.preset, 'weekdays');
+  schedule = L.applyWeekdayPreset(schedule, plan, 'mwf');
+  assert.deepEqual(schedule.weekdays, [1, 3, 5]);
+  assert.equal(schedule.preset, 'mwf');
+  schedule = L.setScheduleWeekdays(schedule, plan, [2, 4, 6]);
+  assert.deepEqual(schedule.weekdays, [2, 4, 6]);
+  assert.equal(schedule.preset, 'custom');
+  const now = new Date(2026, 10, 2);
+  const grid = L.monthGrid(2026, 10, schedule, plan, [], now);
+  const planned = grid.cells.filter(function (cell) {
+    return !cell.empty && (cell.status === 'planned' || cell.status === 'today');
+  });
+  planned.forEach(function (cell) {
+    assert.ok([2, 4, 6].indexOf(cell.weekday) >= 0);
+  });
+});
+
+test('day mode tracking marks mobility and cardio on the grid', function () {
+  const plan = L.normalizePlan({ days: 4, split: 'upper-lower', blockStart: '2026-11-01' }, new Date(2026, 10, 1));
+  let schedule = L.normalizeSchedule({ nextIndex: 0 }, plan);
+  schedule = L.setScheduleDay(schedule, plan, '2026-11-03', { modes: ['mobility', 'cardio'] });
+  const now = new Date(2026, 10, 2);
+  const grid = L.monthGrid(2026, 10, schedule, plan, [], now);
+  const tue = grid.cells.find(function (cell) { return cell.date === '2026-11-03'; });
+  assert.ok(tue.plannedModes.indexOf('mobility') >= 0);
+  assert.ok(tue.plannedModes.indexOf('cardio') >= 0);
+  assert.ok(tue.markModes.indexOf('mobility') >= 0);
+  assert.ok(tue.markModes.indexOf('cardio') >= 0);
 });

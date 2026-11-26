@@ -611,7 +611,8 @@
       item('mobility', 'Mobility', 'Hips, spine, and holds') +
       item('cardio', 'Cardio', 'Walks, bike, row') +
       '<p class="eyebrow">App</p>' +
-      '<button class="menu-row" data-action="nav" data-section="history"><strong>History</strong><small>Sessions and charts</small></button>' +
+      '<button class="menu-row" data-action="nav" data-section="history"><strong>History</strong><small>Global calendar and sessions</small></button>' +
+      '<button class="menu-row" data-action="open-schedule"><strong>Training days</strong><small>' + esc(weekdaySummary()) + '</small></button>' +
       '<button class="menu-row" data-action="nav" data-section="library"><strong>Library</strong><small>Every exercise</small></button>' +
       '<button class="menu-row" data-action="edit-setup"><strong>Your details</strong><small>Goal and routine</small></button>' +
       '</aside>';
@@ -774,10 +775,33 @@
     }).join('') + '</span>';
   }
 
-  function renderCalendar() {
+  const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  function weekdaySummary() {
+    const days = (state.schedule && state.schedule.weekdays) || L.defaultWeekdays(state.plan.days);
+    return days.map(function (d) { return WEEKDAY_NAMES[d]; }).join(' · ');
+  }
+
+  /* Compact week strip on Today — full month lives once on History (global). */
+  function renderWeekStrip() {
+    const days = (state.schedule && state.schedule.weekdays) || [];
+    const chips = WEEKDAY_LETTERS.map(function (letter, index) {
+      const on = days.indexOf(index) >= 0;
+      return '<span class="week-chip' + (on ? ' on' : '') + '" aria-hidden="true">' + letter + '</span>';
+    }).join('');
+    return '<div class="section-label">This week</div>' +
+      '<button type="button" class="week-strip" data-action="open-schedule">' +
+      '<span class="week-chips">' + chips + '</span>' +
+      '<span class="choice-copy"><strong>Training days</strong><small>' + esc(weekdaySummary()) + ' · edit</small></span>' +
+      '<span class="chevron">›</span></button>';
+  }
+
+  function renderCalendar(options) {
+    options = options || {};
     const cursor = state.calendarCursor || { year: new Date().getFullYear(), month: new Date().getMonth() };
     const grid = L.monthGrid(cursor.year, cursor.month, state.schedule, state.plan, state.workouts, new Date());
-    const heads = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (d) {
+    const heads = WEEKDAY_LETTERS.map(function (d) {
       return '<span class="cal-head">' + d + '</span>';
     }).join('');
     const cells = grid.cells.map(function (cell) {
@@ -791,13 +815,11 @@
       if (cell.status === 'missed') classes.push('is-missed');
       if (cell.tweaked) classes.push('is-tweaked');
       const mark = cell.short ? '<em>' + esc(cell.short) + '</em>' : '<em class="cal-blank">&nbsp;</em>';
-      return '<button type="button" class="' + classes.join(' ') + '" data-action="cal-day" data-date="' + esc(cell.date) + '"><strong>' + cell.day + '</strong>' + mark + calendarModeDots(cell.loggedModes) + '</button>';
+      const dots = calendarModeDots(cell.markModes && cell.markModes.length ? cell.markModes : cell.loggedModes);
+      return '<button type="button" class="' + classes.join(' ') + '" data-action="cal-day" data-date="' + esc(cell.date) + '"><strong>' + cell.day + '</strong>' + mark + dots + '</button>';
     }).join('');
-    const rot = (grid.rotation || []).map(function (day) { return L.dayTypeLabel(day).split(' ')[0]; }).join(' · ');
-    const hint = state.area === 'strength'
-      ? rot + ' · tap a day to swap or skip'
-      : 'Strength · Mobility · Cardio · tap a day';
-    return '<div class="section-label">Schedule</div>' +
+    const hint = 'Tap a day to track Lift · Mobility · Cardio';
+    return (options.hideLabel ? '' : '<div class="section-label">Calendar</div>') +
       '<div class="cal-card">' +
       '<div class="cal-nav">' +
       '<button type="button" class="text-btn" data-action="cal-prev" aria-label="Previous month">‹</button>' +
@@ -806,6 +828,7 @@
       '</div>' +
       '<p class="cal-hint">' + esc(hint) + '</p>' +
       '<div class="cal-grid">' + heads + cells + '</div>' +
+      '<button type="button" class="btn btn-quiet cal-edit-days" data-action="open-schedule">Choose training days</button>' +
       '</div>';
   }
 
@@ -842,7 +865,7 @@
       '<p class="session-meta">' + esc(sessionMeta(built)) + '</p>' +
       start + '</div>' +
       planEntry +
-      renderCalendar() + '</section>';
+      renderWeekStrip() + '</section>';
   }
 
   function renderPlan() {
@@ -918,7 +941,6 @@
       ? '<div class="section-label">Your routines</div><div class="group"><button class="add-row" data-action="open-template">Create a routine</button>' + custom + builtin + '</div>'
       : '';
     return '<section class="page"><div class="topbar">' + menuButton() + '<span class="area-name">' + areaTitle() + '</span></div><header class="page-head"><div><p class="brand">StrongLean</p><h1>Train</h1><p class="lede">' + (state.area === 'strength' ? 'Week ' + weekNow + ' · ' + esc(L.WEEK_COPY[weekNow].name) : areaTitle() + ' sessions') + '</p></div></header>' +
-      renderCalendar() +
       areaSessions +
       routines + '</section>';
   }
@@ -1067,7 +1089,9 @@
         ? '<div class="section-head"><h2>Last 7 days</h2></div><div class="card" style="padding:12px">' + muscleSVG(muscles) + '</div>'
         : '') +
       '</div></div>';
-    return '<section class="page"><header class="page-head"><div><h1>History</h1><p class="lede">Sessions and the lifts that are moving.</p></div></header>' + charts + sessions + progress + clear + '</section>';
+    return '<section class="page"><header class="page-head"><div><h1>History</h1><p class="lede">Global calendar plus sessions across Lift, Mobility, and Cardio.</p></div></header>' +
+      renderCalendar() +
+      charts + sessions + progress + clear + '</section>';
   }
 
   function renderLibrary() {
@@ -1219,6 +1243,7 @@
     else if (sheet.type === 'history') { title = 'Session'; body = historySheet(); }
     else if (sheet.type === 'progress') { title = 'Progress'; body = progressSheet(); }
     else if (sheet.type === 'cal-day') { title = 'Session day'; body = calDaySheet(); }
+    else if (sheet.type === 'schedule') { title = 'Training days'; body = scheduleSheet(); }
     if (sheet.type === 'log') {
       return '<div class="overlay" data-action="close-sheet"><div class="sheet" role="dialog" aria-modal="true" data-action="stop">' + body + '</div></div>';
     }
@@ -1274,6 +1299,7 @@
     const label = when.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const current = tip && tip.type ? tip.type : (state.sheet.dayType || null);
     const logs = tip && tip.logs ? tip.logs : [];
+    const plannedModes = (tip && tip.plannedModes) ? tip.plannedModes.slice() : [];
     let statusLine;
     if (tip && tip.status === 'skip') {
       statusLine = 'Skipped for now';
@@ -1286,29 +1312,62 @@
         return entry.typeName || L.modeDayLabel(entry.mode);
       }).join(' · ');
     } else {
-      statusLine = 'Rest day';
+      statusLine = 'Rest day · mark what you want to track';
     }
     const loggedBlock = logs.length
       ? '<div class="section-label">Logged</div><div class="group">' + logs.map(function (entry) {
         return '<div class="log-row static"><span class="choice-copy"><strong>' + esc(entry.typeName || L.modeDayLabel(entry.mode)) + '</strong><small>' + esc(L.modeDayLabel(entry.mode)) + '</small></span></div>';
       }).join('') + '</div>'
       : '';
+    const modeButtons = ['strength', 'mobility', 'cardio'].map(function (mode) {
+      const on = plannedModes.indexOf(mode) >= 0 || (logs || []).some(function (entry) { return entry.mode === mode; });
+      const labelMode = mode === 'strength' ? 'Lift' : L.modeDayLabel(mode);
+      return '<button type="button" class="mode-track' + (on ? ' on' : '') + '" data-action="cal-toggle-mode" data-mode="' + mode + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<i class="cal-dot mode-' + mode + '"></i><strong>' + esc(labelMode) + '</strong></button>';
+    }).join('');
     const choices = scheduleTypeChoices().map(function (type) {
       const on = current === type && !(tip && tip.status === 'skip');
       return '<button class="choice" data-action="cal-set-type" data-type="' + type + '" aria-pressed="' + (on ? 'true' : 'false') + '"><strong>' + esc(L.dayTypeLabel(type)) + '</strong><small>' + (on ? 'Selected' : 'Use this day') + '</small></button>';
     }).join('');
     const isToday = iso === L.isoDay(new Date());
-    const start = tip && tip.status === 'done'
+    const startLift = tip && tip.status === 'done'
       ? ''
-      : '<button class="btn btn-primary" style="margin-top:14px" data-action="cal-start"' + (current ? '' : ' disabled') + '>Start ' + esc(current ? L.dayTypeLabel(current) : 'session') + '</button>';
+      : '<button class="btn btn-primary" style="margin-top:14px" data-action="cal-start"' + (current ? '' : ' disabled') + '>Start ' + esc(current ? L.dayTypeLabel(current) : 'lift') + '</button>';
+    const startMobility = '<button class="btn btn-quiet" style="margin-top:8px" data-action="cal-start-mode" data-mode="mobility">Start mobility</button>';
+    const startCardio = '<button class="btn btn-quiet" style="margin-top:8px" data-action="cal-start-mode" data-mode="cardio">Start cardio</button>';
     return '<p class="eyebrow">' + esc(label) + (isToday ? ' · Today' : '') + '</p>' +
       '<p class="lede" style="margin-top:4px">' + esc(statusLine) + '</p>' +
       loggedBlock +
-      '<div class="section-label">Day type</div><div class="choice-list">' + choices + '</div>' +
+      '<div class="section-label">Track on this day</div><div class="mode-track-row">' + modeButtons + '</div>' +
+      '<div class="section-label">Lift type</div><div class="choice-list">' + choices + '</div>' +
       '<div class="cal-day-actions">' +
       '<button class="btn btn-quiet" data-action="cal-skip">' + (tip && tip.status === 'skip' ? 'Unskip day' : 'Skip this day') + '</button>' +
       (tip && tip.tweaked ? '<button class="btn btn-quiet" data-action="cal-reset">Use default</button>' : '') +
-      '</div>' + start;
+      '</div>' + startLift + startMobility + startCardio;
+  }
+
+  function scheduleSheet() {
+    const ready = L.normalizeSchedule(state.schedule, state.plan);
+    const presets = [
+      { id: 'weekdays', label: 'Weekdays', detail: 'Mon–Fri' },
+      { id: 'mwf', label: '3 days', detail: 'Mon · Wed · Fri' },
+      { id: 'mtthf', label: '4 days', detail: 'Mon · Tue · Thu · Fri' },
+      { id: 'everyday', label: 'Every day', detail: 'All seven' },
+      { id: 'custom', label: 'Custom', detail: 'Pick below' }
+    ];
+    const presetButtons = presets.map(function (item) {
+      const on = ready.preset === item.id;
+      return '<button class="choice" data-action="schedule-preset" data-preset="' + item.id + '" aria-pressed="' + (on ? 'true' : 'false') + '"><strong>' + esc(item.label) + '</strong><small>' + esc(item.detail) + '</small></button>';
+    }).join('');
+    const toggles = WEEKDAY_NAMES.map(function (name, index) {
+      const on = ready.weekdays.indexOf(index) >= 0;
+      return '<button type="button" class="day-toggle' + (on ? ' on' : '') + '" data-action="schedule-toggle-day" data-day="' + index + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(name) + '</button>';
+    }).join('');
+    return '<p class="lede">Pick the days that actually fit your week. Lift types rotate on those days — Mobility and Cardio are marked per day on the calendar.</p>' +
+      '<div class="section-label">Presets</div><div class="choice-list">' + presetButtons + '</div>' +
+      '<div class="section-label">Custom days</div><div class="day-toggle-row">' + toggles + '</div>' +
+      '<p class="footnote tight">Now: ' + esc(weekdaySummary()) + '</p>' +
+      '<button class="btn btn-primary" style="margin-top:12px" data-action="close-sheet">Done</button>';
   }
 
   function howtoSheet() {
@@ -2114,6 +2173,85 @@
         return;
       }
       startPlan();
+    },
+    'cal-toggle-mode': function (el) {
+      if (!state.sheet || state.sheet.type !== 'cal-day') return;
+      const mode = el.dataset.mode;
+      state.schedule = L.toggleScheduleMode(state.schedule, state.plan, state.sheet.date, mode);
+      saveSchedule();
+      const tip = L.suggestionForDate(state.schedule, state.plan, state.sheet.date, state.workouts, new Date());
+      state.sheet.dayType = tip && tip.type ? tip.type : state.sheet.dayType;
+      render();
+      renderChrome();
+      toast(L.modeDayLabel(mode === 'strength' ? 'strength' : mode) + (tip && tip.plannedModes && tip.plannedModes.indexOf(mode) >= 0 ? ' on' : ' off'));
+    },
+    'cal-start-mode': function (el) {
+      const mode = el.dataset.mode;
+      if (mode !== 'mobility' && mode !== 'cardio') return;
+      if (state.session) {
+        toast('Finish or discard the workout in progress.');
+        state.section = 'train';
+        state.sheet = null;
+        render();
+        return;
+      }
+      if (state.sheet && state.sheet.date) {
+        const tip = L.suggestionForDate(state.schedule, state.plan, state.sheet.date, state.workouts, new Date());
+        const modes = ((tip && tip.plannedModes) || []).slice();
+        if (modes.indexOf(mode) < 0) modes.push(mode);
+        state.schedule = L.setScheduleDay(state.schedule, state.plan, state.sheet.date, {
+          type: tip && tip.type ? tip.type : undefined,
+          modes: modes
+        });
+        saveSchedule();
+      }
+      state.area = mode;
+      state.sheet = null;
+      state.menu = false;
+      document.body.classList.remove('area-strength', 'area-mobility', 'area-cardio');
+      document.body.classList.add('area-' + mode);
+      startPlan();
+    },
+    'open-schedule': function () {
+      state.menu = false;
+      state.sheet = { type: 'schedule' };
+      renderChrome();
+    },
+    'schedule-preset': function (el) {
+      const preset = el.dataset.preset;
+      if (preset === 'custom') {
+        /* Keep current days; just mark as custom by toggling nothing — user edits chips. */
+        state.schedule = L.normalizeSchedule(state.schedule, state.plan);
+        state.schedule.preset = 'custom';
+        saveSchedule();
+        renderChrome();
+        return;
+      }
+      state.schedule = L.applyWeekdayPreset(state.schedule, state.plan, preset);
+      saveSchedule();
+      render();
+      renderChrome();
+      toast('Days updated');
+    },
+    'schedule-toggle-day': function (el) {
+      const day = Number(el.dataset.day);
+      if (!Number.isFinite(day) || day < 0 || day > 6) return;
+      const ready = L.normalizeSchedule(state.schedule, state.plan);
+      const next = ready.weekdays.slice();
+      const idx = next.indexOf(day);
+      if (idx >= 0) {
+        if (next.length === 1) {
+          toast('Keep at least one training day.');
+          return;
+        }
+        next.splice(idx, 1);
+      } else {
+        next.push(day);
+      }
+      state.schedule = L.setScheduleWeekdays(state.schedule, state.plan, next);
+      saveSchedule();
+      render();
+      renderChrome();
     },
     'open-plan': function () {
       state.preview = null;

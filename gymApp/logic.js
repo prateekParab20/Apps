@@ -846,33 +846,98 @@
     return days === 3 ? [1, 3, 5] : [1, 2, 4, 5];
   }
 
+  /* Routinery / Streaks-style presets: user picks which days work, then rotation fills types. */
+  const WEEKDAY_PRESETS = {
+    weekdays: [1, 2, 3, 4, 5],
+    mwf: [1, 3, 5],
+    mtthf: [1, 2, 4, 5],
+    everyday: [0, 1, 2, 3, 4, 5, 6]
+  };
+
+  function weekdayPresetOf(weekdays) {
+    const sorted = (weekdays || []).slice().sort(function (a, b) { return a - b; });
+    const keys = Object.keys(WEEKDAY_PRESETS);
+    for (let i = 0; i < keys.length; i += 1) {
+      const preset = WEEKDAY_PRESETS[keys[i]];
+      if (preset.length === sorted.length && preset.every(function (d, idx) { return d === sorted[idx]; })) {
+        return keys[i];
+      }
+    }
+    return 'custom';
+  }
+
+  function weekdaysForPreset(preset, planDays) {
+    if (preset === 'custom') return null;
+    if (WEEKDAY_PRESETS[preset]) return WEEKDAY_PRESETS[preset].slice();
+    return defaultWeekdays(planDays);
+  }
+
+  function normalizeModes(list) {
+    const allowed = ['strength', 'mobility', 'cardio'];
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(function (mode) {
+      if (allowed.indexOf(mode) >= 0 && out.indexOf(mode) < 0) out.push(mode);
+    });
+    return out;
+  }
+
   function normalizeSchedule(schedule, plan) {
     const ready = normalizePlan(plan);
     const source = schedule && typeof schedule === 'object' ? schedule : {};
-    const weekdays = Array.isArray(source.weekdays)
+    let weekdays = Array.isArray(source.weekdays)
       ? source.weekdays.map(Number).filter(function (d) { return d >= 0 && d <= 6; })
       : [];
+    const preset = typeof source.preset === 'string' ? source.preset : '';
+    if (!weekdays.length && preset && WEEKDAY_PRESETS[preset]) {
+      weekdays = WEEKDAY_PRESETS[preset].slice();
+    }
+    if (!weekdays.length) weekdays = defaultWeekdays(ready.days);
+    /* Unique + sorted for stable compare. */
+    weekdays = weekdays.filter(function (d, i, arr) { return arr.indexOf(d) === i; }).sort(function (a, b) { return a - b; });
     const overrides = {};
     const raw = source.overrides && typeof source.overrides === 'object' ? source.overrides : {};
     Object.keys(raw).forEach(function (key) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
       const item = raw[key];
       if (!item || typeof item !== 'object') return;
+      const modes = normalizeModes(item.modes);
       if (item.skip === true) {
         overrides[key] = { skip: true };
+        if (modes.length) overrides[key].modes = modes;
         return;
       }
-      if (item.type && DAY_LABEL[item.type]) overrides[key] = { type: item.type };
+      const entry = {};
+      if (item.type && DAY_LABEL[item.type]) entry.type = item.type;
+      if (modes.length) entry.modes = modes;
+      if (entry.type || entry.modes) overrides[key] = entry;
     });
     const rotation = rotationFor(ready);
     let nextIndex = Number(source.nextIndex);
     if (!Number.isFinite(nextIndex) || nextIndex < 0) nextIndex = 0;
     nextIndex = nextIndex % Math.max(1, rotation.length);
     return {
-      weekdays: weekdays.length ? weekdays : defaultWeekdays(ready.days),
+      weekdays: weekdays,
+      preset: weekdayPresetOf(weekdays),
       overrides: overrides,
       nextIndex: nextIndex
     };
+  }
+
+  function setScheduleWeekdays(schedule, plan, weekdays) {
+    const ready = normalizeSchedule(schedule, plan);
+    const next = Array.isArray(weekdays)
+      ? weekdays.map(Number).filter(function (d) { return d >= 0 && d <= 6; })
+      : [];
+    const unique = next.filter(function (d, i, arr) { return arr.indexOf(d) === i; }).sort(function (a, b) { return a - b; });
+    ready.weekdays = unique.length ? unique : defaultWeekdays(normalizePlan(plan).days);
+    ready.preset = weekdayPresetOf(ready.weekdays);
+    return ready;
+  }
+
+  function applyWeekdayPreset(schedule, plan, preset) {
+    const days = weekdaysForPreset(preset, normalizePlan(plan).days);
+    if (!days) return normalizeSchedule(schedule, plan);
+    return setScheduleWeekdays(schedule, plan, days);
   }
 
   function dayTypeLabel(type) {
@@ -906,15 +971,41 @@
       delete ready.overrides[iso];
       return ready;
     }
+    const prev = ready.overrides[iso] || {};
     if (patch.skip === true) {
-      ready.overrides[iso] = { skip: true };
+      const entry = { skip: true };
+      const keepModes = patch.modes != null ? normalizeModes(patch.modes) : normalizeModes(prev.modes);
+      if (keepModes.length) entry.modes = keepModes;
+      ready.overrides[iso] = entry;
       return ready;
     }
-    if (patch.type && DAY_LABEL[patch.type]) {
-      ready.overrides[iso] = { type: patch.type };
-      return ready;
-    }
+    const entry = {};
+    if (patch.type && DAY_LABEL[patch.type]) entry.type = patch.type;
+    else if (!patch.clearType && prev.type && DAY_LABEL[prev.type]) entry.type = prev.type;
+    const modes = patch.modes != null ? normalizeModes(patch.modes) : normalizeModes(prev.modes);
+    if (modes.length) entry.modes = modes;
+    if (entry.type || entry.modes) ready.overrides[iso] = entry;
+    else delete ready.overrides[iso];
     return ready;
+  }
+
+  function toggleScheduleMode(schedule, plan, iso, mode) {
+    const ready = normalizeSchedule(schedule, plan);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ready;
+    if (['strength', 'mobility', 'cardio'].indexOf(mode) < 0) return ready;
+    const tip = suggestionForDate(ready, plan, iso, [], new Date(iso + 'T12:00:00'));
+    const prev = ready.overrides[iso] || {};
+    let modes = normalizeModes(prev.modes);
+    /* Seed strength when this is already a training day and nothing was marked yet. */
+    if (!modes.length && tip && tip.type && tip.status !== 'skip') modes = ['strength'];
+    const idx = modes.indexOf(mode);
+    if (idx >= 0) modes.splice(idx, 1);
+    else modes.push(mode);
+    const patch = { modes: modes };
+    if (prev.type) patch.type = prev.type;
+    else if (tip && tip.type && modes.indexOf('strength') >= 0) patch.type = tip.type;
+    if (prev.skip) patch.skip = true;
+    return setScheduleDay(ready, plan, iso, patch);
   }
 
   function strengthLoggedType(workout) {
@@ -1015,13 +1106,30 @@
         type = override && override.type ? override.type : null;
         tweaked = !!(override && override.type);
       }
+      const plannedModes = normalizeModes(override && override.modes);
+      /* Strength training days imply strength mode for tracking chips/dots. */
+      if (type && plannedModes.indexOf('strength') < 0 && (status === 'planned' || status === 'today' || status === 'done' || status === 'missed')) {
+        plannedModes.unshift('strength');
+      }
+      const markModes = [];
+      plannedModes.forEach(function (mode) {
+        if (markModes.indexOf(mode) < 0) markModes.push(mode);
+      });
+      loggedModes.forEach(function (mode) {
+        if (markModes.indexOf(mode) < 0) markModes.push(mode);
+      });
       let title = type ? dayTypeLabel(type) : (status === 'skip' ? 'Skip' : '');
-      let short = type ? dayTypeLabel(type).split(' ')[0] : (status === 'skip' ? 'Skip' : '');
-      /* Non-strength logs label the day when there is no strength plan/type. */
-      if (!type && !skipped && logs.length) {
+      /* Quiet calendar cells: day letter only when strength is planned; mode names when only mobility/cardio. */
+      let short = '';
+      if (status === 'skip') short = 'Skip';
+      else if (type) short = dayTypeLabel(type).charAt(0);
+      else if (!skipped && logs.length) {
         const primary = logs[0];
         title = primary.typeName || modeDayLabel(primary.mode);
-        short = modeDayLabel(primary.mode);
+        short = modeDayLabel(primary.mode).charAt(0);
+      } else if (plannedModes.length && !type) {
+        title = plannedModes.map(modeDayLabel).join(' · ');
+        short = modeDayLabel(plannedModes[0]).charAt(0);
       }
       cells.push({
         empty: false,
@@ -1036,6 +1144,8 @@
         isToday: iso === todayIso,
         logs: logs.slice(),
         loggedModes: loggedModes.slice(),
+        plannedModes: plannedModes.slice(),
+        markModes: markModes.slice(),
         hasLog: logs.length > 0
       });
     }
@@ -1312,6 +1422,12 @@
     overrideFor: overrideFor,
     advanceSchedule: advanceSchedule,
     setScheduleDay: setScheduleDay,
+    setScheduleWeekdays: setScheduleWeekdays,
+    applyWeekdayPreset: applyWeekdayPreset,
+    toggleScheduleMode: toggleScheduleMode,
+    weekdayPresetOf: weekdayPresetOf,
+    weekdaysForPreset: weekdaysForPreset,
+    WEEKDAY_PRESETS: WEEKDAY_PRESETS,
     monthGrid: monthGrid,
     suggestionForDate: suggestionForDate,
     strengthLoggedType: strengthLoggedType,
